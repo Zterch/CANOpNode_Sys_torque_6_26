@@ -43,6 +43,7 @@ typedef struct {
     uint32_t last_time; /* 上次时间 ms */
     float output;       /* 微分输出 */
     LowPassFilter_t lpf; /* 低通滤波器 */
+    int use_lpf;        /* 是否使用LPF: 1=使用, 0=不使用 */
 } Differentiator_t;
 
 /******************************************************************************

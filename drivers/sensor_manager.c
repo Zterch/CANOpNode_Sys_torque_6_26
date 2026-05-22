@@ -129,10 +129,28 @@ static ErrorCode_t modbus_read_registers(SensorManager_t *manager, uint8_t slave
     return ERR_OK;
 }
 
+/* M/T法测速静态变量 - 必须在函数外部定义，确保状态持久 */
+static uint32_t s_mt_last_time_us = 0;
+static uint32_t s_mt_last_encoder_value = 0;
+static int s_mt_initialized = 0;
+
+/* 控制周期M/T法测速静态变量 - 用于在控制线程读取时计算速度 */
+static uint32_t s_ctrl_mt_last_time_us = 0;
+static uint32_t s_ctrl_mt_last_encoder_value = 0;
+static int s_ctrl_mt_initialized = 0;
+
+/* 累积M/T法数据 - 用于累积传感器线程在控制周期内的脉冲变化 */
+static int32_t s_acc_pulse_delta = 0;
+static uint32_t s_acc_time_delta_us = 0;
+static pthread_mutex_t s_acc_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* 读取并解析编码器数据 - 工业级抗干扰版本 */
 static ErrorCode_t read_encoder(SensorManager_t *manager, SensorData_t *data) {
     uint8_t rx_buf[16];
     int rx_len;
+    uint32_t current_time_us = get_time_us();
+    int32_t pulse_delta = 0;
+    uint32_t time_delta_us = 0;
     
     ErrorCode_t ret = modbus_read_registers(manager,
                                              manager->configs[SENSOR_TYPE_ENCODER].slave_addr,
@@ -161,22 +179,50 @@ static ErrorCode_t read_encoder(SensorManager_t *manager, SensorData_t *data) {
         return ERR_COMM_FAIL;
     }
     
-    /* 首次读取，建立基准 */
+    /* 首次读取，建立基准 - 工业级可靠版本 */
     if (s_encoder_first_read) {
         s_encoder_first_read = 0;
         s_last_valid_encoder = multi_turn_first;
-        /* 如果当前zero_offset与读取值相差太远（超过1/4范围），
-         * 说明文件保存的零点与当前实际位置跨越了回绕边界，
-         * 需要重新校准zero_offset到当前值附近 */
-        uint32_t diff = (multi_turn_first > s_encoder_zero_offset) ? 
-                        (multi_turn_first - s_encoder_zero_offset) : 
-                        (s_encoder_zero_offset - multi_turn_first);
-        if (diff > ENCODER_MAX_VALUE / 4) {
-            printf("[SENSOR] Recalibrating zero_offset: old=%u, new=%u (diff=%u)\n", 
-                   s_encoder_zero_offset, multi_turn_first, diff);
+        
+        /* 工业级改进：始终使用当前编码器值作为零点 */
+        /* 这样可以确保位置计算从当前位置开始，而不是从保存的位置 */
+        /* 保存的位置只用于记录绳长，不用于编码器零点 */
+        if (s_encoder_zero_offset == 0) {
+            /* 首次初始化或文件不存在 */
+            printf("[SENSOR] Initializing zero_offset: %u (first run)\n", multi_turn_first);
             s_encoder_zero_offset = multi_turn_first;
-            s_rope_length_base = 0.0f;
+            /* 保留保存的绳长基准，但编码器零点重新校准 */
+        } else {
+            /* 检查保存的零点与当前值是否跨越回绕边界 */
+            uint32_t diff = (multi_turn_first > s_encoder_zero_offset) ? 
+                            (multi_turn_first - s_encoder_zero_offset) : 
+                            (s_encoder_zero_offset - multi_turn_first);
+            
+            if (diff > ENCODER_MAX_VALUE / 4) {
+                /* 跨越回绕边界，需要重新校准 */
+                printf("[SENSOR] Recalibrating zero_offset: old=%u, new=%u (diff=%u, wrap-around detected)\n", 
+                       s_encoder_zero_offset, multi_turn_first, diff);
+                s_encoder_zero_offset = multi_turn_first;
+                /* 跨越回绕边界时，绳长基准重置为0 */
+                s_rope_length_base = 0.0f;
+            } else {
+                /* 正常情况：使用当前编码器值作为新的零点 */
+                /* 这样可以确保位置计算从当前位置开始 */
+                printf("[SENSOR] Updating zero_offset: old=%u, new=%u (diff=%u)\n", 
+                       s_encoder_zero_offset, multi_turn_first, diff);
+                /* 调整绳长基准以保持绝对位置连续 */
+                int32_t pulse_diff = calculate_encoder_delta(multi_turn_first, s_encoder_zero_offset);
+                float length_diff = (float)pulse_diff / (float)s_encoder_resolution * s_rope_length_per_turn;
+                s_rope_length_base += length_diff;
+                s_encoder_zero_offset = multi_turn_first;
+            }
         }
+        
+        /* 首次读取，初始化M/T记录 */
+        s_mt_last_encoder_value = multi_turn_first;
+        s_mt_last_time_us = current_time_us;
+        s_mt_initialized = 1;
+        
         goto parse_data;
     }
     
@@ -188,6 +234,8 @@ static ErrorCode_t read_encoder(SensorManager_t *manager, SensorData_t *data) {
         delta_from_last >= -ENCODER_MAX_DELTA_PER_CYCLE) {
         s_last_valid_encoder = multi_turn_first;
         s_encoder_consecutive_errors = 0;
+        
+        /* M/T法数据现在在parse_data统一计算 */
         goto parse_data;
     }
     
@@ -208,6 +256,7 @@ static ErrorCode_t read_encoder(SensorManager_t *manager, SensorData_t *data) {
     if (ret != ERR_OK) {
         printf("[SENSOR] Retry failed, using last valid\n");
         multi_turn_first = s_last_valid_encoder;
+        /* 使用旧值，不更新M/T记录 */
         goto parse_data;
     }
     
@@ -273,26 +322,60 @@ static ErrorCode_t read_encoder(SensorManager_t *manager, SensorData_t *data) {
 parse_data:
     /* 填充数据 */
     data->data.encoder.multi_turn_value = multi_turn_first;
-    
+
     /* 计算单圈角度（取模运算得到单圈值） */
     uint32_t single_turn_value = multi_turn_first % s_encoder_resolution;
     data->data.encoder.angle_deg = (float)single_turn_value * 360.0f / (float)s_encoder_resolution;
-    
+
     /* 计算相对于零点的脉冲差值（正确处理回绕） */
     int32_t pulse_diff = calculate_encoder_delta(multi_turn_first, s_encoder_zero_offset);
-    
+
     /* 只检查极端异常值（超过1000万脉冲 ≈ 2441圈） */
     if (pulse_diff > 10000000 || pulse_diff < -10000000) {
         printf("[SENSOR] WARNING: Extreme pulse diff: %d, using 0\n", pulse_diff);
         pulse_diff = 0;
     }
-    
+
     float turns = (float)pulse_diff / (float)s_encoder_resolution;
     data->data.encoder.rope_length_mm = s_rope_length_base + turns * s_rope_length_per_turn;
+
+    /* M/T法测速计算 - 必须在更新记录之前计算 */
+    if (s_mt_initialized) {
+        /* 计算脉冲变化量（正确处理回绕） */
+        pulse_delta = calculate_encoder_delta(multi_turn_first, s_mt_last_encoder_value);
+        /* 计算时间变化量（微秒） */
+        time_delta_us = current_time_us - s_mt_last_time_us;
+        
+        /* 累积M/T法数据 - 用于控制周期速度计算 */
+        pthread_mutex_lock(&s_acc_mutex);
+        s_acc_pulse_delta += pulse_delta;
+        s_acc_time_delta_us += time_delta_us;
+        pthread_mutex_unlock(&s_acc_mutex);
+        
+        /* 调试输出 - 显示M/T法计算结果 */
+        static int debug_counter = 0;
+        if (++debug_counter % 100 == 0) {
+            printf("[MT DEBUG] current=%u, last=%u, delta=%d, acc_delta=%d, time_us=%u\n",
+                   multi_turn_first, s_mt_last_encoder_value, pulse_delta, s_acc_pulse_delta, time_delta_us);
+        }
+        
+        /* 更新M/T记录 - 在计算完delta之后更新，确保下次计算正确 */
+        s_mt_last_encoder_value = multi_turn_first;
+        s_mt_last_time_us = current_time_us;
+    }
     
+    /* 填充M/T法测速数据 - 使用累积值 */
+    pthread_mutex_lock(&s_acc_mutex);
+    data->data.encoder.pulse_delta = s_acc_pulse_delta;
+    data->data.encoder.time_delta_us = s_acc_time_delta_us;
+    /* 重置累积值 */
+    s_acc_pulse_delta = 0;
+    s_acc_time_delta_us = 0;
+    pthread_mutex_unlock(&s_acc_mutex);
+
     data->data_valid = 1;
-    data->last_read_us = get_time_us();
-    
+    data->last_read_us = current_time_us;
+
     return ERR_OK;
 }
 
@@ -335,7 +418,15 @@ static ErrorCode_t read_pressure(SensorManager_t *manager, SensorData_t *data) {
     return ERR_OK;
 }
 
-/* 传感器采集线程 */
+/* 传感器采集线程 - 工业级严格固定周期版本
+ * 
+ * 采集策略：
+ * - 编码器：每10ms采集一次（100Hz）
+ * - 压力传感器：每10ms采集一次（100Hz）
+ * - 总周期：20ms（编码器和压力传感器交替采集，各10ms）
+ * 
+ * 使用绝对时间戳确保严格的周期控制
+ */
 static void* sensor_thread(void* arg) {
     SensorManager_t* manager = (SensorManager_t*)arg;
     
@@ -346,38 +437,81 @@ static void* sensor_thread(void* arg) {
         printf("[SENSOR] Warning: Failed to set high priority for sensor thread\n");
     }
     
+    /* 定义严格的采集周期 */
+    #define SENSOR_SAMPLE_PERIOD_US 10000  /* 10ms = 100Hz */
+    #define SENSOR_CYCLE_PERIOD_US 20000   /* 20ms总周期 */
+    
+    /* 获取起始时间戳 */
+    struct timespec next_time;
+    clock_gettime(CLOCK_MONOTONIC, &next_time);
+    
+    /* 转换为微秒 */
+    uint64_t next_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
+    uint64_t cycle_start_us = next_time_us;
+    int sample_phase = 0;  /* 0=编码器, 1=压力传感器 */
+    
+    printf("[SENSOR] Thread started with strict 10ms/20ms cycle\n");
+    
     while (manager->running) {
-        /* 读取编码器 */
-        ErrorCode_t ret = read_encoder(manager, &manager->datas[SENSOR_TYPE_ENCODER]);
-        if (ret != ERR_OK) {
-            manager->datas[SENSOR_TYPE_ENCODER].error_count++;
+        /* 记录本次采集开始时间 */
+        uint64_t sample_start_us = get_time_us();
+        
+        if (sample_phase == 0) {
+            /* 相位0：采集编码器 */
+            ErrorCode_t ret = read_encoder(manager, &manager->datas[SENSOR_TYPE_ENCODER]);
+            if (ret != ERR_OK) {
+                manager->datas[SENSOR_TYPE_ENCODER].error_count++;
+            } else {
+                manager->datas[SENSOR_TYPE_ENCODER].read_count++;
+            }
+            sample_phase = 1;
         } else {
-            manager->datas[SENSOR_TYPE_ENCODER].read_count++;
+            /* 相位1：采集压力传感器 */
+            ErrorCode_t ret = read_pressure(manager, &manager->datas[SENSOR_TYPE_PRESSURE]);
+            if (ret != ERR_OK) {
+                manager->datas[SENSOR_TYPE_PRESSURE].error_count++;
+            } else {
+                manager->datas[SENSOR_TYPE_PRESSURE].read_count++;
+            }
+            sample_phase = 0;
+            
+            /* 完成一个20ms周期 */
+            manager->cycle_count++;
         }
         
-        /* 读取压力 */
-        ret = read_pressure(manager, &manager->datas[SENSOR_TYPE_PRESSURE]);
-        if (ret != ERR_OK) {
-            manager->datas[SENSOR_TYPE_PRESSURE].error_count++;
-        } else {
-            manager->datas[SENSOR_TYPE_PRESSURE].read_count++;
+        /* 计算下一次采集的绝对时间点 */
+        next_time_us += SENSOR_SAMPLE_PERIOD_US;
+        
+        /* 获取当前时间 */
+        uint64_t current_time_us = get_time_us();
+        
+        /* 计算需要等待的时间 */
+        int64_t sleep_us = (int64_t)(next_time_us - current_time_us);
+        
+        if (sleep_us > 0) {
+            /* 正常情况：等待到下一个采集时间点 */
+            struct timespec sleep_ts;
+            sleep_ts.tv_sec = sleep_us / 1000000;
+            sleep_ts.tv_nsec = (sleep_us % 1000000) * 1000;
+            nanosleep(&sleep_ts, NULL);
+        } else if (sleep_us < -5000) {
+            /* 严重超时（超过5ms）：打印警告并重新同步 */
+            printf("[SENSOR] WARNING: Sample deadline missed by %ld us, resynchronizing...\n", 
+                   (long)(-sleep_us));
+            /* 重新同步到下一个周期 */
+            next_time_us = current_time_us + SENSOR_SAMPLE_PERIOD_US;
         }
-        
-        manager->cycle_count++;
-        
-        /* 使用更短的延迟，让线程尽快完成循环 */
-        struct timespec delay = {0, 1000000}; /* 1ms延迟，主要让线程让出CPU */
-        nanosleep(&delay, NULL);
+        /* 如果sleep_us在[-5000, 0]之间，说明轻微超时，继续执行不等待 */
     }
     
     return NULL;
 }
 
-/* 加载编码器数据 */
+/* 加载编码器数据 - 工业级可靠版本 */
 static int load_encoder_data(void) {
     FILE *fp = fopen(ENCODER_DATA_FILE, "r");
     if (fp == NULL) {
-        printf("[SENSOR] No encoder data file\n");
+        printf("[SENSOR] No encoder data file, will initialize on first read\n");
         return -1;
     }
     
@@ -411,8 +545,11 @@ static int load_encoder_data(void) {
     
     if (has_data) {
         printf("[SENSOR] Loaded: length=%.2fmm, encoder=%u\n", saved_length, saved_encoder);
+        /* 工业级改进：不直接使用保存的encoder值作为零点 */
+        /* 而是在首次读取时根据实际位置重新校准 */
         s_rope_length_base = saved_length;
-        s_encoder_zero_offset = saved_encoder;
+        /* 标记为零点需要重新校准，而不是直接使用保存值 */
+        s_encoder_zero_offset = 0;  /* 标记为未初始化，将在首次读取时设置 */
     }
     
     return 0;
@@ -544,6 +681,11 @@ ErrorCode_t sensor_mgr_get_data(SensorManager_t *manager, SensorType_t type, Sen
     
     pthread_mutex_lock(&manager->bus_mutex);
     *data = manager->datas[type];
+    
+    /* 注意：M/T法数据已经在read_encoder中计算并累积
+     * 这里直接读取传感器线程累积的数据即可
+     */
+    
     pthread_mutex_unlock(&manager->bus_mutex);
     
     return ERR_OK;
@@ -595,7 +737,8 @@ ErrorCode_t sensor_mgr_pressure_tare(SensorManager_t *manager) {
         return ret;
     }
     
-    s_pressure_zero_offset = data.data.pressure.raw_value;
+    //s_pressure_zero_offset = data.data.pressure.raw_value;
+    s_pressure_zero_offset = 0;
     
     printf("[SENSOR] Pressure tared: offset=%d\n", s_pressure_zero_offset);
     return ERR_OK;

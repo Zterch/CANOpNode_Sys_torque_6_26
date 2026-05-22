@@ -45,16 +45,25 @@ extern "C" {
  * 控制算法参数
  ******************************************************************************/
 
-/* 控制周期 */
+/* 控制周期 - 100Hz严格实时控制 */
 #define ALGO_CONTROL_PERIOD_MS          10          /* 控制周期 10ms = 100Hz */
 #define ALGO_CONTROL_PERIOD_S           0.01f       /* 控制周期 0.01s */
 
 /* 速度计算滤波参数 */
-#define SPEED_FILTER_WINDOW_SIZE        5           /* 0.05s滤波 = 5个采样点（10ms周期） */
+/* 编码器分辨率限制导致速度呈现0.0038m/s的阶梯状，需要更大的滤波窗口来平滑 */
+#define SPEED_FILTER_WINDOW_SIZE        10          /* 0.2s滑动平均 = 10个采样点（20ms周期） */
+/* 总延迟 = 20ms(测速) + 200ms(滤波) = 220ms，工业可接受 */
+
+/* 低通滤波器参数 - 用于进一步平滑速度信号 */
+#define SPEED_LPF_ALPHA                 0.15f       /* 低通滤波系数 0-1，越小越平滑 */
 #define SPEED_FILTER_SAMPLE_TIME_MS     10          /* 采样时间 10ms */
 
-/* 电机速度补偿常量 C */
-#define MOTOR_SPEED_COMPENSATION_C      0.1f        /* 电机比重物快10% */
+/* 基于摩擦力的电机速度控制参数 */
+#define PRESSURE_FILTER_WINDOW_SIZE     10          /* 压力传感器平均值滤波窗口大小 */
+#define FRICTION_ANGLE_COS              0.861f      /* cos(30.5°) ≈ 0.861 */
+#define FRICTION_SPEED_OFFSET_C         0.0f       /* 速度偏移常量 C (rpm) */
+#define PRESSURE_F0_DEFAULT_KG          0.0f        /* 静止时压力默认值，运行时会自动校准 */
+#define MOTOR_SPEED_COMPENSATION_C      0.0f        /* 电机速度补偿系数 - 新算法中不再使用，保留兼容性 */
 
 /* 编码器到距离的转换系数 (米/脉冲) */
 /* 距离 = 脉冲数 / 分辨率 * 2π * R2 */
@@ -64,9 +73,9 @@ extern "C" {
  * PID控制器参数 - 电机速度控制
  ******************************************************************************/
 
-/* PID参数 - 禁用微分项，消除超前现象 */
-#define PID_KP                          2.5f        /* 比例系数 - 适中 */
-#define PID_KI                          0.02f       /* 积分系数 - 低值避免饱和 */
+/* PID参数 - 保守设置以消除振荡 */
+#define PID_KP                          10.0f        /* 比例系数 - 降低消除振荡 */
+#define PID_KI                          0.1f       /* 积分系数 - 低值避免饱和 */
 #define PID_KD                          0.0f        /* 微分系数 - 禁用，消除超前 */
 
 #define PID_OUTPUT_MIN                  -10000      /* 电机最小速度指令 */
@@ -83,7 +92,7 @@ extern "C" {
 
 /* 编码器 */
 #define ENCODER_ZERO_POSITION           0           /* 零位位置 */
-#define ENCODER_DIRECTION               1           /* 方向：1=正向，-1=反向 */
+#define ENCODER_DIRECTION               -1          /* 方向：1=正向，-1=反向。重物上升时位置增加，速度为正 */
 
 /******************************************************************************
  * 安全保护参数 - 重要！防止系统失控
@@ -91,7 +100,7 @@ extern "C" {
 
 /* 压力传感器安全阈值 */
 #define SAFETY_PRESSURE_MIN_KG          -5.0f       /* 最小允许压力 - 放宽到-5kg允许去皮误差 */
-#define SAFETY_PRESSURE_MAX_KG          15.0f       /* 最大允许压力 - 增加到15kg */
+#define SAFETY_PRESSURE_MAX_KG          40.0f       /* 最大允许压力 - 增加到25kg，适应实际工况 */
 #define SAFETY_PRESSURE_RATE_MAX_KG_S   10.0f       /* 压力变化率限制 kg/s - 放宽到10kg/s */
 
 /* 电机安全限制 */
@@ -147,6 +156,8 @@ typedef enum {
 typedef struct {
     float pressure_kg;          /* 压力传感器读数 kg */
     float encoder_position_m;   /* 编码器位置 m */
+    int32_t encoder_pulse_delta; /* 编码器脉冲变化量（M/T法测速） */
+    uint32_t encoder_time_delta_us; /* 编码器时间变化量（微秒，M/T法测速） */
     uint32_t timestamp_ms;      /* 时间戳 ms */
     int data_valid;             /* 数据有效标志 */
 } SensorDataRaw_t;
@@ -165,7 +176,8 @@ typedef struct {
 typedef struct {
     float clutch_current_mA;    /* 离合器目标电流 mA */
     float clutch_torque_nm;     /* 离合器目标转矩 Nm */
-    float motor_velocity_cmd;   /* 电机速度指令 */
+    float motor_velocity_cmd;   /* 电机速度指令（PID输出） */
+    float motor_velocity_target;/* 电机目标速度（新算法计算值，用于数据记录） */
     float motor_velocity_actual;/* 电机实际速度 */
     uint32_t timestamp_ms;
 } ControlOutput_t;

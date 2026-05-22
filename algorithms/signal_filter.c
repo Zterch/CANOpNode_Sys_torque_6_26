@@ -99,7 +99,10 @@ void diff_init(Differentiator_t *diff, float lpf_alpha) {
     diff->last_input = 0.0f;
     diff->last_time = 0;
     diff->output = 0.0f;
-    lpf_init(&diff->lpf, lpf_alpha);
+    diff->use_lpf = (lpf_alpha > 0.0f && lpf_alpha < 1.0f);
+    if (diff->use_lpf) {
+        lpf_init(&diff->lpf, lpf_alpha);
+    }
 }
 
 float diff_update(Differentiator_t *diff, float input, uint32_t timestamp_ms) {
@@ -122,8 +125,12 @@ float diff_update(Differentiator_t *diff, float input, uint32_t timestamp_ms) {
     /* 计算微分 */
     float derivative = (input - diff->last_input) / dt;
     
-    /* 对微分结果进行低通滤波 */
-    diff->output = lpf_update(&diff->lpf, derivative);
+    /* 对微分结果进行低通滤波（如果启用） */
+    if (diff->use_lpf) {
+        diff->output = lpf_update(&diff->lpf, derivative);
+    } else {
+        diff->output = derivative;
+    }
     
     /* 更新记录 */
     diff->last_input = input;

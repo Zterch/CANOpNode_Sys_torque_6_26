@@ -51,6 +51,8 @@ typedef struct {
             uint32_t multi_turn_value;      /* 多圈值 - 无符号32位整数 (0~2147483647) */
             float angle_deg;                /* 角度值 */
             float rope_length_mm;           /* 绳子长度 */
+            int32_t pulse_delta;            /* 脉冲变化量（用于M/T法测速） */
+            uint32_t time_delta_us;         /* 时间变化量（微秒，用于M/T法测速） */
         } encoder;
         
         /* 压力传感器数据 */

@@ -104,8 +104,8 @@ extern "C" {
 #define SYS_DATA_RECORD_PERIOD_MS       10          /* 数据记录周期 (ms) */
 
 /* 共享内存通信参数 */
-#define SHM_DATA_OUTPUT_PERIOD_MS       25          /* 共享内存数据输出周期 (ms) - 默认20Hz */
-#define SHM_DATA_COLLECTION_PERIOD_MS   10          /* 数据采集周期 (ms) - 默认100Hz */
+#define SHM_DATA_OUTPUT_PERIOD_MS       50          /* 共享内存数据输出周期 (ms) - 20Hz */
+#define SHM_DATA_COLLECTION_PERIOD_MS   10          /* 数据采集周期 (ms) - 100Hz */
 
 /* 速度滤波参数 */
 #define SPEED_FILTER_WINDOW_SIZE        5           /* 速度移动平均滤波窗口大小 */

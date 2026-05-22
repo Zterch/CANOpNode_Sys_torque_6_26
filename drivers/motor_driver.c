@@ -446,26 +446,28 @@ ErrorCode_t motor_set_velocity(MotorDriver_t *motor, float velocity) {
     if (motor == NULL || !motor->sdk_initialized || !motor->enabled) {
         return ERR_NOT_INITIALIZED;
     }
-    
+
     /* 使用PDO方式发送目标速度 (100Hz实时) */
     /* 关键修复：SDK使用rps(转/秒)单位，需要将rpm转换为rps */
     /* 1 rpm = 1/60 rps，同时考虑unit_factor */
     double vel_rps = (double)velocity / 60.0;  /* rpm -> rps */
-    
-    
+
+    /* 工业级优化：使用短超时确保100Hz实时性 */
+    const int TIMEOUT_MS = 5;  /* 5ms超时 */
+
     pthread_mutex_lock(&motor->mutex);
-    
-    int ret = Nim_set_targetVelocity(motor->sdk_master, motor->node_id, vel_rps, 0);
+
+    int ret = Nim_set_targetVelocity(motor->sdk_master, motor->node_id, vel_rps, TIMEOUT_MS);
     if (ret != 0) {
         LOG_WARN(LOG_MODULE_MOTOR, "Nim_set_targetVelocity failed: %s", sdk_error_string(ret));
         motor->error_count++;
         pthread_mutex_unlock(&motor->mutex);
         return ERR_COMM_FAIL;
     }
-    
+
     motor->target_velocity = velocity;  /* 保存原始rpm值 */
     motor->pdo_tx_count++;
-    
+
     pthread_mutex_unlock(&motor->mutex);
     
     /* 限制日志输出频率 - 只有速度变化超过阈值或超过一定时间才打印 */
@@ -564,13 +566,28 @@ int32_t motor_get_velocity_rpm(MotorDriver_t *motor) {
     if (motor == NULL || !motor->sdk_initialized) {
         return 0;
     }
-    
+
     int speed_rpm;
     if (Nim_get_currentMotorSpeed(motor->sdk_master, motor->node_id, &speed_rpm, 0) == 0) {
         return (int32_t)speed_rpm;
     }
-    
+
     return 0;
+}
+
+ErrorCode_t motor_get_velocity_cached(MotorDriver_t *motor, int32_t *velocity) {
+    if (motor == NULL || velocity == NULL || !motor->sdk_initialized) {
+        return ERR_INVALID_PARAM;
+    }
+
+    /* 直接从缓存读取，不执行CANopen通信
+     * 缓存值由 motor_update_state 在独立线程中周期性更新
+     */
+    pthread_mutex_lock(&motor->data_mutex);
+    *velocity = motor->actual_speed_rpm;
+    pthread_mutex_unlock(&motor->data_mutex);
+
+    return ERR_OK;
 }
 
 float motor_calculate_linear_velocity(MotorDriver_t *motor, float motor_rpm) {
@@ -604,18 +621,24 @@ ErrorCode_t motor_update_state(MotorDriver_t *motor) {
     if (motor == NULL || !motor->sdk_initialized) {
         return ERR_NOT_INITIALIZED;
     }
-    
+
+    /* 工业级优化：使用短超时非阻塞读取
+     * 1M波特率CANopen PDO通信理论上<1ms完成
+     * 设置5ms超时确保实时性，同时容忍偶尔通信延迟
+     */
+    const int TIMEOUT_MS = 5;  /* 5ms超时，确保100Hz实时性 */
+
     /* 读取状态字 */
     unsigned short status_word;
-    int ret = Nim_get_statusWord(motor->sdk_master, motor->node_id, &status_word, 0);
+    int ret = Nim_get_statusWord(motor->sdk_master, motor->node_id, &status_word, TIMEOUT_MS);
     if (ret != 0) {
         return ERR_COMM_FAIL;
     }
-    
+
     pthread_mutex_lock(&motor->data_mutex);
-    
+
     motor->status_word = status_word;
-    
+
     /* 更新状态机 */
     uint16_t state_bits = status_word & 0x000F;
     switch (state_bits) {
@@ -629,31 +652,31 @@ ErrorCode_t motor_update_state(MotorDriver_t *motor) {
         case 0x0007: motor->state = MOTOR_STATE_FAULT; break;
         default:     motor->state = MOTOR_STATE_UNKNOWN; break;
     }
-    
-    /* 读取实际位置 */
+
+    /* 读取实际位置 - 短超时 */
     double pos;
-    if (Nim_get_currentPosition(motor->sdk_master, motor->node_id, &pos, 0) == 0) {
+    if (Nim_get_currentPosition(motor->sdk_master, motor->node_id, &pos, TIMEOUT_MS) == 0) {
         motor->actual_position = pos;
     }
-    
-    /* 读取实际速度 */
+
+    /* 读取实际速度 - 短超时 */
     double vel;
-    if (Nim_get_currentVelocity(motor->sdk_master, motor->node_id, &vel, 0) == 0) {
+    if (Nim_get_currentVelocity(motor->sdk_master, motor->node_id, &vel, TIMEOUT_MS) == 0) {
         motor->actual_velocity = vel;
     }
-    
-    /* 读取实际转速 */
+
+    /* 读取实际转速 - 短超时 */
     int speed_rpm;
-    if (Nim_get_currentMotorSpeed(motor->sdk_master, motor->node_id, &speed_rpm, 0) == 0) {
+    if (Nim_get_currentMotorSpeed(motor->sdk_master, motor->node_id, &speed_rpm, TIMEOUT_MS) == 0) {
         motor->actual_speed_rpm = speed_rpm;
     }
-    
-    /* 读取实际转矩 */
+
+    /* 读取实际转矩 - 短超时 */
     int torque;
-    if (Nim_get_currentTorque(motor->sdk_master, motor->node_id, &torque, 0) == 0) {
+    if (Nim_get_currentTorque(motor->sdk_master, motor->node_id, &torque, TIMEOUT_MS) == 0) {
         motor->actual_torque = torque;
     }
-    
+
     motor->pdo_rx_count++;
     
     pthread_mutex_unlock(&motor->data_mutex);
@@ -740,4 +763,112 @@ void motor_get_statistics(MotorDriver_t *motor, uint64_t *tx_count,
     if (rx_count) *rx_count = motor->pdo_rx_count;
     if (err_count) *err_count = motor->error_count;
     pthread_mutex_unlock(&motor->data_mutex);
+}
+
+/**
+ * @brief 设置电机速度环PID参数
+ * @param motor 电机驱动结构指针
+ * @param kp 速度环比例增益 (I2008-1, 单位: 0.1Hz, 范围: 1-20000)
+ * @param ki 速度环积分时间常数 (I2008-2, 单位: 0.01ms, 范围: 0-51200, 0=禁用积分)
+ * @param kff 速度前馈增益 (I2008-16, 单位: 0.001, 范围: 0-65535)
+ * @return ErrorCode_t
+ * @note 建议在电机未使能时调用，或先切换到PreOP状态再设置
+ */
+ErrorCode_t motor_set_velocity_pid(MotorDriver_t *motor, uint16_t kp, uint16_t ki, uint16_t kff) {
+    if (motor == NULL || !motor->sdk_initialized) {
+        return ERR_NOT_INITIALIZED;
+    }
+    
+    pthread_mutex_lock(&motor->mutex);
+    
+    int ret = 0;
+    
+    /* 设置速度环比例增益 I2008-1 */
+    ret = Nim_set_param_value(motor->sdk_master, motor->node_id, "I2008-1", kp, 1);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Failed to set velocity Kp (I2008-1=%d): %s", kp, sdk_error_string(ret));
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+    
+    /* 设置速度环积分时间常数 I2008-2 */
+    ret = Nim_set_param_value(motor->sdk_master, motor->node_id, "I2008-2", ki, 1);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Failed to set velocity Ki (I2008-2=%d): %s", ki, sdk_error_string(ret));
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+    
+    /* 设置速度前馈增益 I2008-16 */
+    ret = Nim_set_param_value(motor->sdk_master, motor->node_id, "I2008-16", kff, 1);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Failed to set velocity Kff (I2008-16=%d): %s", kff, sdk_error_string(ret));
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+    
+    /* 保存参数到驱动器 */
+    ret = Nim_save_AllParams(motor->sdk_master, motor->node_id, 5000);
+    if (ret != 0) {
+        LOG_WARN(LOG_MODULE_MOTOR, "Failed to save params: %s", sdk_error_string(ret));
+        /* 不返回错误，因为参数已经设置成功 */
+    }
+    
+    pthread_mutex_unlock(&motor->mutex);
+    
+    LOG_INFO(LOG_MODULE_MOTOR, "Velocity PID updated: Kp=%d(0.1Hz), Ki=%d(0.01ms), Kff=%d(0.001)", 
+             kp, ki, kff);
+    return ERR_OK;
+}
+
+/**
+ * @brief 获取电机速度环PID参数
+ * @param motor 电机驱动结构指针
+ * @param kp 速度环比例增益输出
+ * @param ki 速度环积分时间常数输出
+ * @param kff 速度前馈增益输出
+ * @return ErrorCode_t
+ */
+ErrorCode_t motor_get_velocity_pid(MotorDriver_t *motor, uint16_t *kp, uint16_t *ki, uint16_t *kff) {
+    if (motor == NULL || !motor->sdk_initialized || kp == NULL || ki == NULL || kff == NULL) {
+        return ERR_INVALID_PARAM;
+    }
+    
+    pthread_mutex_lock(&motor->mutex);
+    
+    int ret = 0;
+    unsigned int value = 0;
+    
+    /* 读取速度环比例增益 I2008-1 */
+    ret = Nim_get_param_value(motor->sdk_master, motor->node_id, "I2008-1", &value, 1);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Failed to get velocity Kp (I2008-1): %s", sdk_error_string(ret));
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+    *kp = (uint16_t)value;
+    
+    /* 读取速度环积分时间常数 I2008-2 */
+    ret = Nim_get_param_value(motor->sdk_master, motor->node_id, "I2008-2", &value, 1);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Failed to get velocity Ki (I2008-2): %s", sdk_error_string(ret));
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+    *ki = (uint16_t)value;
+    
+    /* 读取速度前馈增益 I2008-16 */
+    ret = Nim_get_param_value(motor->sdk_master, motor->node_id, "I2008-16", &value, 1);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Failed to get velocity Kff (I2008-16): %s", sdk_error_string(ret));
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+    *kff = (uint16_t)value;
+    
+    pthread_mutex_unlock(&motor->mutex);
+    
+    LOG_INFO(LOG_MODULE_MOTOR, "Velocity PID read: Kp=%d(0.1Hz), Ki=%d(0.01ms), Kff=%d(0.001)", 
+             *kp, *ki, *kff);
+    return ERR_OK;
 }

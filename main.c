@@ -56,6 +56,116 @@ static pthread_t g_monitor_thread_tid;
 static pthread_t g_collection_thread_tid;
 static pthread_t g_motor_state_thread_tid;
 static pthread_t g_power_state_thread_tid;
+static pthread_t g_actuator_thread_tid;  /* 异步执行器控制线程 */
+
+/******************************************************************************
+ * 异步执行器控制 - 工业级严格周期控制关键
+ * 控制线程只更新目标值，实际通信由独立线程处理
+ ******************************************************************************/
+typedef struct {
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    
+    /* 电机目标值 */
+    float target_velocity_rpm;
+    int motor_target_updated;
+    
+    /* 离合器目标值 */
+    uint16_t target_clutch_current_ma;
+    int clutch_target_updated;
+    
+    /* 统计 */
+    uint32_t motor_update_count;
+    uint32_t clutch_update_count;
+    uint32_t motor_fail_count;
+    uint32_t clutch_fail_count;
+} ActuatorTargetBuffer_t;
+
+static ActuatorTargetBuffer_t g_actuator_target;
+
+/* 初始化异步执行器目标缓冲区 */
+static void actuator_target_init(void) {
+    pthread_mutex_init(&g_actuator_target.mutex, NULL);
+    pthread_cond_init(&g_actuator_target.cond, NULL);
+    g_actuator_target.target_velocity_rpm = 0.0f;
+    g_actuator_target.target_clutch_current_ma = 0;
+    g_actuator_target.motor_target_updated = 0;
+    g_actuator_target.clutch_target_updated = 0;
+    g_actuator_target.motor_update_count = 0;
+    g_actuator_target.clutch_update_count = 0;
+    g_actuator_target.motor_fail_count = 0;
+    g_actuator_target.clutch_fail_count = 0;
+}
+
+/* 异步执行器控制线程 - 100Hz严格周期 */
+static void* actuator_control_thread(void* arg) {
+    (void)arg;
+    
+    /* 设置线程高优先级 */
+    struct sched_param param;
+    param.sched_priority = 85;
+    if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &param) != 0) {
+        printf("[ACTUATOR] Warning: Failed to set priority\n");
+    }
+    
+    printf("[ACTUATOR] Asynchronous actuator control thread started (100Hz)\n");
+    
+    /* 工业级严格周期控制 */
+    struct timespec next_time;
+    clock_gettime(CLOCK_MONOTONIC, &next_time);
+    uint64_t next_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
+    const uint64_t period_us = 10000; /* 10ms = 100Hz */
+    
+    while (g_running) {
+        /* 读取目标值 */
+        pthread_mutex_lock(&g_actuator_target.mutex);
+        float motor_target = g_actuator_target.target_velocity_rpm;
+        int motor_updated = g_actuator_target.motor_target_updated;
+        uint16_t clutch_target = g_actuator_target.target_clutch_current_ma;
+        int clutch_updated = g_actuator_target.clutch_target_updated;
+        /* 清除更新标志 */
+        g_actuator_target.motor_target_updated = 0;
+        g_actuator_target.clutch_target_updated = 0;
+        pthread_mutex_unlock(&g_actuator_target.mutex);
+        
+        /* 执行电机控制（5ms超时） */
+        if (motor_updated && g_motor.initialized && g_motor.enabled) {
+            ErrorCode_t ret = motor_set_velocity(&g_motor, motor_target);
+            if (ret == ERR_OK) {
+                g_actuator_target.motor_update_count++;
+            } else {
+                g_actuator_target.motor_fail_count++;
+            }
+        }
+        
+        /* 执行离合器控制（5ms超时） */
+        if (clutch_updated && g_power.initialized && g_power.state == POWER_STATE_ON) {
+            ErrorCode_t ret = power_set_current(&g_power, clutch_target);
+            if (ret == ERR_OK) {
+                g_actuator_target.clutch_update_count++;
+            } else {
+                g_actuator_target.clutch_fail_count++;
+            }
+        }
+        
+        /* 严格周期控制 */
+        next_time_us += period_us;
+        uint64_t current_time_us = (uint64_t)(next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000);
+        int64_t sleep_us = (int64_t)(next_time_us - current_time_us);
+        
+        if (sleep_us > 0) {
+            struct timespec sleep_ts;
+            sleep_ts.tv_sec = sleep_us / 1000000;
+            sleep_ts.tv_nsec = (sleep_us % 1000000) * 1000;
+            nanosleep(&sleep_ts, NULL);
+        }
+        
+        clock_gettime(CLOCK_MONOTONIC, &next_time);
+    }
+    
+    printf("[ACTUATOR] Actuator control thread stopped\n");
+    return NULL;
+}
 
 /* 共享状态缓冲区 - 用于线程间数据共享 */
 typedef struct {
@@ -68,6 +178,7 @@ typedef struct {
     /* 电源数据 */
     float current_a;
     float voltage_v;
+    float target_current_a;         /* 目标电流（算法计算值） */
     /* 电机数据 */
     float motor_speed_rpm;
     float motor_position_m;
@@ -77,15 +188,45 @@ typedef struct {
     /* 绳子速度数据 */
     float rope_velocity_raw_m_s;
     float rope_velocity_filtered_m_s;
+    /* 压力传感器数据 */
+    float pressure_f0_kg;           /* 静止时压力值F0 */
+    float pressure_deltaf;          /* 摩擦力变化量dF */
 } SharedStateBuffer_t;
 
 static SharedStateBuffer_t g_shared_state;
+
+/* 电机转速滑动平均滤波器 - 用于平滑电机转速波动 */
+#define MOTOR_SPEED_FILTER_WINDOW_SIZE  5
+static float s_motor_speed_buffer[MOTOR_SPEED_FILTER_WINDOW_SIZE] = {0};
+static int s_motor_speed_index = 0;
+static int s_motor_speed_count = 0;
+
+/* 电机转速滤波函数 */
+static float filter_motor_speed(float raw_speed) {
+    // 更新缓冲区
+    s_motor_speed_buffer[s_motor_speed_index] = raw_speed;
+    s_motor_speed_index = (s_motor_speed_index + 1) % MOTOR_SPEED_FILTER_WINDOW_SIZE;
+    if (s_motor_speed_count < MOTOR_SPEED_FILTER_WINDOW_SIZE) {
+        s_motor_speed_count++;
+    }
+    
+    // 计算平均值
+    float sum = 0.0f;
+    for (int i = 0; i < s_motor_speed_count; i++) {
+        sum += s_motor_speed_buffer[i];
+    }
+    return sum / s_motor_speed_count;
+}
 
 /* 初始化共享状态缓冲区 */
 static void shared_state_init(void) {
     pthread_mutex_init(&g_shared_state.mutex, NULL);
     memset((void*)&g_shared_state + sizeof(pthread_mutex_t), 0, 
            sizeof(SharedStateBuffer_t) - sizeof(pthread_mutex_t));
+    // 重置电机转速滤波器
+    memset(s_motor_speed_buffer, 0, sizeof(s_motor_speed_buffer));
+    s_motor_speed_index = 0;
+    s_motor_speed_count = 0;
 }
 
 /* 更新传感器数据到共享缓冲区 */
@@ -117,8 +258,13 @@ static void update_power_to_buffer(PowerDriver_t *power) {
 static void update_motor_to_buffer(void) {
     pthread_mutex_lock(&g_shared_state.mutex);
     
-    // 直接从电机驱动读取预缓存的数据，不调用SDK
-    g_shared_state.motor_speed_rpm = (float)motor_get_velocity_rpm(&g_motor);
+    // 使用缓存读取电机速度，避免SDO阻塞
+    int32_t motor_speed_raw;
+    if (motor_get_velocity_cached(&g_motor, &motor_speed_raw) == ERR_OK) {
+        // 对电机转速进行滑动平均滤波，平滑波动
+        float motor_speed_filtered = filter_motor_speed((float)motor_speed_raw);
+        g_shared_state.motor_speed_rpm = motor_speed_filtered;
+    }
     g_shared_state.motor_position_m = (float)motor_get_position_m(&g_motor);
     g_shared_state.motor_status = g_motor.state;
     
@@ -128,7 +274,7 @@ static void update_motor_to_buffer(void) {
     float pulley_diameter_m = 0.2f; // 滑轮直径200mm
     float motor_speed_rpm = g_shared_state.motor_speed_rpm;
     float pulley_speed_rpm = motor_speed_rpm / 3.0f; // 减速比3:1
-    g_shared_state.motor_linear_velocity_m_s = 3.14159f * pulley_diameter_m * pulley_speed_rpm / 60.0f;
+    g_shared_state.motor_linear_velocity_m_s = -3.14159f * pulley_diameter_m * pulley_speed_rpm / 60.0f;
     
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
@@ -148,12 +294,12 @@ static void* motor_state_update_thread(void* arg) {
     
     while (g_running) {
         if (g_motor.initialized) {
-            // 通过SDK更新电机状态（耗时操作，在独立线程中执行）
+            // 通过SDK更新电机状态（PDO方式，在独立线程中执行）
             motor_update_state(&g_motor);
         }
-        
-        // 电机状态更新频率约10Hz（CANopen SDO较慢）
-        struct timespec delay = {0, 100000000}; /* 100ms */
+
+        // 电机状态更新频率100Hz（10ms周期，与控制循环同步）
+        struct timespec delay = {0, 10000000}; /* 10ms */
         nanosleep(&delay, NULL);
     }
     
@@ -180,8 +326,8 @@ static void* power_state_update_thread(void* arg) {
             power_get_status(&g_power, &current_ma, &voltage_mv);
         }
         
-        // 电源状态更新频率约10Hz（串口较慢）
-        struct timespec delay = {0, 100000000}; /* 100ms */
+        // 电源状态更新频率50Hz（20ms周期，与数据记录同步）
+        struct timespec delay = {0, 20000000}; /* 20ms */
         nanosleep(&delay, NULL);
     }
     
@@ -210,10 +356,30 @@ void update_motor_theory_velocity(float theory_velocity) {
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
+void update_pressure_f0_deltaf(float f0_kg, float deltaf) {
+    pthread_mutex_lock(&g_shared_state.mutex);
+    g_shared_state.pressure_f0_kg = f0_kg;
+    g_shared_state.pressure_deltaf = deltaf;
+    pthread_mutex_unlock(&g_shared_state.mutex);
+}
+
 uint32_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+/* 获取微秒时间戳 */
+static uint64_t get_time_us(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+}
+
+/* 计算编码器变化量（正确处理回绕） */
+static int32_t calculate_encoder_delta(uint32_t current, uint32_t last) {
+    int32_t delta = (int32_t)(current - last);
+    return delta;
 }
 
 int get_sensor_data(SensorDataRaw_t *data) {
@@ -221,7 +387,7 @@ int get_sensor_data(SensorDataRaw_t *data) {
     
     SensorData_t encoder_data, pressure_data;
     
-    /* 获取编码器数据 */
+    /* 获取编码器数据 - sensor_mgr_get_data已经计算了控制周期的M/T法数据 */
     if (sensor_mgr_get_data(&g_sensor_mgr, SENSOR_TYPE_ENCODER, &encoder_data) != ERR_OK) {
         return -1;
     }
@@ -233,7 +399,11 @@ int get_sensor_data(SensorDataRaw_t *data) {
     
     /* 填充原始数据 */
     data->pressure_kg = pressure_data.data.pressure.pressure_kg;
-    data->encoder_position_m = encoder_data.data.encoder.rope_length_mm / 1000.0f;
+    /* 应用编码器方向系数 - 确保重物上升时位置增加 */
+    data->encoder_position_m = encoder_data.data.encoder.rope_length_mm / 1000.0f * ENCODER_DIRECTION;
+    /* 直接使用sensor_mgr_get_data计算的M/T法数据 */
+    data->encoder_pulse_delta = encoder_data.data.encoder.pulse_delta * ENCODER_DIRECTION;
+    data->encoder_time_delta_us = encoder_data.data.encoder.time_delta_us;
     data->timestamp_ms = get_timestamp_ms();
     data->data_valid = (encoder_data.data_valid && pressure_data.data_valid);
     
@@ -242,14 +412,27 @@ int get_sensor_data(SensorDataRaw_t *data) {
 
 int set_motor_velocity(float velocity) {
     if (!g_motor_enabled || !g_motor.initialized) return -1;
-    return (motor_set_velocity(&g_motor, (int32_t)velocity) == ERR_OK) ? 0 : -1;
+    
+    /* 异步控制：只更新目标值，不直接通信
+     * 实际通信由actuator_control_thread处理
+     */
+    pthread_mutex_lock(&g_actuator_target.mutex);
+    g_actuator_target.target_velocity_rpm = velocity;
+    g_actuator_target.motor_target_updated = 1;
+    pthread_mutex_unlock(&g_actuator_target.mutex);
+    
+    return 0;
 }
 
 int get_motor_actual_velocity(float *velocity) {
     if (!g_motor_enabled || !g_motor.initialized || velocity == NULL) return -1;
-    
+
+    /* 使用缓存读取，避免CANopen阻塞调用
+     * 缓存值由电机状态更新线程(10ms周期)通过PDO更新
+     * 对于100Hz控制循环，10ms的缓存延迟是可接受的
+     */
     int32_t vel;
-    if (motor_get_velocity(&g_motor, &vel) == ERR_OK) {
+    if (motor_get_velocity_cached(&g_motor, &vel) == ERR_OK) {
         *velocity = (float)vel;
         return 0;
     }
@@ -261,11 +444,11 @@ int get_motor_actual_velocity(float *velocity) {
 
 int set_clutch_current(float current_mA) {
     uint16_t current_u16 = (uint16_t)(current_mA + 0.5f);
-    
+
     if (current_u16 > SAFETY_CLUTCH_CURRENT_MAX_MA) {
         current_u16 = SAFETY_CLUTCH_CURRENT_MAX_MA;
     }
-    
+
     /* 测试模式：电源板未就绪时跳过电流设置，只运行电机控制 */
     if (TEST_MODE_ALLOW_MOTOR_WITHOUT_POWER && !g_power.initialized) {
         static int warned = 0;
@@ -275,8 +458,16 @@ int set_clutch_current(float current_mA) {
         }
         return 0; /* 返回成功，允许电机继续运行 */
     }
-    
-    return (power_set_current(&g_power, current_u16) == ERR_OK) ? 0 : -1;
+
+    /* 异步控制：只更新目标值，不直接通信
+     * 实际通信由actuator_control_thread处理
+     */
+    pthread_mutex_lock(&g_actuator_target.mutex);
+    g_actuator_target.target_clutch_current_ma = current_u16;
+    g_actuator_target.clutch_target_updated = 1;
+    pthread_mutex_unlock(&g_actuator_target.mutex);
+
+    return 0;
 }
 
 /******************************************************************************
@@ -553,8 +744,16 @@ static void* command_handler_thread(void* arg) {
                                 /* 设置为循环同步速度模式(CSV)后再使能 */
                                 motor_set_mode(&g_motor, MOTOR_MODE_CSV);
                                 ErrorCode_t ret = motor_enable(&g_motor);
-                                printf("[CMD] Motor enable (mode: CSV) - %s\n", 
-                                       ret == ERR_OK ? "OK" : "FAILED");
+                                uint16_t kp, ki, kff;
+
+                                // 先读取当前值
+                                //motor_get_velocity_pid(&g_motor, &kp, &ki, &kff);
+                                //printf("Current PID: Kp=%d, Ki=%d, Kff=%d\n", kp, ki, kff);
+
+                                // 设置新值（示例：降低P增益）
+                                //motor_set_velocity_pid(&g_motor, 500, 800, 1000);
+                                //printf("[CMD] Motor enable (mode: CSV) - %s\n", 
+                                //       ret == ERR_OK ? "OK" : "FAILED");
                             }
                             break;
                             
@@ -677,10 +876,10 @@ void start_logging(void) {
     
     g_log_file = fopen(g_log_filename, "w");
     if (g_log_file != NULL) {
-        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
-                "Time", "Current(A)", "Voltage(V)", "Pressure(kg)", "RopeLength(m)",
-                "EncoderValue", "EncoderAngle(deg)", "MotorSpeed(rpm)", 
-                "MotorLinearVel(m/s)", "MotorTheoryVel(m/s)", "MotorPosition(m)", 
+        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
+                "Time", "Current(A)", "TargetCurrent(A)", "Voltage(V)", "Pressure(kg)", "F0(kg)", "DeltaF",
+                "RopeLength(m)", "EncoderValue", "EncoderAngle(deg)", "MotorSpeed(rpm)",
+                "MotorLinearVel(m/s)", "MotorTheoryVel(m/s)", "MotorPosition(m)",
                 "RopeVelocityRaw(m/s)", "RopeVelocityFiltered(m/s)");
         printf("[LOG] Started logging to: %s\n", g_log_filename);
         g_log_count = 0;
@@ -708,13 +907,18 @@ static void* data_collection_thread(void* arg) {
         printf("[DATA] Warning: Failed to set high priority for data collection thread\n");
     }
     
-    printf("[DATA] Data collection thread started (%dHz)\n", 1000 / SHM_DATA_COLLECTION_PERIOD_MS);
+    printf("[DATA] Data collection thread started (%dHz) - Industrial Grade Strict Timing\n", 1000 / SHM_DATA_COLLECTION_PERIOD_MS);
     
     const long period_ms = SHM_DATA_COLLECTION_PERIOD_MS;
     int log_counter = 0;  /* 用于实现50Hz记录（每2个100Hz周期记录一次） */
     
+    /* 工业级严格周期控制 - 使用绝对时间戳 */
+    struct timespec next_time;
+    clock_gettime(CLOCK_MONOTONIC, &next_time);
+    uint64_t next_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
+    
     while (g_running) {
-        uint32_t start_time = get_timestamp_ms();
+        uint32_t cycle_start_time = get_timestamp_ms();
         
         /* 更新传感器数据到共享缓冲区 */
         SensorData_t encoder_data, pressure_data;
@@ -754,27 +958,41 @@ static void* data_collection_thread(void* arg) {
             pthread_mutex_unlock(&g_shared_state.mutex);
         }
         
-        /* 获取绳子速度 */
+        /* 获取绳子速度和压力数据 */
         float rope_vel_raw = 0.0f, rope_vel_filtered = 0.0f;
+        float pressure_f0_kg = 0.0f, pressure_deltaf = 0.0f;
         pthread_mutex_lock(&g_shared_state.mutex);
         rope_vel_raw = g_shared_state.rope_velocity_raw_m_s;
         rope_vel_filtered = g_shared_state.rope_velocity_filtered_m_s;
+        pressure_f0_kg = g_shared_state.pressure_f0_kg;
+        pressure_deltaf = g_shared_state.pressure_deltaf;
         pthread_mutex_unlock(&g_shared_state.mutex);
+
+        /* 获取目标电流值 */
+        float target_current_a = 0.0f;
+        pthread_mutex_lock(&g_actuator_target.mutex);
+        target_current_a = g_actuator_target.target_clutch_current_ma / 1000.0f; // mA -> A
+        pthread_mutex_unlock(&g_actuator_target.mutex);
         
+        /* 更新共享状态中的目标电流 */
+        pthread_mutex_lock(&g_shared_state.mutex);
+        g_shared_state.target_current_a = target_current_a;
+        pthread_mutex_unlock(&g_shared_state.mutex);
+
         /* 50Hz数据记录（集成到采集线程，避免锁竞争） */
         if (g_log_file != NULL && g_logging_enabled && (log_counter % 2 == 0)) {
             struct timeval tv;
             struct tm *t;
             gettimeofday(&tv, NULL);
             t = localtime(&tv.tv_sec);
-            
+
             char time_str[32];
             snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d.%06ld",
                      t->tm_hour, t->tm_min, t->tm_sec, (long)tv.tv_usec);
-            
-            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-14.3f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.3f,%-22.3f\n",
+
+            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
                     time_str,
-                    current_a, voltage_v, pressure_kg, rope_length_m,
+                    current_a, target_current_a, voltage_v, pressure_kg, pressure_f0_kg, pressure_deltaf, rope_length_m,
                     encoder_value, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,
                     rope_vel_raw, rope_vel_filtered);
@@ -788,12 +1006,26 @@ static void* data_collection_thread(void* arg) {
         }
         log_counter++;
         
-        /* 计算剩余延迟时间 */
-        uint32_t elapsed_ms = get_timestamp_ms() - start_time;
-        if (elapsed_ms < period_ms) {
-            /* 使用usleep进行相对延迟（可被信号中断） */
-            usleep((period_ms - elapsed_ms) * 1000);
+        /* 工业级严格周期控制 - 使用绝对时间戳 */
+        next_time_us += period_ms * 1000;  /* 下一个周期的时间点 */
+        
+        uint64_t current_time_us = get_time_us();
+        int64_t sleep_us = (int64_t)(next_time_us - current_time_us);
+        
+        if (sleep_us > 0) {
+            /* 正常情况：等待到下一个周期时间点 */
+            struct timespec sleep_ts;
+            sleep_ts.tv_sec = sleep_us / 1000000;
+            sleep_ts.tv_nsec = (sleep_us % 1000000) * 1000;
+            nanosleep(&sleep_ts, NULL);
+        } else if (sleep_us < -5000) {
+            /* 严重超时（超过5ms）：打印警告并重新同步 */
+            printf("[DATA] WARNING: Cycle deadline missed by %ld us, resynchronizing...\n", 
+                   (long)(-sleep_us));
+            /* 重新同步到下一个周期 */
+            next_time_us = current_time_us + period_ms * 1000;
         }
+        /* 如果sleep_us在[-5000, 0]之间，说明轻微超时，继续执行不等待 */
     }
     
     /* 线程退出时关闭日志文件 */
@@ -846,6 +1078,9 @@ int main(int argc, char *argv[]) {
     
     /* 初始化共享状态缓冲区（必须在传感器管理器之前） */
     shared_state_init();
+
+    /* 初始化异步执行器控制 */
+    actuator_target_init();
     
     /* ========== 阶段1: 初始化硬件 ========== */
     printf("[INIT] Phase 1: Initializing hardware...\n");
@@ -978,7 +1213,12 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
     pthread_create(&g_power_state_thread_tid, NULL, power_state_update_thread, NULL);
     printf("OK\n");
-    
+
+    printf("  -> Starting asynchronous actuator control thread (100Hz)... ");
+    fflush(stdout);
+    pthread_create(&g_actuator_thread_tid, NULL, actuator_control_thread, NULL);
+    printf("OK\n");
+
     printf("  -> Starting data output thread (%dHz)... ", 1000 / SHM_DATA_OUTPUT_PERIOD_MS);
     fflush(stdout);
     pthread_create(&g_data_thread_tid, NULL, data_output_thread, NULL);

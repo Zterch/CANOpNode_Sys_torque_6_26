@@ -1,0 +1,57 @@
+zterch@zterch-TM1701:~/VS_Project/Nimo_COp_Prj/CANOpNode_Sys$ sudo ./test_motor_pdo 
+========================================
+Motor PDO Communication Test
+========================================
+
+[TEST] Initializing SDK...
+"[2026-05-21 14:48:38.178] SDK init"
+"[2026-05-21 14:48:38.180] 0 : CANopen Master"
+"[2026-05-21 14:48:38.181] 1 : EtherCAT Master"
+"[2026-05-21 14:48:38.181] 2 : Modbus Master"
+[TEST] SDK initialized
+[TEST] Creating master...
+"[2026-05-21 14:48:38.182] 1001 : NiMotion USB-CAN Device"
+"[2026-05-21 14:48:38.182] 1004 : NiMotion TCP-CAN Device"
+[TEST] Master created, handle=0x00000000
+[TEST] Connection string: {"DevType": "1001", "DevIndex": 0, "Baudrate": 8, "PDOIntervalMS": 10, "SyncIntervalMS": 10}
+[TEST] Starting master...
+0483:0002 = 0x55c1e1fd78d0
+[TEST] Master started
+[TEST] Changing to Pre-OP...
+[TEST] Scanning nodes...
+[TEST] Node 1 is online
+[TEST] Loading parameters...
+[TEST] WARNING: Nim_load_params failed: 10, trying alternative...
+[TEST] Reading PDO configuration...
+[TEST] PDO configuration read successfully
+[TEST] Changing to OP mode...
+[TEST] OP mode activated
+[TEST] Setting unit factor...
+[TEST] Clearing errors...
+[TEST] Powering off motor...
+[TEST] Setting CSV mode...
+[TEST] CSV mode set
+[TEST] Clearing position...
+[TEST] Powering on motor...
+[TEST] Motor enabled
+[TEST] Status word: 0x1637 (ret=0)
+
+========================================
+Testing PDO Communication (100Hz)
+========================================
+[TEST] Cycle   0: Target=  0.00 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  10: Target= 58.78 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  20: Target= 95.11 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  30: Target= 95.11 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  40: Target= 58.78 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  50: Target=  0.00 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  60: Target=-58.78 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  70: Target=-95.11 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  80: Target=-95.11 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+[TEST] Cycle  90: Target=-58.78 rpm, Actual=  0.00, Pos=-37955600.000 (ret=0,0)
+
+[TEST] Test completed in 1008 ms
+[TEST] Success: 100, Failed: 0
+
+[TEST] Stopping motor...
+[TEST] Test completed

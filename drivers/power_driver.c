@@ -213,16 +213,13 @@ static ErrorCode_t power_send_command(PowerDriver_t *power, uint8_t func_code,
     serial_flush(power->fd);
     
     /* 发送 */
-    if (serial_send(power->fd, frame, 8, 50) != 8) {
+    if (serial_send(power->fd, frame, 8, 20) != 8) {
         pthread_mutex_unlock(&power->mutex);
         return ERR_COMM_FAIL;
     }
-    
-    /* 等待响应 */
-    usleep(10000);  /* 10ms */
-    
-    /* 接收响应 */
-    int rx_len = serial_receive(power->fd, response, resp_len, 50);
+
+    /* 接收响应 - 使用更短的超时，避免阻塞控制线程 */
+    int rx_len = serial_receive(power->fd, response, resp_len, 20);
     
     pthread_mutex_unlock(&power->mutex);
     

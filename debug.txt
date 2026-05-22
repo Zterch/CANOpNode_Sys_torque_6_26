@@ -1,1010 +1,1011 @@
-0483:0002 = 0x555a5ae8db60
-read from usb device faild: expectBytes=6, actualBytes=-110
-exec usb write and read faild"[2026-05-19 19:29:12.665] NiMotionCanDevice::open() failed on NiM_ClearBuffer"
-[2026-05-19 19:29:12]INFO [MOTOR] [motor_driver.c:177] SDK master running successfully
-[2026-05-19 19:29:12]INFO [MOTOR] [motor_driver.c:192] Scanning nodes...
-[2026-05-19 19:29:15]INFO [MOTOR] [motor_driver.c:212] Motor node 1 is online
-[2026-05-19 19:29:15]WARN [MOTOR] [motor_driver.c:216] Nim_load_params with full path failed
-[2026-05-19 19:29:15]INFO [MOTOR] [motor_driver.c:241] Motor driver initialized (Node ID=1, SDK mode)
-OK
-  -> Motor ready (will enable when needed)
-  -> Starting sensor manager thread... [SENSOR] Started
-OK
-  -> Waiting for sensors to stabilize... 
-OK
-  -> Calibrating sensors... [SENSOR] Encoder zero calibrated: offset=2147480238
-[SENSOR] Pressure tared: offset=530
-OK
-
-[INIT] Phase 2: Initializing shared memory...
-  -> Creating shared memory segment... [SHM] Shared memory permissions: 666
-OK (name=/gravshow_shm, size=4096)
-
-[INIT] Phase 3: System health check...
-[CHECK] Checking sensors...
-[CHECK PASS] Sensors OK (Pressure: 5.300 kg, Encoder: 0.000 m)
-[CHECK] Checking motor communication... OK
-[CHECK PASS] Motor OK (NodeID=1)
-[CHECK WARN] Power board not available, running in test mode
-[CHECK PASS] Safety check OK
-
-[INIT] All system checks PASSED!
-
-[INIT] Phase 4: Starting communication threads...
-  -> Starting data collection thread (100Hz)... OK
-  -> Starting motor state update thread... [DATA] Data collection thread started (100Hz)
-OK
-  -> Starting power state update thread... [MOTOR] Motor state update thread started
-OK
-  -> Starting data output thread (40Hz)... [POWER] Power state update thread started
-OK
-  -> Starting command handler thread... [SHM] Data output thread started (40Hz)
-OK
-
-[INIT] Phase 5: System ready for remote monitoring
-  - Shared Memory: ACTIVE
-  - Data Output: 40Hz
-  - Data Collection: 100Hz
-  - Data Logging: 50Hz (on demand)
-  - Motor Control: Available (manual mode)
-  - Algorithm: Standby
-
-Waiting for commands from GravShow...
-Or press Enter to start algorithm mode locally
-Press Ctrl+C to exit
-
-[SHM] Command handler thread started
-
-[INFO] Starting algorithm mode...
-
-  -> Enabling motor... [2026-05-19 19:29:18]INFO [MOTOR] [motor_driver.c:291] Starting motor enable sequence (SDK)...
-[2026-05-19 19:29:18]INFO [MOTOR] [motor_driver.c:328] CSV mode set successfully
-[2026-05-19 19:29:18]INFO [MOTOR] [motor_driver.c:355] Status word after enable: 0x1637
-[2026-05-19 19:29:18]INFO [MOTOR] [motor_driver.c:361] SUCCESS: Motor enabled! Status word: 0x1637
-OK
-[GRAVITY_UNLOAD] Controller initialized
-  Pulley R1: 0.100 m, R2: 0.050 m
-  Clutch current/torque: 176.00 mA/Nm
-  Control period: 10 ms
-[GRAVITY_UNLOAD] Control thread started
-[INIT] Algorithm started successfully
-========================================
-System RUNNING
-Mode: ALGORITHM (Gravity Unload)
-Press Ctrl+C to stop
-========================================
-
-[GRAVITY_UNLOAD] Thread started
-[MONITOR] Monitor thread started (1Hz)
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.00 rpm (internal: 0.00)
+[DATA] P=12.750kg Pos=0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[VEL MT] pulse_delta=0, time_us=19997, pos_delta=0.000000, vel=0.000000
+[DATA] P=12.750kg F0=12.696kg dF=-0.031 Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=900.0mA V_motor_rpm=0.0
 
 ========== Gravity Unload Status ==========
 State: 3, Error: 0
-Cycle count: 0
-Running time: 0.0 s
+Cycle count: 101
+Running time: 1.0 s
 Emergency stop: NO
 
 Statistics:
-  Pressure: 9999.00 to -9999.00 kg
+  Pressure: 12.69 to 12.75 kg
   Max velocity: 0.000 m/s
 
 Safety Status: OK
   Message: OK
 ==========================================
-[2026-05-19 19:29:18]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:18]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=50.9mA V_motor_rpm=0.0
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:18]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:18]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:19]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
+[2026-05-22 16:19:48]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.00 rpm (internal: 0.00)
+[MT DEBUG] current=2147483634, last=2147483634, delta=0, acc_delta=0, time_us=20014
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.00 rpm (internal: 0.00)
+[DATA] P=12.710kg Pos=0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[VEL MT] pulse_delta=0, time_us=19996, pos_delta=0.000000, vel=0.000000
+[DATA] P=12.606kg F0=12.696kg dF=0.052 Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=900.0mA V_motor_rpm=0.0
 
 ========== Gravity Unload Status ==========
 State: 3, Error: 0
-Cycle count: 11
-Running time: 0.9 s
+Cycle count: 201
+Running time: 2.0 s
 Emergency stop: NO
 
 Statistics:
-  Pressure: 0.01 to 0.03 kg
+  Pressure: 12.53 to 12.75 kg
   Max velocity: 0.000 m/s
 
 Safety Status: OK
   Message: OK
 ==========================================
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:19]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[DATA] P=0.030kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[DATA] P=0.030kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=52.6mA V_motor_rpm=0.0
-[2026-05-19 19:29:19]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:20]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 21
-Running time: 1.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[SHM] Data written, sequence=100, pressure=0.010, motor=0
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=50.9mA V_motor_rpm=0.0
-[2026-05-19 19:29:20]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:20]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:21]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 31
-Running time: 2.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:21]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=51.7mA V_motor_rpm=0.0
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:22]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:22]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 42
-Running time: 4.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:22]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=51.7mA V_motor_rpm=0.0
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:23]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[SHM] Data written, sequence=200, pressure=0.020, motor=0
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 52
-Running time: 5.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:23]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:23]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=50.9mA V_motor_rpm=0.0
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:24]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 62
-Running time: 5.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:24]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:25]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=51.7mA V_motor_rpm=0.0
-[DATA] P=0.030kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:25]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 73
-Running time: 7.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[SHM] Data written, sequence=300, pressure=0.020, motor=0
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:25]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:26]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=50.9mA V_motor_rpm=0.0
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 83
-Running time: 8.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:26]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:26]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=50.9mA V_motor_rpm=0.0
-[2026-05-19 19:29:27]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 93
-Running time: 8.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:27]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:28]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[SHM] Data written, sequence=400, pressure=0.020, motor=0
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=51.7mA V_motor_rpm=0.0
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:28]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 103
-Running time: 10.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:28]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:29]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=50.9mA V_motor_rpm=0.0
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 113
-Running time: 10.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.01 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:29]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[DATA] P=0.000kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:29]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:30]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=51.7mA V_motor_rpm=0.0
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 123
-Running time: 11.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.00 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[SHM] Data written, sequence=500, pressure=0.020, motor=0
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:30]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:30]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[DATA] P=0.030kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:31]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=51.7mA V_motor_rpm=0.0
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 133
-Running time: 12.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.00 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:31]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:32]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[DATA] P=0.000kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=50.0mA V_motor_rpm=0.0
-[2026-05-19 19:29:32]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 144
-Running time: 14.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.00 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[DATA] P=0.010kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:32]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:33]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[SHM] Data written, sequence=600, pressure=0.020, motor=0
-[DATA] P=0.020kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 154
-Running time: 15.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.00 to 0.03 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[DATA] P=0.030kg Pos=-0.000m V_raw=0.000 V_filt=0.000 V_motor_linear=0.000 I_clutch=52.6mA V_motor_rpm=0.0
-[DATA] P=0.040kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:33]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:33]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[CMD] Starting data logging...
-[LOG] Started logging to: /home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/logdata/gravity_data_20260519_192934.csv
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[DATA] P=0.040kg Pos=-0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:34]INFO [MOTOR] [motor_driver.c:476] Set velocity: -5.00 rpm (internal: -0.08)
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 77 mA
-[2026-05-19 19:29:34]INFO [MOTOR] [motor_driver.c:476] Set velocity: -16.00 rpm (internal: -0.27)
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 77 mA
-[2026-05-19 19:29:34]INFO [MOTOR] [motor_driver.c:476] Set velocity: -36.00 rpm (internal: -0.60)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 164
-Running time: 15.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.00 to 0.43 kg
-  Max velocity: 0.013 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 87 mA
-[2026-05-19 19:29:34]INFO [MOTOR] [motor_driver.c:476] Set velocity: -64.00 rpm (internal: -1.07)
-[DATA] P=0.430kg Pos=0.024m I=0.000A V=0.00V Motor=-32.00rpm Vline=-0.112m/s Algo=RUN
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 89 mA
-[DATA] P=0.450kg Pos=0.017m V_raw=0.064 V_filt=0.026 V_motor_linear=0.224 I_clutch=88.8mA V_motor_rpm=64.3
-[2026-05-19 19:29:34]INFO [MOTOR] [motor_driver.c:476] Set velocity: -97.00 rpm (internal: -1.62)
-[2026-05-19 19:29:34]WARN [POWER] [power_driver.c:326] Failed to set current to 87 mA
-[2026-05-19 19:29:34]INFO [MOTOR] [motor_driver.c:476] Set velocity: -128.00 rpm (internal: -2.13)
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 84 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -166.00 rpm (internal: -2.77)
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 78 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -171.00 rpm (internal: -2.85)
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 76 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -189.00 rpm (internal: -3.15)
-[DATA] P=0.230kg Pos=0.099m I=0.000A V=0.00V Motor=-163.00rpm Vline=-0.569m/s Algo=RUN
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 72 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -175.00 rpm (internal: -2.92)
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 70 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -164.00 rpm (internal: -2.73)
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 67 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -148.00 rpm (internal: -2.47)
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 64 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -124.00 rpm (internal: -2.07)
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 59 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -93.00 rpm (internal: -1.55)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 175
-Running time: 17.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 0.00 to 0.45 kg
-  Max velocity: 0.146 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[SHM] Data written, sequence=700, pressure=-0.080, motor=-105
-[DATA] P=-0.080kg Pos=0.148m I=0.000A V=0.00V Motor=-105.00rpm Vline=-0.367m/s Algo=RUN
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: -33.00 rpm (internal: -0.55)
-[2026-05-19 19:29:35]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[DATA] P=-0.080kg Pos=0.147m V_raw=0.052 V_filt=0.110 V_motor_linear=0.118 I_clutch=50.0mA V_motor_rpm=33.8
-[2026-05-19 19:29:35]INFO [MOTOR] [motor_driver.c:476] Set velocity: 12.00 rpm (internal: 0.20)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 80.00 rpm (internal: 1.33)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 119.00 rpm (internal: 1.98)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 171.00 rpm (internal: 2.85)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 184.00 rpm (internal: 3.07)
-[DATA] P=-0.290kg Pos=0.097m I=0.000A V=0.00V Motor=105.00rpm Vline=0.367m/s Algo=RUN
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 204.00 rpm (internal: 3.40)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 195.00 rpm (internal: 3.25)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 204.00 rpm (internal: 3.40)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 186.00 rpm (internal: 3.10)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 185
-Running time: 18.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.152 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[DATA] P=-0.210kg Pos=0.016m I=0.000A V=0.00V Motor=191.00rpm Vline=0.667m/s Algo=RUN
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 176.00 rpm (internal: 2.93)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:36]INFO [MOTOR] [motor_driver.c:476] Set velocity: 167.00 rpm (internal: 2.78)
-[2026-05-19 19:29:36]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[DATA] P=-0.230kg Pos=0.002m V_raw=-0.158 V_filt=-0.160 V_motor_linear=-0.584 I_clutch=50.0mA V_motor_rpm=-167.2
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 146.00 rpm (internal: 2.43)
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 148.00 rpm (internal: 2.47)
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 144.00 rpm (internal: 2.40)
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 139.00 rpm (internal: 2.32)
-[DATA] P=-0.180kg Pos=-0.059m I=0.000A V=0.00V Motor=146.00rpm Vline=0.510m/s Algo=RUN
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 132.00 rpm (internal: 2.20)
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 124.00 rpm (internal: 2.07)
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 117.00 rpm (internal: 1.95)
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 107.00 rpm (internal: 1.78)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 195
-Running time: 19.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.160 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 83.00 rpm (internal: 1.38)
-[DATA] P=-0.120kg Pos=-0.115m I=0.000A V=0.00V Motor=113.00rpm Vline=0.394m/s Algo=RUN
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 78.00 rpm (internal: 1.30)
-[2026-05-19 19:29:37]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:37]INFO [MOTOR] [motor_driver.c:476] Set velocity: 52.00 rpm (internal: 0.87)
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 58 mA
-[DATA] P=0.090kg Pos=-0.124m V_raw=-0.061 V_filt=-0.098 V_motor_linear=-0.183 I_clutch=57.8mA V_motor_rpm=-52.5
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: 15.00 rpm (internal: 0.25)
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 58 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -37.00 rpm (internal: -0.62)
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 72 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -63.00 rpm (internal: -1.05)
-[SHM] Data written, sequence=800, pressure=0.320, motor=-16
-[DATA] P=0.320kg Pos=-0.109m I=0.000A V=0.00V Motor=-16.00rpm Vline=-0.056m/s Algo=RUN
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 72 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -95.00 rpm (internal: -1.58)
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 81 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -118.00 rpm (internal: -1.97)
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 81 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -145.00 rpm (internal: -2.42)
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 81 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -146.00 rpm (internal: -2.43)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 205
-Running time: 19.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.160 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 81 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -172.00 rpm (internal: -2.87)
-[DATA] P=0.350kg Pos=-0.046m I=0.000A V=0.00V Motor=-142.00rpm Vline=-0.496m/s Algo=RUN
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 80 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -175.00 rpm (internal: -2.92)
-[2026-05-19 19:29:38]WARN [POWER] [power_driver.c:326] Failed to set current to 80 mA
-[2026-05-19 19:29:38]INFO [MOTOR] [motor_driver.c:476] Set velocity: -186.00 rpm (internal: -3.10)
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 77 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -193.00 rpm (internal: -3.22)
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 76 mA
-[DATA] P=0.300kg Pos=-0.005m V_raw=0.174 V_filt=0.149 V_motor_linear=0.675 I_clutch=75.9mA V_motor_rpm=193.3
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -211.00 rpm (internal: -3.52)
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 75 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -207.00 rpm (internal: -3.45)
-[DATA] P=0.210kg Pos=0.047m I=0.000A V=0.00V Motor=-202.00rpm Vline=-0.705m/s Algo=RUN
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 72 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -208.00 rpm (internal: -3.47)
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 68 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -202.00 rpm (internal: -3.37)
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 66 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -191.00 rpm (internal: -3.18)
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 61 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -172.00 rpm (internal: -2.87)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 215
-Running time: 20.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.188 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 60 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -148.00 rpm (internal: -2.47)
-[DATA] P=0.120kg Pos=0.126m I=0.000A V=0.00V Motor=-174.00rpm Vline=-0.607m/s Algo=RUN
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 61 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -108.00 rpm (internal: -1.80)
-[2026-05-19 19:29:39]WARN [POWER] [power_driver.c:326] Failed to set current to 60 mA
-[2026-05-19 19:29:39]INFO [MOTOR] [motor_driver.c:476] Set velocity: -75.00 rpm (internal: -1.25)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: -48.00 rpm (internal: -0.80)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: -6.00 rpm (internal: -0.10)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[DATA] P=-0.060kg Pos=0.138m V_raw=0.028 V_filt=0.095 V_motor_linear=0.023 I_clutch=50.0mA V_motor_rpm=6.5
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 50.00 rpm (internal: 0.83)
-[DATA] P=-0.230kg Pos=0.129m I=0.000A V=0.00V Motor=1.00rpm Vline=0.003m/s Algo=RUN
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 77.00 rpm (internal: 1.28)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 105.00 rpm (internal: 1.75)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 134.00 rpm (internal: 2.23)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 129.00 rpm (internal: 2.15)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 225
-Running time: 21.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.188 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 139.00 rpm (internal: 2.32)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 125.00 rpm (internal: 2.08)
-[SHM] Data written, sequence=900, pressure=-0.200, motor=128
-[DATA] P=-0.200kg Pos=0.079m I=0.000A V=0.00V Motor=128.00rpm Vline=0.447m/s Algo=RUN
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 119.00 rpm (internal: 1.98)
-[2026-05-19 19:29:40]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:40]INFO [MOTOR] [motor_driver.c:476] Set velocity: 112.00 rpm (internal: 1.87)
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: 91.00 rpm (internal: 1.52)
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: 94.00 rpm (internal: 1.57)
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[DATA] P=-0.220kg Pos=0.042m V_raw=-0.096 V_filt=-0.099 V_motor_linear=-0.331 I_clutch=50.0mA V_motor_rpm=-94.7
-[DATA] P=-0.220kg Pos=0.032m I=0.000A V=0.00V Motor=97.00rpm Vline=0.339m/s Algo=RUN
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: 88.00 rpm (internal: 1.47)
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: 83.00 rpm (internal: 1.38)
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: 75.00 rpm (internal: 1.25)
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: 61.00 rpm (internal: 1.02)
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: 43.00 rpm (internal: 0.72)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 236
-Running time: 23.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.188 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: 21.00 rpm (internal: 0.35)
-[DATA] P=-0.100kg Pos=0.008m I=0.000A V=0.00V Motor=55.00rpm Vline=0.192m/s Algo=RUN
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: -15.00 rpm (internal: -0.25)
-[2026-05-19 19:29:41]WARN [POWER] [power_driver.c:326] Failed to set current to 50 mA
-[2026-05-19 19:29:41]INFO [MOTOR] [motor_driver.c:476] Set velocity: -25.00 rpm (internal: -0.42)
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 51 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: -33.00 rpm (internal: -0.55)
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: -30.00 rpm (internal: -0.50)
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: -20.00 rpm (internal: -0.33)
-[DATA] P=0.060kg Pos=0.012m I=0.000A V=0.00V Motor=-28.00rpm Vline=-0.098m/s Algo=RUN
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 55 mA
-[DATA] P=0.060kg Pos=0.012m V_raw=0.000 V_filt=0.002 V_motor_linear=0.073 I_clutch=55.2mA V_motor_rpm=20.8
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: -8.00 rpm (internal: -0.13)
-[CMD] Stopping data logging...
-[LOG] Stopped logging, total records: 409
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 55 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: 1.00 rpm (internal: 0.02)
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: 5.00 rpm (internal: 0.08)
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: 3.00 rpm (internal: 0.05)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 246
-Running time: 24.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.188 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[DATA] P=0.080kg Pos=0.012m I=0.000A V=0.00V Motor=-1.00rpm Vline=-0.003m/s Algo=RUN
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: -1.00 rpm (internal: -0.02)
-[2026-05-19 19:29:42]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:42]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[SHM] Data written, sequence=1000, pressure=0.080, motor=0
-[DATA] P=0.080kg Pos=0.012m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[DATA] P=0.080kg Pos=0.012m V_raw=0.000 V_filt=0.000 V_motor_linear=-0.000 I_clutch=56.9mA V_motor_rpm=-0.1
-[2026-05-19 19:29:43]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 256
-Running time: 24.9 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.188 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[DATA] P=0.070kg Pos=0.012m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:43]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 55 mA
-[2026-05-19 19:29:44]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 55 mA
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[DATA] P=0.030kg Pos=0.012m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[DATA] P=0.030kg Pos=0.012m V_raw=-0.000 V_filt=-0.000 V_motor_linear=-0.001 I_clutch=52.6mA V_motor_rpm=-0.2
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:44]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 267
-Running time: 26.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.188 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[DATA] P=0.030kg Pos=0.012m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 52 mA
-[2026-05-19 19:29:44]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 53 mA
-[2026-05-19 19:29:45]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 55 mA
-[DATA] P=0.060kg Pos=0.012m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 55 mA
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 56 mA
-[DATA] P=0.070kg Pos=0.012m V_raw=-0.000 V_filt=-0.000 V_motor_linear=0.000 I_clutch=56.0mA V_motor_rpm=0.0
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 277
-Running time: 27.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: -0.34 to 0.45 kg
-  Max velocity: 0.188 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[SHM] Data written, sequence=1100, pressure=0.080, motor=0
-[DATA] P=0.080kg Pos=0.012m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:45]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-05-19 19:29:45]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:46]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:46]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:46]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:46]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[DATA] P=0.080kg Pos=0.012m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
-[2026-05-19 19:29:46]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-^C
-[INFO] Signal received, shutting down...
-[2026-05-19 19:29:46]INFO [MOTOR] [motor_driver.c:476] Set velocity: 0.00 rpm (internal: 0.00)
-[DATA] Data collection thread stopped
-[SENSOR] Saved: length=11.97mm, encoder=2147480394
-[SHM] Command handler thread stopped
-[2026-05-19 19:29:46]INFO [SYS] [rs485_bus.c:214] RS485 bus deinitialized
-[SHM] Data output thread stopped
-[MONITOR] Monitor thread stopped
-[2026-05-19 19:29:46]WARN [POWER] [power_driver.c:326] Failed to set current to 57 mA
-[2026-05-19 19:29:46]INFO [POWER] [power_driver.c:296] Power driver deinitialized
+[2026-05-22 16:19:49]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.00 rpm (internal: 0.00)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.30 rpm (internal: 0.00)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.45 rpm (internal: 0.02)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.40 rpm (internal: 0.06)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.17 rpm (internal: 0.09)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.96 rpm (internal: 0.10)
+[DATA] P=16.190kg Pos=0.002m I=0.000A V=0.00V Motor=0.40rpm Vline=0.001m/s Algo=RUN
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.53 rpm (internal: 0.06)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 6.34 rpm (internal: 0.11)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 12.68 rpm (internal: 0.21)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 13.74 rpm (internal: 0.23)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 10.10 rpm (internal: 0.17)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 8.68 rpm (internal: 0.14)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 9.52 rpm (internal: 0.16)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 9.70 rpm (internal: 0.16)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 10.06 rpm (internal: 0.17)
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 8.05 rpm (internal: 0.13)
+[VEL MT] pulse_delta=-13, time_us=19997, pos_delta=-0.000997, vel=-0.049862
+[GRAVITY_UNLOAD] Safety violation detected!
+[GRAVITY_UNLOAD] Thread stopped
+
+[EMERGENCY] Algorithm stopped due to safety violation!
 
 [SHUTDOWN] Stopping system...
-  -> Stopping algorithm... [GRAVITY_UNLOAD] Thread stopped
-[GRAVITY_UNLOAD] Control thread stopped
+  -> Stopping algorithm... [GRAVITY_UNLOAD] Control thread stopped
 [GRAVITY_UNLOAD] Controller deinitialized
 OK
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[2026-05-22 16:19:50]WARN [POWER] [power_driver.c:323] Failed to set current to 900 mA
+[2026-05-22 16:19:50]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.00 rpm (internal: 0.00)
+[2026-05-22 16:19:51]WARN [POWER] [power_driver.c:323] Failed to set current to 50 mA
+[MT DEBUG] current=295, last=277, delta=18, acc_delta=18, time_us=20003
+[DATA] P=18.860kg Pos=0.122m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[SHM] Data written, sequence=100, pressure=18.630, motor=0
+[DATA] P=18.630kg Pos=0.349m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=5688, last=5652, delta=36, acc_delta=36, time_us=20021
+[DATA] P=18.780kg Pos=0.479m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=13.200kg Pos=0.448m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=3866, last=3932, delta=-66, acc_delta=-66, time_us=19973
+[DATA] P=12.650kg Pos=0.198m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=11.570kg Pos=-0.010m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483559, last=2147483559, delta=0, acc_delta=0, time_us=19987
+[SHM] Data written, sequence=200, pressure=12.570, motor=0
+[DATA] P=12.570kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.610kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483559, last=2147483559, delta=0, acc_delta=0, time_us=20002
+[DATA] P=12.660kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+[DATA] WARNING: Cycle deadline missed by 27918 us, resynchronizing...
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.530kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483559, last=2147483559, delta=0, acc_delta=0, time_us=20024
+[DATA] P=12.670kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[SHM] Data written, sequence=300, pressure=12.610, motor=0
+[DATA] P=12.610kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483559, last=2147483559, delta=0, acc_delta=0, time_us=19990
+[DATA] P=12.450kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.310kg Pos=0.015m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2535, last=2469, delta=66, acc_delta=66, time_us=20009
+[DATA] P=14.300kg Pos=0.233m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=11.950kg Pos=0.068m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=422, last=440, delta=-18, acc_delta=-18, time_us=19999
+[SHM] Data written, sequence=400, pressure=12.750, motor=0
+[DATA] P=12.750kg Pos=0.015m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.660kg Pos=0.001m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483644, last=2147483644, delta=0, acc_delta=0, time_us=19984
+[DATA] P=12.690kg Pos=0.001m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.780kg Pos=0.001m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483643, last=2147483643, delta=0, acc_delta=0, time_us=19965
+[DATA] P=12.610kg Pos=0.001m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[SHM] Data written, sequence=500, pressure=12.740, motor=0
+[DATA] P=12.740kg Pos=0.001m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483643, last=2147483643, delta=0, acc_delta=0, time_us=19988
+[DATA] P=12.720kg Pos=0.001m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.610kg Pos=0.001m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483641, last=2147483641, delta=0, acc_delta=0, time_us=19998
+[DATA] P=12.780kg Pos=0.001m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=11.660kg Pos=0.005m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2841, last=2745, delta=96, acc_delta=96, time_us=19999
+[SHM] Data written, sequence=600, pressure=12.740, motor=0
+[DATA] P=12.740kg Pos=0.306m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=13.220kg Pos=0.416m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2687, last=2751, delta=-64, acc_delta=-64, time_us=20036
+[DATA] P=12.450kg Pos=0.207m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.800kg Pos=0.093m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483529, last=2147483523, delta=6, acc_delta=6, time_us=20000
+[DATA] P=12.620kg Pos=-0.008m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[SHM] Data written, sequence=700, pressure=12.550, motor=0
+[DATA] P=12.550kg Pos=-0.007m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=122, last=121, delta=1, acc_delta=1, time_us=20002
+[DATA] P=13.060kg Pos=0.010m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.730kg Pos=0.000m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483605, last=2147483606, delta=-1, acc_delta=-1, time_us=19975
+[DATA] P=12.810kg Pos=-0.002m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.860kg Pos=-0.010m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483505, last=2147483505, delta=0, acc_delta=0, time_us=20002
+[SHM] Data written, sequence=800, pressure=12.500, motor=0
+[DATA] P=12.500kg Pos=-0.010m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.650kg Pos=-0.009m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483573, last=2147483558, delta=15, acc_delta=15, time_us=19985
+[DATA] P=11.790kg Pos=-0.005m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.600kg Pos=0.109m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.210kg Pos=0.250m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+[MT DEBUG] current=3292, last=3248, delta=44, acc_delta=44, time_us=19979
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[SHM] Data written, sequence=900, pressure=12.920, motor=0
+[DATA] P=12.920kg Pos=0.301m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.180kg Pos=0.116m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+[MT DEBUG] current=1070, last=1063, delta=7, acc_delta=7, time_us=20001
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.450kg Pos=0.254m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=13.210kg Pos=0.251m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=1730, last=1758, delta=-28, acc_delta=-28, time_us=19980
+[DATA] P=12.910kg Pos=0.086m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[SHM] Data written, sequence=1000, pressure=12.390, motor=0
+[DATA] P=12.390kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483559, last=2147483559, delta=0, acc_delta=0, time_us=20002
+[DATA] P=12.660kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.540kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483559, last=2147483559, delta=0, acc_delta=0, time_us=20004
+[DATA] P=12.680kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.620kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483559, last=2147483559, delta=0, acc_delta=0, time_us=20028
+[SHM] Data written, sequence=1100, pressure=12.560, motor=0
+[DATA] P=12.560kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[DATA] P=12.710kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+
+========== Gravity Unload Status ==========
+State: 7, Error: 5
+Cycle count: 299
+Running time: 3.0 s
+Emergency stop: NO
+
+Statistics:
+  Pressure: 12.53 to 18.25 kg
+  Max velocity: 0.040 m/s
+
+Safety Status: EMERGENCY
+  Message: EMERGENCY STOP: Too many consecutive errors
+==========================================
+[MT DEBUG] current=2147483559, last=2147483559, delta=0, acc_delta=0, time_us=20017
+[DATA] P=12.590kg Pos=-0.006m I=0.000A V=0.00V Motor=0.00rpm Vline=0.000m/s Algo=RUN
+^C
+[INFO] Signal received, shutting down...
+[DATA] Data collection thread stopped
+[ACTUATOR] Actuator control thread stopped
+[SHM] Command handler thread stopped
+[SENSOR] Saved: length=-5.75mm, encoder=2147483559
+[2026-05-22 16:20:44]INFO [SYS] [rs485_bus.c:214] RS485 bus deinitialized
+[SHM] Data output thread stopped
+[2026-05-22 16:20:44]INFO [POWER] [power_driver.c:293] Power driver deinitialized
+[MONITOR] Monitor thread stopped
   -> Waiting for communication threads... OK
   -> Stopping sensor manager... OK
 
 
 === Sensor Manager Status ===
-Cycle count: 3446
+Cycle count: 2991
 Total errors: 0
 
 Encoder (addr=2):
-  Reads: 3442, Errors: 4, Success: 99.9%
-  Multi-turn: 2147480394
-  Angle: 74.00 deg
-  Rope: 11.97 mm
+  Reads: 2938, Errors: 53, Success: 98.2%
+  Multi-turn: 2147483559
+  Angle: 352.18 deg
+  Rope: -5.75 mm
 
 Pressure (addr=1):
-  Reads: 3443, Errors: 3, Success: 99.9%
-  Pressure: 0.080 kg (raw=538, offset=530)
+  Reads: 2932, Errors: 59, Success: 98.0%
+  Pressure: 12.540 kg (raw=1254, offset=0)
   -> Closing shared memory... OK
 
 [System shutdown completed]
-libusb uninitialized"[2026-05-19 19:29:46.482] NiMotionCanDevice::close() failed on NiM_ResetCAN"
-libusb uninitialized"[2026-05-19 19:29:46.482] NiMotionCanDevice::close() failed on NiM_CloseDevice"
-QThread: Destroyed while thread is still running
+destroy mutex faild*** buffer overflow detected ***: terminated
+已放弃

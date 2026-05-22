@@ -37,7 +37,8 @@ typedef struct {
     float motor_speed_compensation;  /* 电机速度补偿系数 */
     
     /* 滤波器 */
-    MovingAverageFilter_t velocity_filter;  /* 速度移动平均滤波 */
+    MovingAverageFilter_t velocity_filter;  /* 速度滑动窗口平均滤波 - 更好地平滑阶梯效应 */
+    LowPassFilter_t velocity_lpf;           /* 速度低通滤波 - 进一步平滑编码器分辨率导致的阶梯 */
     LowPassFilter_t pressure_filter;        /* 压力低通滤波 */
     Differentiator_t pressure_diff;         /* 压力微分 */
     Differentiator_t position_diff;         /* 位置微分（速度计算） */
@@ -61,6 +62,13 @@ typedef struct {
     float max_pressure_kg;
     float min_pressure_kg;
     float max_velocity_m_s;
+    
+    /* 压力平均值滤波缓冲区 */
+    float pressure_buffer[PRESSURE_FILTER_WINDOW_SIZE];
+    int pressure_buffer_index;
+    int pressure_buffer_count;
+    float pressure_f0_kg;           /* 静止时压力值F0 */
+    int pressure_f0_calibrated;     /* F0是否已校准 */
     
     /* 线程控制 */
     pthread_t thread_id;

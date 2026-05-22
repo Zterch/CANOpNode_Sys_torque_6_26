@@ -195,6 +195,15 @@ float motor_calculate_linear_velocity(MotorDriver_t *motor, float motor_rpm);
 int32_t motor_get_velocity_rpm(MotorDriver_t *motor);
 
 /**
+ * @brief 从缓存读取实际速度（非阻塞，工业级实时控制使用）
+ * @param motor 电机驱动结构指针
+ * @param velocity 速度输出指针 (rpm)
+ * @return ErrorCode_t
+ * @note 此函数直接从缓存读取，不执行CANopen通信，适用于100Hz实时控制循环
+ */
+ErrorCode_t motor_get_velocity_cached(MotorDriver_t *motor, int32_t *velocity);
+
+/**
  * @brief 更新电机状态 (100Hz周期性调用, 通过PDO读取)
  * @param motor 电机驱动结构指针
  * @return ErrorCode_t
@@ -238,6 +247,26 @@ const char* motor_get_mode_string(MotorMode_t mode);
  */
 void motor_get_statistics(MotorDriver_t *motor, uint64_t *tx_count, 
                           uint64_t *rx_count, uint64_t *err_count);
+
+/**
+ * @brief 设置电机速度环PID参数
+ * @param motor 电机驱动结构指针
+ * @param kp 速度环比例增益 (I2008-1, 单位: 0.1Hz, 范围: 1-20000)
+ * @param ki 速度环积分时间常数 (I2008-2, 单位: 0.01ms, 范围: 0-51200, 0=禁用积分)
+ * @param kff 速度前馈增益 (I2008-16, 单位: 0.001, 范围: 0-65535)
+ * @return ErrorCode_t
+ */
+ErrorCode_t motor_set_velocity_pid(MotorDriver_t *motor, uint16_t kp, uint16_t ki, uint16_t kff);
+
+/**
+ * @brief 获取电机速度环PID参数
+ * @param motor 电机驱动结构指针
+ * @param kp 速度环比例增益输出
+ * @param ki 速度环积分时间常数输出
+ * @param kff 速度前馈增益输出
+ * @return ErrorCode_t
+ */
+ErrorCode_t motor_get_velocity_pid(MotorDriver_t *motor, uint16_t *kp, uint16_t *ki, uint16_t *kff);
 
 #ifdef __cplusplus
 }

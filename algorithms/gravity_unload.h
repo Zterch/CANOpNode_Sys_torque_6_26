@@ -69,6 +69,12 @@ typedef struct {
     int pressure_buffer_count;
     float pressure_f0_kg;           /* 静止时压力值F0 */
     int pressure_f0_calibrated;     /* F0是否已校准 */
+    float pressure_f0_sum;          /* F0校准期间压力累加和 */
+    int pressure_f0_sample_count;   /* F0校准期间采样计数 */
+    
+    /* 离合器电流PI控制 */
+    float clutch_pi_integral;       /* PI积分项 */
+    float last_deltaf;              /* 上一次的deltaf值 */
     
     /* 线程控制 */
     pthread_t thread_id;

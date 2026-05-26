@@ -39,7 +39,8 @@ extern "C" {
 
 /* 离合器电流-转矩转换系数 (mA per Nm) */
 /* 假设线性关系：转矩 = 电流 / (额定电流/额定转矩) */
-#define CLUTCH_CURRENT_PER_TORQUE_MA_NM 176.0f      /* 880mA / 5Nm = 176 mA/Nm */
+/* 注意：实际负载可能超过额定转矩，需要调整此系数以匹配实际电流限制 */
+#define CLUTCH_CURRENT_PER_TORQUE_MA_NM 88.0f       /* 调整为 88 mA/Nm，使 21kg 负载对应约 0.9A 电流 */
 
 /******************************************************************************
  * 控制算法参数
@@ -59,11 +60,25 @@ extern "C" {
 #define SPEED_FILTER_SAMPLE_TIME_MS     10          /* 采样时间 10ms */
 
 /* 基于摩擦力的电机速度控制参数 */
-#define PRESSURE_FILTER_WINDOW_SIZE     10          /* 压力传感器平均值滤波窗口大小 */
+#define PRESSURE_FILTER_WINDOW_SIZE     30          /* 压力传感器平均值滤波窗口大小 - 增大到30 (0.3s) 以减小波动 */
 #define FRICTION_ANGLE_COS              0.861f      /* cos(30.5°) ≈ 0.861 */
-#define FRICTION_SPEED_OFFSET_C         0.0f       /* 速度偏移常量 C (rpm) */
+#define FRICTION_SPEED_OFFSET_C         15.0f       /* 速度偏移常量 C (rpm) - 减小值降低振荡幅度 */
+#define FRICTION_DEADZONE_KG            0.05f        /* 摩擦力死区 (kg) - 设置0.5kg死区，避免微小波动触发频繁换向 */
 #define PRESSURE_F0_DEFAULT_KG          0.0f        /* 静止时压力默认值，运行时会自动校准 */
+#define PRESSURE_F0_CALIBRATION_SAMPLES 200         /* F0校准采样点数 (200点 = 4秒) - 增加校准时间提高稳定性 */
 #define MOTOR_SPEED_COMPENSATION_C      0.0f        /* 电机速度补偿系数 - 新算法中不再使用，保留兼容性 */
+
+/* 离合器电流PI控制参数 */
+#define CLUTCH_PI_KP                    10.0f      /* 电流PI比例系数 - 恢复比例项作用 */
+#define CLUTCH_PI_KI                    100.0f       /* 电流PI积分系数 - 降低积分累积速度 */
+#define CLUTCH_PI_INTEGRAL_LIMIT        100.0f       /* 电流PI积分限幅 - 降低防止积分饱和 */
+
+/* 摩擦力方向控制 - 用于测试
+ * 0: 双向控制（正常模式）
+ * 1: 只响应逆时针方向（deltaf > 0，摩擦力减小，重物变轻）
+ * 2: 只响应顺时针方向（deltaf < 0，摩擦力增大，重物变重）
+ */
+extern int g_friction_direction_mode;  /* 全局变量，在 gravity_unload.c 中定义 */
 
 /* 编码器到距离的转换系数 (米/脉冲) */
 /* 距离 = 脉冲数 / 分辨率 * 2π * R2 */
@@ -73,9 +88,9 @@ extern "C" {
  * PID控制器参数 - 电机速度控制
  ******************************************************************************/
 
-/* PID参数 - 保守设置以消除振荡 */
-#define PID_KP                          10.0f        /* 比例系数 - 降低消除振荡 */
-#define PID_KI                          0.1f       /* 积分系数 - 低值避免饱和 */
+/* PID参数 - 更保守设置以消除启动振荡 */
+#define PID_KP                          5.0f         /* 比例系数 - 降低至5，减小响应灵敏度 */
+#define PID_KI                          0.05f       /* 积分系数 - 降低至0.05，避免积分饱和 */
 #define PID_KD                          0.0f        /* 微分系数 - 禁用，消除超前 */
 
 #define PID_OUTPUT_MIN                  -10000      /* 电机最小速度指令 */
@@ -109,7 +124,7 @@ extern "C" {
 #define SAFETY_MOTOR_TIMEOUT_MS         100         /* 电机通信超时 ms */
 
 /* 离合器电流安全限制 */
-#define SAFETY_CLUTCH_CURRENT_MIN_MA    0           /* 最小电流 */
+#define SAFETY_CLUTCH_CURRENT_MIN_MA    0           /* 最小电流 - 允许为0，因为PI控制可能输出较小值 */
 #define SAFETY_CLUTCH_CURRENT_MAX_MA    900         /* 最大电流（略高于额定值） */
 #define SAFETY_CLUTCH_CURRENT_RATE_MAX_MA_S 500     /* 电流变化率限制 mA/s */
 

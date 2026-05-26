@@ -16,7 +16,7 @@ import os
 # ========== 用户可调参数 ==========
 PRESSURE_SCALE = 20.0   # 压力偏移放大倍数
 CURRENT_SCALE  = 20.0   # 电流偏移放大倍数
-TARGET_SPEED   = -30.0   # 目标稳定转速 (rpm)
+TARGET_SPEED   = 30.0   # 目标稳定转速 (rpm)
 # =================================
 
 def plot_all_in_one(csv_file, output_dir, base_name):

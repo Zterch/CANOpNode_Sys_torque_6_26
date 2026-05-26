@@ -49,6 +49,12 @@ static int g_motor_enabled = 1;  /* 电机使能标志 */
 static int g_algorithm_mode = 0; /* 0=手动模式, 1=算法模式 */
 static volatile int g_logging_enabled = 0; /* 数据记录标志 */
 
+/* 手动模式下的F0计算 - 使用滑动窗口平均 */
+#define MANUAL_F0_SAMPLE_COUNT  50      /* 手动模式下采集50个点计算F0 (约1秒) */
+static float g_manual_f0_kg = 0.0f;     /* 手动模式下的F0值 */
+static int g_manual_f0_sample_count = 0; /* 已采集的样本数 */
+static float g_manual_f0_sum = 0.0f;    /* 压力累积和 */
+
 /* 线程ID */
 static pthread_t g_data_thread_tid;
 static pthread_t g_command_thread_tid;
@@ -191,6 +197,9 @@ typedef struct {
     /* 压力传感器数据 */
     float pressure_f0_kg;           /* 静止时压力值F0 */
     float pressure_deltaf;          /* 摩擦力变化量dF */
+    /* PI控制数据 */
+    float pi_p_term_mA;             /* PI控制P项（比例项） */
+    float pi_i_term_mA;             /* PI控制I项（积分项） */
 } SharedStateBuffer_t;
 
 static SharedStateBuffer_t g_shared_state;
@@ -363,6 +372,13 @@ void update_pressure_f0_deltaf(float f0_kg, float deltaf) {
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
+void update_pi_terms(float p_term_mA, float i_term_mA) {
+    pthread_mutex_lock(&g_shared_state.mutex);
+    g_shared_state.pi_p_term_mA = p_term_mA;
+    g_shared_state.pi_i_term_mA = i_term_mA;
+    pthread_mutex_unlock(&g_shared_state.mutex);
+}
+
 uint32_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -466,6 +482,11 @@ int set_clutch_current(float current_mA) {
     g_actuator_target.target_clutch_current_ma = current_u16;
     g_actuator_target.clutch_target_updated = 1;
     pthread_mutex_unlock(&g_actuator_target.mutex);
+    
+    /* 同时更新到共享状态，确保数据一致性 */
+    pthread_mutex_lock(&g_shared_state.mutex);
+    g_shared_state.target_current_a = current_mA / 1000.0f;  // mA -> A
+    pthread_mutex_unlock(&g_shared_state.mutex);
 
     return 0;
 }
@@ -809,9 +830,13 @@ static void* command_handler_thread(void* arg) {
                 if (cmd.data_log_start && !g_logging_enabled) {
                     printf("[CMD] Starting data logging...\n");
                     g_logging_enabled = 1;
+                    /* 重置手动F0计算，以便新采集重新计算 */
+                    g_manual_f0_sample_count = 0;
+                    g_manual_f0_sum = 0.0f;
+                    g_manual_f0_kg = 0.0f;
                     start_logging();
                 }
-                
+
                 if (cmd.data_log_stop && g_logging_enabled) {
                     printf("[CMD] Stopping data logging...\n");
                     g_logging_enabled = 0;
@@ -876,8 +901,9 @@ void start_logging(void) {
     
     g_log_file = fopen(g_log_filename, "w");
     if (g_log_file != NULL) {
-        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
+        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
                 "Time", "Current(A)", "TargetCurrent(A)", "Voltage(V)", "Pressure(kg)", "F0(kg)", "DeltaF",
+                "PI_P(mA)", "PI_I(mA)",
                 "RopeLength(m)", "EncoderValue", "EncoderAngle(deg)", "MotorSpeed(rpm)",
                 "MotorLinearVel(m/s)", "MotorTheoryVel(m/s)", "MotorPosition(m)",
                 "RopeVelocityRaw(m/s)", "RopeVelocityFiltered(m/s)");
@@ -920,64 +946,78 @@ static void* data_collection_thread(void* arg) {
     while (g_running) {
         uint32_t cycle_start_time = get_timestamp_ms();
         
-        /* 更新传感器数据到共享缓冲区 */
+        /* ========== 第一步：读取所有传感器数据（原子性） ========== */
         SensorData_t encoder_data, pressure_data;
         float pressure_kg = 0.0f, rope_length_m = 0.0f;
         uint32_t encoder_value = 0;
         float encoder_angle = 0.0f;
         
-        if (sensor_mgr_get_data(&g_sensor_mgr, SENSOR_TYPE_ENCODER, &encoder_data) == ERR_OK) {
-            update_sensor_to_buffer(&encoder_data, NULL);
+        /* 同时读取编码器和压力传感器，确保时间一致性 */
+        int encoder_ok = (sensor_mgr_get_data(&g_sensor_mgr, SENSOR_TYPE_ENCODER, &encoder_data) == ERR_OK);
+        int pressure_ok = (sensor_mgr_get_data(&g_sensor_mgr, SENSOR_TYPE_PRESSURE, &pressure_data) == ERR_OK);
+        
+        if (encoder_ok) {
             encoder_value = encoder_data.data.encoder.multi_turn_value;
             encoder_angle = encoder_data.data.encoder.angle_deg;
             rope_length_m = encoder_data.data.encoder.rope_length_mm / 1000.0f;
         }
-        if (sensor_mgr_get_data(&g_sensor_mgr, SENSOR_TYPE_PRESSURE, &pressure_data) == ERR_OK) {
-            update_sensor_to_buffer(NULL, &pressure_data);
+        if (pressure_ok) {
             pressure_kg = pressure_data.data.pressure.pressure_kg;
         }
         
-        /* 更新电源数据到共享缓冲区 */
-        float current_a = 0.0f, voltage_v = 0.0f;
+        /* ========== 第二步：更新数据到共享缓冲区 ========== */
+        if (encoder_ok) {
+            update_sensor_to_buffer(&encoder_data, NULL);
+        }
+        if (pressure_ok) {
+            update_sensor_to_buffer(NULL, &pressure_data);
+        }
         update_power_to_buffer(&g_power);
+        if (g_motor.initialized) {
+            update_motor_to_buffer();
+        }
+        
+        /* ========== 第三步：原子性读取所有数据（关键！） ========== */
+        float current_a = 0.0f, voltage_v = 0.0f;
+        float motor_speed_rpm = 0.0f, motor_pos_m = 0.0f, motor_linear_vel = 0.0f;
+        float motor_theory_vel = 0.0f;
+        float rope_vel_raw = 0.0f, rope_vel_filtered = 0.0f;
+        float pressure_f0_kg = 0.0f, pressure_deltaf = 0.0f;
+        float pi_p_term_mA = 0.0f, pi_i_term_mA = 0.0f;
+        float target_current_a = 0.0f;
+        
+        /* 使用单个锁，原子性读取所有数据，确保一致性 */
         pthread_mutex_lock(&g_shared_state.mutex);
         current_a = g_shared_state.current_a;
         voltage_v = g_shared_state.voltage_v;
-        pthread_mutex_unlock(&g_shared_state.mutex);
-        
-        /* 更新电机数据到共享缓冲区 - 无论是否使能都读取电机状态 */
-        float motor_speed_rpm = 0.0f, motor_pos_m = 0.0f, motor_linear_vel = 0.0f;
-        float motor_theory_vel = 0.0f;
-        if (g_motor.initialized) {
-            update_motor_to_buffer();
-            pthread_mutex_lock(&g_shared_state.mutex);
-            motor_speed_rpm = g_shared_state.motor_speed_rpm;
-            motor_pos_m = g_shared_state.motor_position_m;
-            motor_linear_vel = g_shared_state.motor_linear_velocity_m_s;
-            motor_theory_vel = g_shared_state.motor_theory_linear_velocity_m_s;
-            pthread_mutex_unlock(&g_shared_state.mutex);
-        }
-        
-        /* 获取绳子速度和压力数据 */
-        float rope_vel_raw = 0.0f, rope_vel_filtered = 0.0f;
-        float pressure_f0_kg = 0.0f, pressure_deltaf = 0.0f;
-        pthread_mutex_lock(&g_shared_state.mutex);
+        motor_speed_rpm = g_shared_state.motor_speed_rpm;
+        motor_pos_m = g_shared_state.motor_position_m;
+        motor_linear_vel = g_shared_state.motor_linear_velocity_m_s;
+        motor_theory_vel = g_shared_state.motor_theory_linear_velocity_m_s;
         rope_vel_raw = g_shared_state.rope_velocity_raw_m_s;
         rope_vel_filtered = g_shared_state.rope_velocity_filtered_m_s;
         pressure_f0_kg = g_shared_state.pressure_f0_kg;
-        pressure_deltaf = g_shared_state.pressure_deltaf;
+        pi_p_term_mA = g_shared_state.pi_p_term_mA;
+        pi_i_term_mA = g_shared_state.pi_i_term_mA;
+        target_current_a = g_shared_state.target_current_a;
         pthread_mutex_unlock(&g_shared_state.mutex);
-
-        /* 获取目标电流值 */
-        float target_current_a = 0.0f;
-        pthread_mutex_lock(&g_actuator_target.mutex);
-        target_current_a = g_actuator_target.target_clutch_current_ma / 1000.0f; // mA -> A
-        pthread_mutex_unlock(&g_actuator_target.mutex);
         
-        /* 更新共享状态中的目标电流 */
-        pthread_mutex_lock(&g_shared_state.mutex);
-        g_shared_state.target_current_a = target_current_a;
-        pthread_mutex_unlock(&g_shared_state.mutex);
+        /* 计算DeltaF：使用当前实时压力和F0 */
+        /* 如果算法未运行（pressure_f0_kg为0），使用手动模式计算的F0 */
+        float effective_f0;
+        if (pressure_f0_kg != 0.0f) {
+            /* 算法运行中，使用算法的F0 */
+            effective_f0 = pressure_f0_kg;
+        } else {
+            /* 手动模式：采集前50个点的平均压力作为F0 */
+            if (g_manual_f0_sample_count < MANUAL_F0_SAMPLE_COUNT) {
+                g_manual_f0_sum += pressure_kg;
+                g_manual_f0_sample_count++;
+                g_manual_f0_kg = g_manual_f0_sum / g_manual_f0_sample_count;
+            }
+            effective_f0 = g_manual_f0_kg;
+        }
+        pressure_deltaf = pressure_kg - effective_f0;
 
         /* 50Hz数据记录（集成到采集线程，避免锁竞争） */
         if (g_log_file != NULL && g_logging_enabled && (log_counter % 2 == 0)) {
@@ -990,9 +1030,12 @@ static void* data_collection_thread(void* arg) {
             snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d.%06ld",
                      t->tm_hour, t->tm_min, t->tm_sec, (long)tv.tv_usec);
 
-            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
+            /* 在手动模式下，记录effective_f0而不是共享状态中的F0 */
+            float log_f0_kg = (pressure_f0_kg != 0.0f) ? pressure_f0_kg : effective_f0;
+            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
                     time_str,
-                    current_a, target_current_a, voltage_v, pressure_kg, pressure_f0_kg, pressure_deltaf, rope_length_m,
+                    current_a, target_current_a, voltage_v, pressure_kg, log_f0_kg, pressure_deltaf,
+                    pi_p_term_mA, pi_i_term_mA, rope_length_m,
                     encoder_value, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,
                     rope_vel_raw, rope_vel_filtered);

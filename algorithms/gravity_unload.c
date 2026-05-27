@@ -89,6 +89,11 @@ int gravity_unload_init(GravityUnloadController_t *ctrl) {
              PID_OUTPUT_MIN, PID_OUTPUT_MAX, ALGO_CONTROL_PERIOD_S);
     ctrl->pid.integral_limit = PID_INTEGRAL_LIMIT;
     
+    /* 初始化离合器电流PI控制 - 增量式前馈+PID */
+    ctrl->clutch_pi_integral = 0.0f;
+    ctrl->last_deltaf = 0.0f;
+    ctrl->last_current_mA = 0.0f;  /* PI部分初始值为0（前馈部分单独计算） */
+    
     /* 初始化安全监控 */
     safety_monitor_init(&ctrl->safety);
     
@@ -240,9 +245,10 @@ void gravity_unload_reset(GravityUnloadController_t *ctrl) {
     /* 重置PID */
     pid_reset(&ctrl->pid);
     
-    /* 重置离合器电流PI控制 */
+    /* 重置离合器电流PI控制 - 增量式前馈+PID */
     ctrl->clutch_pi_integral = 0.0f;
     ctrl->last_deltaf = 0.0f;
+    ctrl->last_current_mA = 0.0f;  /* PI部分初始值为0（前馈部分单独计算） */
     
     /* 重置安全监控 */
     safety_clear_emergency_stop(&ctrl->safety);
@@ -437,39 +443,54 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     }
 
     /* 步骤1: 基于力偏差反馈计算离合器目标电流 */
-    /* 核心恒力控制逻辑（纯PI控制，无基础电流）：
-     * I(k+1) = I(k) + Kp * DeltaF + Ki * ∫DeltaF dt
-     * 其中 DeltaF = Fnow - F0 （压力变化量，单位kg）
+    /* 增量式前馈+PI控制逻辑：
+     * I_total = I_feedforward + I_pi
      * 
-     * - 当重物增加（压力增大），DeltaF > 0，PI输出增大，电流增大，电机提升重物
-     * - 当重物减少（压力减小），DeltaF < 0，PI输出减小，电流减小，电机跟随下降
-     * - 当压力恒定（DeltaF = 0），电流保持当前值不变
+     * 前馈电流（基于DeltaF线性插值）：
+     *   - 0g  -> 50mA
+     *   - 220g -> 110mA
+     *   I_feedforward = 50 + (DeltaF / 0.2) * (110 - 50)
+     * 
+     * PI控制电流（增量式）：
+     *   I_pi(k) = I_pi(k-1) + Kp * DeltaF + Ki * DeltaF * dt
+     * 
+     * 总电流：
+     *   I_total = I_feedforward + I_pi
      */
     
-    /* PI控制电流计算
-     * 注意：这里使用增量式PI，直接计算电流调整量
-     * 比例项：Kp * DeltaF
-     * 积分项：Ki * ∫DeltaF dt
+    /* 计算前馈电流 - 基于DeltaF的线性插值
+     * 0-220g (0-0.2kg) 对应 50-110mA
+     * 斜率 = (110 - 50) / 0.22 = 273 mA/kg
      */
-    float pi_p_term_mA = CLUTCH_PI_KP * delta_f_kg;  /* P项（比例项） */
-    float pi_i_term_mA = ctrl->clutch_pi_integral;    /* I项（积分项） */
-    float pi_output_mA = pi_p_term_mA + pi_i_term_mA; /* PI总输出 */
+    float feedforward_current_mA = 50.0f + delta_f_kg * 273.0f;  /* 50 + DeltaF * 273 */
     
-    /* 计算最终离合器电流（预计算，用于积分分离判断） */
-    float temp_current_mA = 50.0f + pi_p_term_mA + pi_i_term_mA;
-    
-    /* 积分项更新（累积误差）- 带积分分离和消退机制 */
-    /* 积分分离：当输出达到限幅时，停止积分累积，防止积分饱和 */
-    if (!(temp_current_mA <= 0.0f && delta_f_kg < 0.0f) &&       /* 电流已到下限且DeltaF仍为负 */
-        !(temp_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg > 0.0f)) {  /* 电流已到上限且DeltaF仍为正 */
-        ctrl->clutch_pi_integral += CLUTCH_PI_KI * delta_f_kg * ALGO_CONTROL_PERIOD_S;
+    /* 限制前馈电流范围 */
+    if (feedforward_current_mA < 50.0f) {
+        feedforward_current_mA = 50.0f;
+    } else if (feedforward_current_mA > 110.0f) {
+        feedforward_current_mA = 110.0f;
     }
-
-    /* 积分消退机制：当误差很小时，积分项逐渐衰减，防止积分饱和 */
-    const float INTEGRAL_DECAY_THRESHOLD = 0.1f;  /* 误差阈值，低于此值时积分消退 - 提高到0.1kg以更有效抑制积分 */
-    const float INTEGRAL_DECAY_FACTOR = 0.98f;    /* 积分消退系数（每周期衰减2%） */
-    if (fabsf(delta_f_kg) < INTEGRAL_DECAY_THRESHOLD) {
-        ctrl->clutch_pi_integral *= INTEGRAL_DECAY_FACTOR;
+    
+    /* 增量式PID计算 - 用于微调 */
+    /* 比例项增量：Kp * DeltaF */
+    float proportional_increment = CLUTCH_PI_KP * delta_f_kg;
+    
+    /* 积分项增量：Ki * DeltaF * dt */
+    float integral_increment = CLUTCH_PI_KI * delta_f_kg * ALGO_CONTROL_PERIOD_S;
+    
+    /* 总增量 = 比例增量 + 积分增量 */
+    float total_increment = proportional_increment + integral_increment;
+    
+    /* 计算PI部分电流：I_pi(k) = I_pi(k-1) + 总增量 */
+    float pi_current_mA = ctrl->last_current_mA + total_increment;
+    
+    /* 积分分离：当输出达到限幅时，停止积分累积，防止积分饱和 */
+    if ((pi_current_mA <= 0.0f && delta_f_kg < 0.0f) ||       /* 电流已到下限且DeltaF仍为负 */
+        (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg > 0.0f)) {  /* 电流已到上限且DeltaF仍为正 */
+        /* 达到限幅，不更新积分 */
+    } else {
+        /* 累积积分项（用于显示和数据记录） */
+        ctrl->clutch_pi_integral += integral_increment;
     }
     
     /* 积分限幅 */
@@ -478,14 +499,26 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     } else if (ctrl->clutch_pi_integral < -CLUTCH_PI_INTEGRAL_LIMIT) {
         ctrl->clutch_pi_integral = -CLUTCH_PI_INTEGRAL_LIMIT;
     }
+    
+    /* 计算PI输出（用于显示和数据记录） */
+    float pi_p_term_mA = CLUTCH_PI_KP * delta_f_kg;  /* P项（比例项） */
+    float pi_i_term_mA = ctrl->clutch_pi_integral;    /* I项（积分项） */
 
-    /* 计算最终离合器电流
-     * 初始电流从基础值开始（50mA），然后通过PI控制调整
-     * 公式：I = 基础电流 + PI输出
-     * 注意：当 DeltaF > 0 (重物增加)，PI输出为正，电流增大
-     *       当 DeltaF < 0 (重物减少)，PI输出为负，电流减小
-     */
-    output->clutch_current_mA = 50.0f + pi_p_term_mA + ctrl->clutch_pi_integral;  /* 基础电流50mA + PI控制输出 */
+    /* 计算总电流：前馈 + PI */
+    float current_mA = feedforward_current_mA + pi_current_mA;
+    
+    /* 限制总电流范围 */
+    if (current_mA < 0.0f) {
+        current_mA = 0.0f;
+    } else if (current_mA > SAFETY_CLUTCH_CURRENT_MAX_MA) {
+        current_mA = SAFETY_CLUTCH_CURRENT_MAX_MA;
+    }
+    
+    /* 保存PI部分电流作为下一时刻的上一时刻值 */
+    ctrl->last_current_mA = pi_current_mA;
+    
+    /* 输出最终电流 */
+    output->clutch_current_mA = current_mA;
     
     /* 更新PI项到共享状态（用于数据采集） */
     update_pi_terms(pi_p_term_mA, pi_i_term_mA);
@@ -528,29 +561,29 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
         switch (g_friction_direction_mode) {
             case 1:  /* 只响应压力减小方向（DeltaF < 0，重物变轻） */
                 if (delta_f_kg < 0.0f) {
-                    target_motor_speed = -(pulley_velocity_rpm + FRICTION_SPEED_OFFSET_C);
+                    target_motor_speed = -60.0f;//-(pulley_velocity_rpm + FRICTION_SPEED_OFFSET_C);
                 } else {
                     /* DeltaF >= 0 时，保持当前速度，不响应 */
-                    target_motor_speed = -pulley_velocity_rpm;
+                    target_motor_speed = -60.0f;//-pulley_velocity_rpm;
                 }
                 break;
                 
             case 2:  /* 只响应压力增大方向（DeltaF > 0，重物变重） */
                 if (delta_f_kg > 0.0f) {
-                    target_motor_speed = -(pulley_velocity_rpm - FRICTION_SPEED_OFFSET_C);
+                    target_motor_speed = 60.0f;//-(pulley_velocity_rpm - FRICTION_SPEED_OFFSET_C);
                 } else {
                     /* DeltaF <= 0 时，保持当前速度，不响应 */
-                    target_motor_speed = -pulley_velocity_rpm;
+                    target_motor_speed = -60.0f;//-pulley_velocity_rpm;
                 }
                 break;
                 
             default: /* 0: 双向控制（正常模式） */
                 if (delta_f_kg > 0.0f) {
-                    target_motor_speed = -(pulley_velocity_rpm - FRICTION_SPEED_OFFSET_C);
+                    target_motor_speed = 60.0f;//-(pulley_velocity_rpm - FRICTION_SPEED_OFFSET_C);
                 } else if (delta_f_kg < 0.0f) {
-                    target_motor_speed = -(pulley_velocity_rpm + FRICTION_SPEED_OFFSET_C);
+                    target_motor_speed = -60.0f;//-(pulley_velocity_rpm + FRICTION_SPEED_OFFSET_C);
                 } else {
-                    target_motor_speed = -pulley_velocity_rpm;
+                    target_motor_speed = -60.0f;//-pulley_velocity_rpm;
                 }
                 break;
         }
@@ -569,7 +602,7 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     /* 使用PID控制器跟踪目标速度 */
     float pid_output = pid_update(&ctrl->pid, target_motor_speed, output->motor_velocity_actual);
 
-    output->motor_velocity_cmd = pid_output;
+    output->motor_velocity_cmd = 150.0f;//-pid_output;
     output->timestamp_ms = filtered->timestamp_ms;
 }
 

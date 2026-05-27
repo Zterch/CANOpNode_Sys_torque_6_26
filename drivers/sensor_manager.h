@@ -57,7 +57,8 @@ typedef struct {
         
         /* 压力传感器数据 */
         struct {
-            float pressure_kg;              /* 压力值 (kg) */
+            float pressure_kg;              /* 压力值 (kg) - 原始值 */
+            float pressure_filtered_kg;     /* 压力值 (kg) - 低通滤波后 */
             int16_t raw_value;              /* 原始有符号值 */
             int16_t zero_offset;            /* 去皮偏移值 */
         } pressure;

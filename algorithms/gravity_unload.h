@@ -72,9 +72,10 @@ typedef struct {
     float pressure_f0_sum;          /* F0校准期间压力累加和 */
     int pressure_f0_sample_count;   /* F0校准期间采样计数 */
     
-    /* 离合器电流PI控制 */
+    /* 离合器电流PI控制 - 增量式PID */
     float clutch_pi_integral;       /* PI积分项 */
     float last_deltaf;              /* 上一次的deltaf值 */
+    float last_current_mA;          /* 上一时刻的电流值（增量式PID需要） */
     
     /* 线程控制 */
     pthread_t thread_id;

@@ -35,7 +35,12 @@ typedef struct {
     
     /* 数据 */
     float pressure;             /* 压力值 (kg) */
+    float pressure_filtered;    /* 滤波后的压力值 (kg) */
     float zero_offset;          /* 零点偏移 */
+    
+    /* 低通滤波器 - 截止频率9Hz，采样率50Hz */
+    float lpf_alpha;            /* 滤波系数 */
+    int lpf_initialized;        /* 滤波器是否已初始化 */
     
     /* 统计 */
     uint32_t read_count;        /* 读取次数 */
@@ -89,6 +94,20 @@ ErrorCode_t pressure_read(PressureDriver_t *pressure, float *value);
  * @return ErrorCode_t
  */
 ErrorCode_t pressure_zero_calibration(PressureDriver_t *pressure);
+
+/**
+ * @brief 读取滤波后的压力值（低通滤波，截止频率9Hz）
+ * @param pressure 压力计驱动结构指针
+ * @param value 压力输出指针 (kg)
+ * @return ErrorCode_t
+ */
+ErrorCode_t pressure_read_filtered(PressureDriver_t *pressure, float *value);
+
+/**
+ * @brief 重置压力低通滤波器
+ * @param pressure 压力计驱动结构指针
+ */
+void pressure_filter_reset(PressureDriver_t *pressure);
 
 #ifdef __cplusplus
 }

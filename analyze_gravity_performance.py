@@ -30,14 +30,46 @@ def analyze_gravity_performance(csv_file):
     
     # 2. 压力控制性能分析
     print("\n【2. 压力控制性能分析】")
-    pressure = df['Pressure(kg)']
+    
+    # 检查是否有原始和滤波后的压力数据（新格式）
+    if 'PressureRaw(kg)' in df.columns and 'PressureFiltered(kg)' in df.columns:
+        pressure_raw = df['PressureRaw(kg)']
+        pressure_filtered = df['PressureFiltered(kg)']
+        pressure = pressure_filtered  # 使用滤波后的值作为主要压力数据
+        has_raw_filtered = True
+        print("  使用新的CSV格式（包含原始和滤波后压力值）")
+    else:
+        pressure = df['Pressure(kg)']
+        pressure_raw = None
+        pressure_filtered = None
+        has_raw_filtered = False
+        print("  使用旧的CSV格式（仅压力值）")
+    
     f0 = df['F0(kg)'].iloc[0]  # 目标压力
     delta_f = df['DeltaF']
     
     print(f"目标压力 (F0): {f0:.3f} kg")
-    print(f"实际压力 - 最小值: {pressure.min():.3f} kg, 最大值: {pressure.max():.3f} kg")
-    print(f"实际压力 - 平均值: {pressure.mean():.3f} kg, 标准差: {pressure.std():.3f} kg")
-    print(f"压力变化范围: {pressure.max() - pressure.min():.3f} kg")
+    
+    if has_raw_filtered:
+        print(f"\n原始压力值:")
+        print(f"  最小值: {pressure_raw.min():.3f} kg, 最大值: {pressure_raw.max():.3f} kg")
+        print(f"  平均值: {pressure_raw.mean():.3f} kg, 标准差: {pressure_raw.std():.3f} kg")
+        print(f"  变化范围: {pressure_raw.max() - pressure_raw.min():.3f} kg")
+        
+        print(f"\n滤波后压力值:")
+        print(f"  最小值: {pressure_filtered.min():.3f} kg, 最大值: {pressure_filtered.max():.3f} kg")
+        print(f"  平均值: {pressure_filtered.mean():.3f} kg, 标准差: {pressure_filtered.std():.3f} kg")
+        print(f"  变化范围: {pressure_filtered.max() - pressure_filtered.min():.3f} kg")
+        
+        # 计算滤波效果
+        filter_diff = pressure_raw - pressure_filtered
+        print(f"\n滤波效果:")
+        print(f"  标准差降低: {(1 - pressure_filtered.std()/pressure_raw.std())*100:.1f}%")
+        print(f"  峰峰值降低: {(1 - (pressure_filtered.max()-pressure_filtered.min())/(pressure_raw.max()-pressure_raw.min()))*100:.1f}%")
+    else:
+        print(f"实际压力 - 最小值: {pressure.min():.3f} kg, 最大值: {pressure.max():.3f} kg")
+        print(f"实际压力 - 平均值: {pressure.mean():.3f} kg, 标准差: {pressure.std():.3f} kg")
+        print(f"压力变化范围: {pressure.max() - pressure.min():.3f} kg")
     
     # 计算稳态误差
     steady_state_start = int(len(df) * 0.3)  # 后70%作为稳态
@@ -141,30 +173,38 @@ def analyze_gravity_performance(csv_file):
     print(f"绳子长度变化: {position.min():.2f} mm -> {position.max():.2f} mm")
     print(f"总位移: {position.max() - position.min():.2f} mm")
     
-    # 6. 算法响应分析
-    print("\n【6. 算法响应分析】")
-    # 找到压力开始增加的时刻
+    # 6. 关键时间点检测
+    print("\n【6. 关键时间点检测】")
+    
+    # 找到重量添加时间点（压力显著增加）
     pressure_diff = pressure.diff()
-    significant_change_idx = np.where(pressure_diff > 0.05)[0]
+    significant_change_threshold = 0.05  # 压力变化阈值 kg
+    significant_change_idx = np.where(pressure_diff > significant_change_threshold)[0]
+    
+    weight_add_time = None
+    stable_time = None
+    settling_time = None
+    
     if len(significant_change_idx) > 0:
-        response_start_idx = significant_change_idx[0]
-        response_start_time = df['Time_sec'].iloc[response_start_idx]
-        print(f"压力显著增加开始时间: {response_start_time:.2f} 秒")
+        weight_add_idx = significant_change_idx[0]
+        weight_add_time = df['Time_sec'].iloc[weight_add_idx]
+        print(f"重量添加时间点: {weight_add_time:.2f} 秒 (压力突增)")
         
-        # 找到电流开始响应的时刻
-        current_diff = current.diff()
-        current_response_idx = np.where((current_diff > 1) & (df.index > response_start_idx))[0]
-        if len(current_response_idx) > 0:
-            current_response_time = df['Time_sec'].iloc[current_response_idx[0]]
-            response_delay = current_response_time - response_start_time
-            print(f"电流响应延迟: {response_delay:.3f} 秒")
+        # 找到稳定时间点（DeltaF首次回零）
+        # 从重量添加后开始寻找DeltaF首次接近零的点
+        for i in range(weight_add_idx + 10, len(df)):  # 至少0.2秒后
+            if abs(delta_f.iloc[i]) < 0.02:  # DeltaF接近零（±20g）
+                stable_idx = i
+                stable_time = df['Time_sec'].iloc[stable_idx]
+                settling_time = stable_time - weight_add_time
+                print(f"控制稳定时间点: {stable_time:.2f} 秒 (DeltaF首次回零)")
+                print(f"调节时间: {settling_time:.2f} 秒")
+                break
         
-        # 找到电机开始转动的时刻
-        motor_response_idx = np.where((motor_speed > 1) & (df.index > response_start_idx))[0]
-        if len(motor_response_idx) > 0:
-            motor_response_time = df['Time_sec'].iloc[motor_response_idx[0]]
-            motor_delay = motor_response_time - response_start_time
-            print(f"电机响应延迟: {motor_delay:.3f} 秒")
+        if stable_time is None:
+            print("未检测到稳定点（DeltaF未回零）")
+    else:
+        print("未检测到重量添加事件")
     
     # 7. 恒力控制效果评估
     print("\n【7. 恒力控制效果评估】")
@@ -185,31 +225,65 @@ def analyze_gravity_performance(csv_file):
     print("\n正在生成分析图表...")
     
     # 创建第一个图表 - 总览图
-    fig = plt.figure(figsize=(18, 16))
-    gs = GridSpec(6, 2, figure=fig, hspace=0.35, wspace=0.3)
+    fig = plt.figure(figsize=(18, 20))
+    gs = GridSpec(8, 2, figure=fig, hspace=0.35, wspace=0.3)
     
-    # 图1: 压力控制效果
+    # 图1: 压力控制效果（带关键时间点标记）
     ax1 = fig.add_subplot(gs[0, :])
-    ax1.plot(df['Time_sec'], pressure, label='Actual Pressure', color='blue', linewidth=1.5)
+    ax1.plot(df['Time_sec'], pressure, label='Filtered Pressure', color='blue', linewidth=2)
     ax1.axhline(y=f0, color='r', linestyle='--', linewidth=2, label=f'Target (F0={f0:.2f}kg)')
     ax1.fill_between(df['Time_sec'], f0 - 0.5, f0 + 0.5, alpha=0.2, color='green', label='Tolerance (±0.5kg)')
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax1.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added ({weight_add_time:.2f}s)')
+    if stable_time is not None and settling_time is not None:
+        ax1.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable dF=0 ({stable_time:.2f}s, dt={settling_time:.2f}s)')
+    
     ax1.set_ylabel('Pressure (kg)')
     ax1.set_title('Pressure Control Performance - Gravity Unload Algorithm', fontsize=14, fontweight='bold')
     ax1.legend(loc='upper right')
     ax1.grid(True, alpha=0.3)
     ax1.set_ylim([f0 - 1, pressure.max() + 0.5])
     
+    # 图1b: 原始压力vs滤波后压力对比（新增）
+    if has_raw_filtered:
+        ax1b = fig.add_subplot(gs[1, :])
+        ax1b.plot(df['Time_sec'], pressure_raw, label='Raw Pressure', color='red', 
+                 linewidth=1.5, alpha=0.7, linestyle='--')
+        ax1b.plot(df['Time_sec'], pressure_filtered, label='Filtered Pressure (Notch 11Hz)', 
+                 color='blue', linewidth=2)
+        ax1b.axhline(y=f0, color='green', linestyle=':', linewidth=2, label=f'F0 = {f0:.2f} kg')
+        
+        # 标记关键时间点
+        if weight_add_time is not None:
+            ax1b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+        if stable_time is not None:
+            ax1b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+        
+        ax1b.set_ylabel('Pressure (kg)')
+        ax1b.set_title('Raw vs Filtered Pressure Comparison', fontsize=13, fontweight='bold')
+        ax1b.legend(loc='best', fontsize=10)
+        ax1b.grid(True, alpha=0.3)
+    
     # 图2: DeltaF
-    ax2 = fig.add_subplot(gs[1, 0])
+    ax2 = fig.add_subplot(gs[2, 0])
     ax2.plot(df['Time_sec'], delta_f, label='DeltaF', color='purple', linewidth=1.5)
     ax2.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax2.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax2.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax2.set_ylabel('DeltaF (kg)')
     ax2.set_title('Pressure Deviation (DeltaF = Fnow - F0)')
     ax2.legend()
     ax2.grid(True, alpha=0.3)
     
     # 图3: PI控制项分解 (缩小放在总览图中)
-    ax3 = fig.add_subplot(gs[1, 1])
+    ax3 = fig.add_subplot(gs[2, 1])
     if using_real_data:
         ax3.plot(df['Time_sec'], p_term, label='P Term (Real Data)', color='orange', linewidth=1.5)
         ax3.plot(df['Time_sec'], i_term, label='I Term (Real Data)', color='cyan', linewidth=1.5)
@@ -218,23 +292,37 @@ def analyze_gravity_performance(csv_file):
         ax3.plot(df['Time_sec'], i_term, label=f'I Term (Ki={KI})', color='cyan', linewidth=1.5)
     ax3.plot(df['Time_sec'], pi_output, label='PI Total Output', color='red', linewidth=2, linestyle='--')
     ax3.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax3.set_ylabel('Current Adjustment (mA)')
     ax3.set_title('PI Control Components (P & I Terms)')
     ax3.legend(loc='upper right')
     ax3.grid(True, alpha=0.3)
     
     # 图4: 电流控制
-    ax4 = fig.add_subplot(gs[2, 0])
+    ax4 = fig.add_subplot(gs[3, 0])
     ax4.plot(df['Time_sec'], current, label='Actual Current', color='orange', linewidth=1.5)
     ax4.plot(df['Time_sec'], target_current, label='Target Current', color='red', linewidth=1.5, linestyle='--')
     ax4.axhline(y=50, color='gray', linestyle=':', linewidth=1, alpha=0.5, label='Base Current (50mA)')
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax4.set_ylabel('Current (mA)')
     ax4.set_title('Current Control')
     ax4.legend()
     ax4.grid(True, alpha=0.3)
     
     # 图5: PI输出与电流关系 (新增！)
-    ax5 = fig.add_subplot(gs[2, 1])
+    ax5 = fig.add_subplot(gs[3, 1])
     ax5.plot(df['Time_sec'], pi_output, label='PI Output', color='blue', linewidth=1.5)
     ax5_twin = ax5.twinx()
     ax5_twin.plot(df['Time_sec'], current - 50, label='Current - Base (50mA)', color='red', linewidth=1.5, linestyle='--')
@@ -246,25 +334,46 @@ def analyze_gravity_performance(csv_file):
     ax5.grid(True, alpha=0.3)
     
     # 图6: 电机速度
-    ax6 = fig.add_subplot(gs[3, 0])
+    ax6 = fig.add_subplot(gs[4, 0])
     ax6.plot(df['Time_sec'], motor_speed, label='Motor Speed', color='green', linewidth=1.5)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax6.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax6.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax6.set_ylabel('Speed (rpm)')
     ax6.set_title('Motor Speed Response')
     ax6.legend()
     ax6.grid(True, alpha=0.3)
     
     # 图7: 位置变化
-    ax7 = fig.add_subplot(gs[3, 1])
+    ax7 = fig.add_subplot(gs[4, 1])
     ax7.plot(df['Time_sec'], position, label='Rope Length', color='brown', linewidth=1.5)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax7.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax7.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax7.set_ylabel('Length (mm)')
     ax7.set_title('Rope Length (Position)')
     ax7.legend()
     ax7.grid(True, alpha=0.3)
     
     # 图8: 绳子速度
-    ax8 = fig.add_subplot(gs[4, 0])
+    ax8 = fig.add_subplot(gs[5, 0])
     ax8.plot(df['Time_sec'], df['RopeVelocityRaw(m/s)'], label='Raw', alpha=0.5, linewidth=0.8)
     ax8.plot(df['Time_sec'], df['RopeVelocityFiltered(m/s)'], label='Filtered', linewidth=1.5)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax8.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax8.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax8.set_ylabel('Velocity (m/s)')
     ax8.set_xlabel('Time (s)')
     ax8.set_title('Rope Velocity')
@@ -272,13 +381,20 @@ def analyze_gravity_performance(csv_file):
     ax8.grid(True, alpha=0.3)
     
     # 图9: 压力误差分析
-    ax9 = fig.add_subplot(gs[4, 1])
+    ax9 = fig.add_subplot(gs[5, 1])
     pressure_error = pressure - f0
     ax9.plot(df['Time_sec'], pressure_error, label='Pressure Error', color='red', linewidth=1.5)
     ax9.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
     ax9.axhline(y=0.5, color='g', linestyle='--', linewidth=1, alpha=0.5)
     ax9.axhline(y=-0.5, color='g', linestyle='--', linewidth=1, alpha=0.5)
     ax9.fill_between(df['Time_sec'], -0.5, 0.5, alpha=0.1, color='green')
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax9.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax9.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax9.set_ylabel('Error (kg)')
     ax9.set_xlabel('Time (s)')
     ax9.set_title('Pressure Control Error')
@@ -286,9 +402,16 @@ def analyze_gravity_performance(csv_file):
     ax9.grid(True, alpha=0.3)
 
     # 图10: 实际电流（新增）- 放大纵坐标以显示细微变化
-    ax10 = fig.add_subplot(gs[5, :])
+    ax10 = fig.add_subplot(gs[6, :])
     ax10.plot(df['Time_sec'], current, label='Actual Current', color='darkblue', linewidth=2)
     ax10.axhline(y=50, color='gray', linestyle=':', linewidth=1, alpha=0.7, label='Base Current (50mA)')
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax10.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added ({weight_add_time:.2f}s)')
+    if stable_time is not None:
+        ax10.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable ({stable_time:.2f}s)')
+    
     ax10.set_ylabel('Current (mA)')
     ax10.set_xlabel('Time (s)')
     ax10.set_title('Actual Current Only (Zoomed)', fontsize=14, fontweight='bold')
@@ -303,6 +426,35 @@ def analyze_gravity_performance(csv_file):
     ax10.set_ylim([current_min - y_margin, current_max + y_margin])
     ax10.legend(loc='upper right')
     ax10.grid(True, alpha=0.3)
+    
+    # 图11: 关键时间点总结（新增）- 使用英文避免乱码
+    ax11 = fig.add_subplot(gs[7, :])
+    ax11.axis('off')
+    
+    if weight_add_time is not None and stable_time is not None and settling_time is not None:
+        summary_text = f"""Key Timing Summary
+{'='*60}
+Weight Added Time:     {weight_add_time:.2f} s
+Stable Time (dF=0):    {stable_time:.2f} s
+Settling Time:         {settling_time:.2f} s
+Pressure Overshoot:    {pressure_overshoot:.2f}%
+Steady State Error:    {steady_error.mean():.3f} +/- {steady_error.std():.3f} kg
+{'='*60}"""
+    elif weight_add_time is not None:
+        summary_text = f"""Key Timing Summary
+{'='*60}
+Weight Added Time:     {weight_add_time:.2f} s
+Stable Time:           Not detected (dF did not return to zero)
+{'='*60}"""
+    else:
+        summary_text = """Key Timing Summary
+{'='*60}
+Weight added event not detected
+{'='*60}"""
+    
+    ax11.text(0.5, 0.5, summary_text, transform=ax11.transAxes, fontsize=11,
+              verticalalignment='center', horizontalalignment='center',
+              fontfamily='monospace', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
     plt.tight_layout()
     # 将输出文件保存到当前目录，避免权限问题
@@ -322,6 +474,13 @@ def analyze_gravity_performance(csv_file):
     ax_pi_1.plot(df['Time_sec'], p_term, label='P Term (Proportional)', color='orange', linewidth=2)
     ax_pi_1.plot(df['Time_sec'], i_term, label='I Term (Integral)', color='cyan', linewidth=2)
     ax_pi_1.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax_pi_1.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added ({weight_add_time:.2f}s)')
+    if stable_time is not None:
+        ax_pi_1.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable ({stable_time:.2f}s)')
+    
     ax_pi_1.set_ylabel('Current (mA)', fontsize=12)
     ax_pi_1.set_title('P Term vs I Term Comparison', fontsize=13, fontweight='bold')
     ax_pi_1.legend(loc='upper right', fontsize=11)
@@ -333,6 +492,13 @@ def analyze_gravity_performance(csv_file):
     ax_pi_2.plot(df['Time_sec'], p_term, label='P Term', color='orange', linewidth=2.5)
     ax_pi_2.fill_between(df['Time_sec'], p_term, alpha=0.3, color='orange')
     ax_pi_2.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax_pi_2.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax_pi_2.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax_pi_2.set_ylabel('Current (mA)', fontsize=12)
     ax_pi_2.set_title(f'P Term (Proportional) - Kp × DeltaF', fontsize=13, fontweight='bold')
     ax_pi_2.legend(loc='upper right', fontsize=11)
@@ -344,6 +510,13 @@ def analyze_gravity_performance(csv_file):
     ax_pi_3.plot(df['Time_sec'], i_term, label='I Term', color='cyan', linewidth=2.5)
     ax_pi_3.fill_between(df['Time_sec'], i_term, alpha=0.3, color='cyan')
     ax_pi_3.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax_pi_3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax_pi_3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
     ax_pi_3.set_ylabel('Current (mA)', fontsize=12)
     ax_pi_3.set_xlabel('Time (s)', fontsize=12)
     ax_pi_3.set_title(f'I Term (Integral) - Ki × ∫DeltaF dt', fontsize=13, fontweight='bold')
@@ -362,46 +535,50 @@ def analyze_gravity_performance(csv_file):
     print("【算法性能总结】")
     print("=" * 80)
     
+    # 准备关键时间点字符串
+    weight_add_str = f"{weight_add_time:.2f}" if weight_add_time is not None else "N/A"
+    stable_time_str = f"{stable_time:.2f}" if stable_time is not None else "N/A"
+    settling_time_str = f"{settling_time:.2f}" if settling_time is not None else "N/A"
+    data_source_str = 'Real Data' if using_real_data else 'Calculated'
+    
     print(f"""
-✅ 算法运行正常，系统稳定
+Algorithm Performance Summary
+{'='*60}
 
-关键指标:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-压力控制:
-  • 目标值: {f0:.2f} kg
-  • 实际范围: {pressure.min():.2f} ~ {pressure.max():.2f} kg
-  • 稳态误差: {steady_error.mean():.3f} ± {steady_error.std():.3f} kg
-  • 超调量: {pressure_overshoot:.2f}%
+Pressure Control:
+  Target: {f0:.2f} kg
+  Range: {pressure.min():.2f} ~ {pressure.max():.2f} kg
+  Steady Error: {steady_error.mean():.3f} +/- {steady_error.std():.3f} kg
+  Overshoot: {pressure_overshoot:.2f}%
 
-电流控制:
-  • 范围: {current.min():.1f} ~ {current.max():.1f} mA
-  • 跟踪误差: {current_error.mean():.2f} mA (平均)
+Current Control:
+  Range: {current.min():.1f} ~ {current.max():.1f} mA
+  Tracking Error: {current_error.mean():.2f} mA (avg)
 
-电机响应:
-  • 最大速度: {motor_speed.max():.1f} rpm
-  • 平均速度: {motor_speed.mean():.1f} rpm
+Motor Response:
+  Max Speed: {motor_speed.max():.1f} rpm
+  Avg Speed: {motor_speed.mean():.1f} rpm
 
-位置变化:
-  • 总位移: {position.max() - position.min():.2f} mm
+Position:
+  Total Displacement: {position.max() - position.min():.2f} mm
 
-PI控制分析:
-  • P项范围: {p_term.min():.1f} ~ {p_term.max():.1f} mA
-  • I项范围: {i_term.min():.1f} ~ {i_term.max():.1f} mA
-  • PI输出范围: {pi_output.min():.1f} ~ {pi_output.max():.1f} mA
-  • P/I比值: {abs(p_term.mean()/i_term.mean() if i_term.mean() != 0 else 999):.2f}
-  • 数据来源: {'真实采集数据' if using_real_data else '计算数据'}
+Key Timing:
+  Weight Added: {weight_add_str} s
+  Stable (dF=0): {stable_time_str} s
+  Settling Time: {settling_time_str} s
 
-调参建议:
-  • 若响应慢: 增大 Kp
-  • 若有静差: 增大 Ki
-  • 若振荡: 减小 Kp 或增大死区
-  • 若超调大: 减小 Kp 或增大 Ki
+PI Control:
+  P Term: {p_term.min():.1f} ~ {p_term.max():.1f} mA
+  I Term: {i_term.min():.1f} ~ {i_term.max():.1f} mA
+  PI Output: {pi_output.min():.1f} ~ {pi_output.max():.1f} mA
+  Data Source: {data_source_str}
 
-恒力控制效果:
-  • 系统能够在加重量后自动调整电流
-  • 电机能够持续转动以维持恒力
-  • 压力偏差在可接受范围内
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tuning Suggestions:
+  Slow response: Increase Kp
+  Static error: Increase Ki
+  Oscillation: Decrease Kp or increase deadzone
+  Large overshoot: Decrease Kp or increase Ki
+{'='*60}
     """)
 
 if __name__ == '__main__':

@@ -68,10 +68,10 @@ extern "C" {
 #define PRESSURE_F0_CALIBRATION_SAMPLES 200         /* F0校准采样点数 (200点 = 4秒) - 增加校准时间提高稳定性 */
 #define MOTOR_SPEED_COMPENSATION_C      0.0f        /* 电机速度补偿系数 - 新算法中不再使用，保留兼容性 */
 
-/* 离合器电流PI控制参数 */
-#define CLUTCH_PI_KP                    10.0f      /* 电流PI比例系数 - 恢复比例项作用 */
-#define CLUTCH_PI_KI                    100.0f       /* 电流PI积分系数 - 降低积分累积速度 */
-#define CLUTCH_PI_INTEGRAL_LIMIT        100.0f       /* 电流PI积分限幅 - 降低防止积分饱和 */
+/* 离合器电流PI控制参数 - 增量式PID */
+#define CLUTCH_PI_KP                    8.00f       /* 电流PI比例系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_KI                    5.00f      /* 电流PI积分系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_INTEGRAL_LIMIT        100.0f     /* 电流PI积分限幅 */
 
 /* 摩擦力方向控制 - 用于测试
  * 0: 双向控制（正常模式）

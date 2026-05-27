@@ -247,7 +247,7 @@ static void update_sensor_to_buffer(SensorData_t *encoder, SensorData_t *pressur
         g_shared_state.rope_length_m = encoder->data.encoder.rope_length_mm * 0.001f; // 转换为米
     }
     if (pressure && pressure->data_valid) {
-        g_shared_state.pressure_kg = pressure->data.pressure.pressure_kg;
+        g_shared_state.pressure_kg = pressure->data.pressure.pressure_filtered_kg;  /* 使用低通滤波后的压力值 */
     }
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
@@ -413,8 +413,8 @@ int get_sensor_data(SensorDataRaw_t *data) {
         return -1;
     }
     
-    /* 填充原始数据 */
-    data->pressure_kg = pressure_data.data.pressure.pressure_kg;
+    /* 填充原始数据 - 使用滤波后的压力值 */
+    data->pressure_kg = pressure_data.data.pressure.pressure_filtered_kg;
     /* 应用编码器方向系数 - 确保重物上升时位置增加 */
     data->encoder_position_m = encoder_data.data.encoder.rope_length_mm / 1000.0f * ENCODER_DIRECTION;
     /* 直接使用sensor_mgr_get_data计算的M/T法数据 */
@@ -499,9 +499,25 @@ void signal_handler(int sig) {
     printf("\n[INFO] Signal received, shutting down...\n");
     g_running = 0;
     
+    /* 紧急停止：立即停止电机和离合器，确保安全 */
+    printf("[EMERGENCY STOP] Stopping motor and clutch immediately...\n");
+    
+    /* 立即停止电机 - 直接调用底层接口，不通过异步缓冲区 */
+    if (g_motor.initialized) {
+        motor_set_velocity(&g_motor, 0);  /* 设置速度为0 */
+        motor_disable(&g_motor);           /* 失能电机 */
+        printf("[EMERGENCY STOP] Motor stopped and disabled\n");
+    }
+    
+    /* 立即停止离合器电流 */
+    if (g_power.initialized && g_power.state == POWER_STATE_ON) {
+        power_set_current(&g_power, 0);   /* 设置电流为0 */
+        power_deinit(&g_power);            /* 关闭电源 */
+        printf("[EMERGENCY STOP] Clutch current set to 0\n");
+    }
+    
     /* 确保保存编码器数据 */
     sensor_mgr_deinit(&g_sensor_mgr);
-    power_deinit(&g_power);
 }
 
 /******************************************************************************
@@ -531,7 +547,8 @@ static int check_sensors_impl(void) {
         return -1;
     }
     
-    printf("[CHECK PASS] Sensors OK (Pressure: %.3f kg, Encoder: %.3f m)\n",
+    printf("[CHECK PASS] Sensors OK (Pressure: %.3f kg filtered, %.3f kg raw, Encoder: %.3f m)\n",
+           pressure.data.pressure.pressure_filtered_kg,
            pressure.data.pressure.pressure_kg,
            encoder.data.encoder.rope_length_mm / 1000.0f);
     return 0;
@@ -597,10 +614,11 @@ static int check_safety_impl(void) {
         return -1;
     }
     
+    /* 安全检查使用原始压力值，确保能检测到真实的异常 */
     if (pressure.data.pressure.pressure_kg < SAFETY_PRESSURE_MIN_KG ||
         pressure.data.pressure.pressure_kg > SAFETY_PRESSURE_MAX_KG) {
-        printf("[CHECK FAIL] Pressure out of safety range: %.3f kg\n",
-               pressure.data.pressure.pressure_kg);
+        printf("[CHECK FAIL] Pressure out of safety range: %.3f kg (raw: %.3f kg)\n",
+               pressure.data.pressure.pressure_filtered_kg, pressure.data.pressure.pressure_kg);
         return -1;
     }
     
@@ -901,8 +919,8 @@ void start_logging(void) {
     
     g_log_file = fopen(g_log_filename, "w");
     if (g_log_file != NULL) {
-        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
-                "Time", "Current(A)", "TargetCurrent(A)", "Voltage(V)", "Pressure(kg)", "F0(kg)", "DeltaF",
+        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
+                "Time", "Current(A)", "TargetCurrent(A)", "Voltage(V)", "PressureRaw(kg)", "PressureFiltered(kg)", "F0(kg)", "DeltaF",
                 "PI_P(mA)", "PI_I(mA)",
                 "RopeLength(m)", "EncoderValue", "EncoderAngle(deg)", "MotorSpeed(rpm)",
                 "MotorLinearVel(m/s)", "MotorTheoryVel(m/s)", "MotorPosition(m)",
@@ -961,8 +979,11 @@ static void* data_collection_thread(void* arg) {
             encoder_angle = encoder_data.data.encoder.angle_deg;
             rope_length_m = encoder_data.data.encoder.rope_length_mm / 1000.0f;
         }
+        
+        float pressure_raw_kg = 0.0f;  /* 原始压力值（未滤波） */
         if (pressure_ok) {
-            pressure_kg = pressure_data.data.pressure.pressure_kg;
+            pressure_raw_kg = pressure_data.data.pressure.pressure_kg;           /* 原始值 */
+            pressure_kg = pressure_data.data.pressure.pressure_filtered_kg;      /* 滤波后值 */
         }
         
         /* ========== 第二步：更新数据到共享缓冲区 ========== */
@@ -1032,9 +1053,9 @@ static void* data_collection_thread(void* arg) {
 
             /* 在手动模式下，记录effective_f0而不是共享状态中的F0 */
             float log_f0_kg = (pressure_f0_kg != 0.0f) ? pressure_f0_kg : effective_f0;
-            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
+            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
                     time_str,
-                    current_a, target_current_a, voltage_v, pressure_kg, log_f0_kg, pressure_deltaf,
+                    current_a, target_current_a, voltage_v, pressure_raw_kg, pressure_kg, log_f0_kg, pressure_deltaf,
                     pi_p_term_mA, pi_i_term_mA, rope_length_m,
                     encoder_value, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,

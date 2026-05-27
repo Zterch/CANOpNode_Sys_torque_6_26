@@ -105,6 +105,15 @@ ErrorCode_t pressure_init(PressureDriver_t *pressure, const char *device,
     pressure->decimal_places = PRESSURE_DECIMAL_PLACES;
     pressure->zero_offset = 0.0f;
     
+    /* 初始化低通滤波器参数 - 截止频率9Hz，采样率50Hz
+     * 使用一阶低通滤波器: alpha = 1 / (1 + 2*pi*fc/fs)
+     * fc = 9Hz, fs = 50Hz
+     * alpha = 1 / (1 + 2*pi*9/50) ≈ 0.469
+     */
+    pressure->lpf_alpha = 0.469f;
+    pressure->lpf_initialized = 0;
+    pressure->pressure_filtered = 0.0f;
+    
     if (pthread_mutex_init(&pressure->mutex, NULL) != 0) {
         return ERR_GENERAL;
     }
@@ -276,4 +285,54 @@ ErrorCode_t pressure_zero_calibration(PressureDriver_t *pressure)
              pressure->zero_offset, PRESSURE_UNIT);
     
     return ERR_OK;
+}
+
+ErrorCode_t pressure_read_filtered(PressureDriver_t *pressure, float *value)
+{
+    if (pressure == NULL || !pressure->initialized || value == NULL) {
+        return ERR_INVALID_PARAM;
+    }
+    
+    /* 先读取原始压力值 */
+    float raw_value;
+    ErrorCode_t ret = pressure_read(pressure, &raw_value);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    
+    pthread_mutex_lock(&pressure->mutex);
+    
+    /* 应用低通滤波器 - 一阶IIR滤波
+     * y[n] = alpha * x[n] + (1-alpha) * y[n-1]
+     * alpha = 0.469, 截止频率约9Hz @ 50Hz采样率
+     */
+    if (!pressure->lpf_initialized) {
+        /* 第一次读取，直接赋值 */
+        pressure->pressure_filtered = raw_value;
+        pressure->lpf_initialized = 1;
+    } else {
+        /* 应用滤波器 */
+        pressure->pressure_filtered = pressure->lpf_alpha * raw_value + 
+                                      (1.0f - pressure->lpf_alpha) * pressure->pressure_filtered;
+    }
+    
+    *value = pressure->pressure_filtered;
+    
+    pthread_mutex_unlock(&pressure->mutex);
+    
+    return ERR_OK;
+}
+
+void pressure_filter_reset(PressureDriver_t *pressure)
+{
+    if (pressure == NULL || !pressure->initialized) {
+        return;
+    }
+    
+    pthread_mutex_lock(&pressure->mutex);
+    pressure->lpf_initialized = 0;
+    pressure->pressure_filtered = 0.0f;
+    pthread_mutex_unlock(&pressure->mutex);
+    
+    LOG_INFO(LOG_MODULE_PRESSURE, "Pressure filter reset");
 }

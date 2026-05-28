@@ -69,8 +69,8 @@ extern "C" {
 #define MOTOR_SPEED_COMPENSATION_C      0.0f        /* 电机速度补偿系数 - 新算法中不再使用，保留兼容性 */
 
 /* 离合器电流PI控制参数 - 增量式PID */
-#define CLUTCH_PI_KP                    8.00f       /* 电流PI比例系数 - 增量式PID需要较小值 */
-#define CLUTCH_PI_KI                    5.00f      /* 电流PI积分系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_KP                    50.00f       /* 电流PI比例系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_KI                    30.00f      /* 电流PI积分系数 - 增量式PID需要较小值 */
 #define CLUTCH_PI_INTEGRAL_LIMIT        100.0f     /* 电流PI积分限幅 */
 
 /* 摩擦力方向控制 - 用于测试

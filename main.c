@@ -200,6 +200,10 @@ typedef struct {
     /* PI控制数据 */
     float pi_p_term_mA;             /* PI控制P项（比例项） */
     float pi_i_term_mA;             /* PI控制I项（积分项） */
+    /* 前馈控制数据 */
+    float feedforward_current_mA;   /* 前馈电流值 */
+    /* 算法内部数据 */
+    float algo_deltaf_kg;           /* 算法实际使用的DeltaF（用于数据一致性验证） */
 } SharedStateBuffer_t;
 
 static SharedStateBuffer_t g_shared_state;
@@ -379,6 +383,22 @@ void update_pi_terms(float p_term_mA, float i_term_mA) {
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
+/* 更新前馈电流到共享状态（供数据收集线程读取） */
+void update_feedforward_current(float feedforward_mA) {
+    pthread_mutex_lock(&g_shared_state.mutex);
+    g_shared_state.feedforward_current_mA = feedforward_mA;
+    pthread_mutex_unlock(&g_shared_state.mutex);
+}
+
+/* 同时更新前馈电流、目标电流和算法DeltaF到共享状态（确保数据一致性） */
+void update_feedforward_and_target(float feedforward_mA, float target_mA, float deltaf_kg) {
+    pthread_mutex_lock(&g_shared_state.mutex);
+    g_shared_state.feedforward_current_mA = feedforward_mA;
+    g_shared_state.target_current_a = target_mA / 1000.0f;  // mA -> A
+    g_shared_state.algo_deltaf_kg = deltaf_kg;              // 算法实际使用的DeltaF
+    pthread_mutex_unlock(&g_shared_state.mutex);
+}
+
 uint32_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -483,10 +503,9 @@ int set_clutch_current(float current_mA) {
     g_actuator_target.clutch_target_updated = 1;
     pthread_mutex_unlock(&g_actuator_target.mutex);
     
-    /* 同时更新到共享状态，确保数据一致性 */
-    pthread_mutex_lock(&g_shared_state.mutex);
-    g_shared_state.target_current_a = current_mA / 1000.0f;  // mA -> A
-    pthread_mutex_unlock(&g_shared_state.mutex);
+    /* 注意：target_current_a现在由update_feedforward_and_target统一更新
+     * 以确保前馈电流和目标电流的一致性
+     */
 
     return 0;
 }
@@ -919,9 +938,9 @@ void start_logging(void) {
     
     g_log_file = fopen(g_log_filename, "w");
     if (g_log_file != NULL) {
-        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
+        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
                 "Time", "Current(A)", "TargetCurrent(A)", "Voltage(V)", "PressureRaw(kg)", "PressureFiltered(kg)", "F0(kg)", "DeltaF",
-                "PI_P(mA)", "PI_I(mA)",
+                "PI_P(mA)", "PI_I(mA)", "Feedforward(mA)", "AlgoDeltaF(kg)",
                 "RopeLength(m)", "EncoderValue", "EncoderAngle(deg)", "MotorSpeed(rpm)",
                 "MotorLinearVel(m/s)", "MotorTheoryVel(m/s)", "MotorPosition(m)",
                 "RopeVelocityRaw(m/s)", "RopeVelocityFiltered(m/s)");
@@ -1006,6 +1025,8 @@ static void* data_collection_thread(void* arg) {
         float pressure_f0_kg = 0.0f, pressure_deltaf = 0.0f;
         float pi_p_term_mA = 0.0f, pi_i_term_mA = 0.0f;
         float target_current_a = 0.0f;
+        float feedforward_current_mA = 0.0f;
+        float algo_deltaf_kg = 0.0f;
         
         /* 使用单个锁，原子性读取所有数据，确保一致性 */
         pthread_mutex_lock(&g_shared_state.mutex);
@@ -1021,6 +1042,8 @@ static void* data_collection_thread(void* arg) {
         pi_p_term_mA = g_shared_state.pi_p_term_mA;
         pi_i_term_mA = g_shared_state.pi_i_term_mA;
         target_current_a = g_shared_state.target_current_a;
+        feedforward_current_mA = g_shared_state.feedforward_current_mA;
+        algo_deltaf_kg = g_shared_state.algo_deltaf_kg;
         pthread_mutex_unlock(&g_shared_state.mutex);
         
         /* 计算DeltaF：使用当前实时压力和F0 */
@@ -1053,10 +1076,10 @@ static void* data_collection_thread(void* arg) {
 
             /* 在手动模式下，记录effective_f0而不是共享状态中的F0 */
             float log_f0_kg = (pressure_f0_kg != 0.0f) ? pressure_f0_kg : effective_f0;
-            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
+            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
                     time_str,
                     current_a, target_current_a, voltage_v, pressure_raw_kg, pressure_kg, log_f0_kg, pressure_deltaf,
-                    pi_p_term_mA, pi_i_term_mA, rope_length_m,
+                    pi_p_term_mA, pi_i_term_mA, feedforward_current_mA, algo_deltaf_kg, rope_length_m,
                     encoder_value, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,
                     rope_vel_raw, rope_vel_filtered);

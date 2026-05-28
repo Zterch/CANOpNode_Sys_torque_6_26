@@ -23,6 +23,8 @@ extern void update_rope_velocity(float raw_velocity, float filtered_velocity);
 extern void update_motor_theory_velocity(float theory_velocity);
 extern void update_pressure_f0_deltaf(float f0_kg, float deltaf);
 extern void update_pi_terms(float p_term_mA, float i_term_mA);
+extern void update_feedforward_current(float feedforward_mA);
+extern void update_feedforward_and_target(float feedforward_mA, float target_mA, float deltaf_kg);
 
 /* 摩擦力方向控制全局变量
  * 0: 双向控制（正常模式）
@@ -361,8 +363,10 @@ static void process_sensor_data(GravityUnloadController_t *ctrl,
                                 SensorDataFiltered_t *filtered) {
     if (ctrl == NULL || raw == NULL || filtered == NULL) return;
 
-    /* 压力平均值滤波 */
-    float filtered_pressure = pressure_filter_update(ctrl, raw->pressure_kg);
+    /* 压力值直接使用传感器管理器提供的滤波后值（陷波滤波器已处理）
+     * 不再进行额外的滑动平均滤波，避免双重滤波导致的延迟
+     */
+    float filtered_pressure = raw->pressure_kg;
     filtered->pressure_kg = filtered_pressure;
 
     /* F0校准 */
@@ -522,6 +526,9 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     
     /* 更新PI项到共享状态（用于数据采集） */
     update_pi_terms(pi_p_term_mA, pi_i_term_mA);
+    
+    /* 同时更新前馈电流、目标电流和算法DeltaF到共享状态（确保数据一致性） */
+    update_feedforward_and_target(feedforward_current_mA, current_mA, delta_f_kg);
 
     /* 限制电流范围 */
     if (output->clutch_current_mA < 0.0f) {

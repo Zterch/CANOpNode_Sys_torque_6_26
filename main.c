@@ -21,6 +21,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include <termios.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "config/system_config.h"
 #include "utils/logger.h"
@@ -63,6 +65,11 @@ static pthread_t g_collection_thread_tid;
 static pthread_t g_motor_state_thread_tid;
 static pthread_t g_power_state_thread_tid;
 static pthread_t g_actuator_thread_tid;  /* 异步执行器控制线程 */
+
+/* 函数前置声明 */
+void start_logging(void);
+void stop_logging(void);
+void update_pi_terms(float p_term_mA, float i_term_mA, float d_term_mA);
 
 /******************************************************************************
  * 异步执行器控制 - 工业级严格周期控制关键
@@ -197,13 +204,17 @@ typedef struct {
     /* 压力传感器数据 */
     float pressure_f0_kg;           /* 静止时压力值F0 */
     float pressure_deltaf;          /* 摩擦力变化量dF */
-    /* PI控制数据 */
-    float pi_p_term_mA;             /* PI控制P项（比例项） */
-    float pi_i_term_mA;             /* PI控制I项（积分项） */
+    /* PID控制数据 */
+    float pi_p_term_mA;             /* PID控制P项（比例项） */
+    float pi_i_term_mA;             /* PID控制I项（积分项） */
+    float pi_d_term_mA;             /* PID控制D项（微分项） */
     /* 前馈控制数据 */
     float feedforward_current_mA;   /* 前馈电流值 */
     /* 算法内部数据 */
     float algo_deltaf_kg;           /* 算法实际使用的DeltaF（用于数据一致性验证） */
+    float algo_pressure_kg;         /* 算法实际使用的压力值（用于数据一致性验证） */
+    /* PI累积电流 */
+    float pi_last_current_mA;       /* PI部分累积电流last_current_mA（用于调试增量式PID） */
 } SharedStateBuffer_t;
 
 static SharedStateBuffer_t g_shared_state;
@@ -376,10 +387,11 @@ void update_pressure_f0_deltaf(float f0_kg, float deltaf) {
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
-void update_pi_terms(float p_term_mA, float i_term_mA) {
+void update_pi_terms(float p_term_mA, float i_term_mA, float d_term_mA) {
     pthread_mutex_lock(&g_shared_state.mutex);
     g_shared_state.pi_p_term_mA = p_term_mA;
     g_shared_state.pi_i_term_mA = i_term_mA;
+    g_shared_state.pi_d_term_mA = d_term_mA;
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
@@ -391,11 +403,19 @@ void update_feedforward_current(float feedforward_mA) {
 }
 
 /* 同时更新前馈电流、目标电流和算法DeltaF到共享状态（确保数据一致性） */
-void update_feedforward_and_target(float feedforward_mA, float target_mA, float deltaf_kg) {
+void update_feedforward_and_target(float feedforward_mA, float target_mA, float deltaf_kg, float pressure_kg) {
     pthread_mutex_lock(&g_shared_state.mutex);
     g_shared_state.feedforward_current_mA = feedforward_mA;
     g_shared_state.target_current_a = target_mA / 1000.0f;  // mA -> A
     g_shared_state.algo_deltaf_kg = deltaf_kg;              // 算法实际使用的DeltaF
+    g_shared_state.algo_pressure_kg = pressure_kg;          // 算法实际使用的压力值
+    pthread_mutex_unlock(&g_shared_state.mutex);
+}
+
+/* 更新PI累积电流到共享状态（供数据收集线程读取） */
+void update_pi_last_current(float last_current_mA) {
+    pthread_mutex_lock(&g_shared_state.mutex);
+    g_shared_state.pi_last_current_mA = last_current_mA;
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
@@ -925,27 +945,33 @@ static char g_log_filename[128];
 /* 开启日志记录 */
 void start_logging(void) {
     if (g_log_file != NULL) return;
-    
+
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
-    
-    snprintf(g_log_filename, sizeof(g_log_filename), 
+
+    snprintf(g_log_filename, sizeof(g_log_filename),
              "/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/logdata/gravity_data_%04d%02d%02d_%02d%02d%02d.csv",
              t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
              t->tm_hour, t->tm_min, t->tm_sec);
-    
+
     mkdir("/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/logdata", 0755);
-    
+
     g_log_file = fopen(g_log_filename, "w");
     if (g_log_file != NULL) {
-        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
+        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
                 "Time", "Current(A)", "TargetCurrent(A)", "Voltage(V)", "PressureRaw(kg)", "PressureFiltered(kg)", "F0(kg)", "DeltaF",
-                "PI_P(mA)", "PI_I(mA)", "Feedforward(mA)", "AlgoDeltaF(kg)",
+                "PI_P(mA)", "PI_I(mA)", "PI_D(mA)", "PI_LastCurrent(mA)", "Feedforward(mA)", "AlgoDeltaF(kg)", "AlgoPressure(kg)",
                 "RopeLength(m)", "EncoderValue", "EncoderAngle(deg)", "MotorSpeed(rpm)",
                 "MotorLinearVel(m/s)", "MotorTheoryVel(m/s)", "MotorPosition(m)",
                 "RopeVelocityRaw(m/s)", "RopeVelocityFiltered(m/s)");
         printf("[LOG] Started logging to: %s\n", g_log_filename);
         g_log_count = 0;
+
+        /* 开始记录时重置last_current_mA为0，确保从0开始累积 */
+        pthread_mutex_lock(&g_gravity_ctrl.mutex);
+        g_gravity_ctrl.last_current_mA = 0.0f;
+        pthread_mutex_unlock(&g_gravity_ctrl.mutex);
+        printf("[LOG] Reset last_current_mA to 0 for clean recording start\n");
     } else {
         printf("[ERROR] Failed to create log file: %s\n", g_log_filename);
     }
@@ -1023,10 +1049,12 @@ static void* data_collection_thread(void* arg) {
         float motor_theory_vel = 0.0f;
         float rope_vel_raw = 0.0f, rope_vel_filtered = 0.0f;
         float pressure_f0_kg = 0.0f, pressure_deltaf = 0.0f;
-        float pi_p_term_mA = 0.0f, pi_i_term_mA = 0.0f;
+        float pi_p_term_mA = 0.0f, pi_i_term_mA = 0.0f, pi_d_term_mA = 0.0f;
+        float pi_last_current_mA = 0.0f;
         float target_current_a = 0.0f;
         float feedforward_current_mA = 0.0f;
         float algo_deltaf_kg = 0.0f;
+        float algo_pressure_kg = 0.0f;
         
         /* 使用单个锁，原子性读取所有数据，确保一致性 */
         pthread_mutex_lock(&g_shared_state.mutex);
@@ -1041,27 +1069,28 @@ static void* data_collection_thread(void* arg) {
         pressure_f0_kg = g_shared_state.pressure_f0_kg;
         pi_p_term_mA = g_shared_state.pi_p_term_mA;
         pi_i_term_mA = g_shared_state.pi_i_term_mA;
+        pi_d_term_mA = g_shared_state.pi_d_term_mA;
+        pi_last_current_mA = g_shared_state.pi_last_current_mA;
         target_current_a = g_shared_state.target_current_a;
         feedforward_current_mA = g_shared_state.feedforward_current_mA;
         algo_deltaf_kg = g_shared_state.algo_deltaf_kg;
+        algo_pressure_kg = g_shared_state.algo_pressure_kg;
         pthread_mutex_unlock(&g_shared_state.mutex);
-        
-        /* 计算DeltaF：使用当前实时压力和F0 */
-        /* 如果算法未运行（pressure_f0_kg为0），使用手动模式计算的F0 */
-        float effective_f0;
+
+        /* 使用算法提供的DeltaF作为数据源，确保与AlgoDeltaF一致 */
+        /* 如果算法未运行（pressure_f0_kg为0），使用手动模式计算DeltaF */
         if (pressure_f0_kg != 0.0f) {
-            /* 算法运行中，使用算法的F0 */
-            effective_f0 = pressure_f0_kg;
+            /* 算法运行中，使用算法提供的DeltaF */
+            pressure_deltaf = algo_deltaf_kg;
         } else {
-            /* 手动模式：采集前50个点的平均压力作为F0 */
+            /* 手动模式：采集前50个点的平均压力作为F0，然后计算DeltaF */
             if (g_manual_f0_sample_count < MANUAL_F0_SAMPLE_COUNT) {
                 g_manual_f0_sum += pressure_kg;
                 g_manual_f0_sample_count++;
                 g_manual_f0_kg = g_manual_f0_sum / g_manual_f0_sample_count;
             }
-            effective_f0 = g_manual_f0_kg;
+            pressure_deltaf = pressure_kg - g_manual_f0_kg;
         }
-        pressure_deltaf = pressure_kg - effective_f0;
 
         /* 50Hz数据记录（集成到采集线程，避免锁竞争） */
         if (g_log_file != NULL && g_logging_enabled && (log_counter % 2 == 0)) {
@@ -1074,12 +1103,12 @@ static void* data_collection_thread(void* arg) {
             snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d.%06ld",
                      t->tm_hour, t->tm_min, t->tm_sec, (long)tv.tv_usec);
 
-            /* 在手动模式下，记录effective_f0而不是共享状态中的F0 */
-            float log_f0_kg = (pressure_f0_kg != 0.0f) ? pressure_f0_kg : effective_f0;
-            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
+            /* 在手动模式下，记录手动计算的F0 */
+            float log_f0_kg = (pressure_f0_kg != 0.0f) ? pressure_f0_kg : g_manual_f0_kg;
+            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
                     time_str,
                     current_a, target_current_a, voltage_v, pressure_raw_kg, pressure_kg, log_f0_kg, pressure_deltaf,
-                    pi_p_term_mA, pi_i_term_mA, feedforward_current_mA, algo_deltaf_kg, rope_length_m,
+                    pi_p_term_mA, pi_i_term_mA, pi_d_term_mA, pi_last_current_mA, feedforward_current_mA, algo_deltaf_kg, algo_pressure_kg, rope_length_m,
                     encoder_value, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,
                     rope_vel_raw, rope_vel_filtered);

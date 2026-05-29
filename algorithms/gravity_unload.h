@@ -71,10 +71,13 @@ typedef struct {
     int pressure_f0_calibrated;     /* F0是否已校准 */
     float pressure_f0_sum;          /* F0校准期间压力累加和 */
     int pressure_f0_sample_count;   /* F0校准期间采样计数 */
+    int pressure_stabilize_count;   /* 压力稳定延迟计数（算法启动后先稳定一段时间再校准） */
     
-    /* 离合器电流PI控制 - 增量式PID */
-    float clutch_pi_integral;       /* PI积分项 */
-    float last_deltaf;              /* 上一次的deltaf值 */
+    /* 离合器电流PID控制 - 增量式PID */
+    float clutch_pi_integral;       /* PID积分项 */
+    float clutch_pi_derivative;     /* PID微分项 */
+    float last_deltaf;              /* 上一次的deltaf值（用于计算微分） */
+    float last_last_deltaf;         /* 上上一次的deltaf值（用于增量式微分计算） */
     float last_current_mA;          /* 上一时刻的电流值（增量式PID需要） */
     
     /* 线程控制 */

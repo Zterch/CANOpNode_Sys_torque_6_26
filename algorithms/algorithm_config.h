@@ -66,12 +66,14 @@ extern "C" {
 #define FRICTION_DEADZONE_KG            0.05f        /* 摩擦力死区 (kg) - 设置0.5kg死区，避免微小波动触发频繁换向 */
 #define PRESSURE_F0_DEFAULT_KG          0.0f        /* 静止时压力默认值，运行时会自动校准 */
 #define PRESSURE_F0_CALIBRATION_SAMPLES 200         /* F0校准采样点数 (200点 = 4秒) - 增加校准时间提高稳定性 */
+#define PRESSURE_F0_STABILIZE_SAMPLES   100         /* F0校准前稳定延迟 (100点 = 2秒) - 算法启动后先稳定一段时间再校准 */
 #define MOTOR_SPEED_COMPENSATION_C      0.0f        /* 电机速度补偿系数 - 新算法中不再使用，保留兼容性 */
 
-/* 离合器电流PI控制参数 - 增量式PID */
-#define CLUTCH_PI_KP                    50.00f       /* 电流PI比例系数 - 增量式PID需要较小值 */
-#define CLUTCH_PI_KI                    30.00f      /* 电流PI积分系数 - 增量式PID需要较小值 */
-#define CLUTCH_PI_INTEGRAL_LIMIT        100.0f     /* 电流PI积分限幅 */
+/* 离合器电流PID控制参数 - 增量式PID */
+#define CLUTCH_PI_KP                    80.00f       /* 电流PID比例系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_KI                    0.00f       /* 电流PID积分系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_KD                    0.00f       /* 电流PID微分系数 - 增量式PID需要较小值，建议从0开始调试 */
+#define CLUTCH_PI_INTEGRAL_LIMIT        100.0f      /* 电流PID积分限幅 */
 
 /* 摩擦力方向控制 - 用于测试
  * 0: 双向控制（正常模式）

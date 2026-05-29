@@ -22,9 +22,10 @@ extern uint32_t get_timestamp_ms(void);
 extern void update_rope_velocity(float raw_velocity, float filtered_velocity);
 extern void update_motor_theory_velocity(float theory_velocity);
 extern void update_pressure_f0_deltaf(float f0_kg, float deltaf);
-extern void update_pi_terms(float p_term_mA, float i_term_mA);
+extern void update_pi_terms(float p_term_mA, float i_term_mA, float d_term_mA);
 extern void update_feedforward_current(float feedforward_mA);
-extern void update_feedforward_and_target(float feedforward_mA, float target_mA, float deltaf_kg);
+extern void update_feedforward_and_target(float feedforward_mA, float target_mA, float deltaf_kg, float pressure_kg);
+extern void update_pi_last_current(float last_current_mA);
 
 /* 摩擦力方向控制全局变量
  * 0: 双向控制（正常模式）
@@ -55,7 +56,7 @@ static void calibrate_pressure_f0(GravityUnloadController_t *ctrl, float pressur
 static float calculate_motor_speed_by_friction(GravityUnloadController_t *ctrl,
                                                 float filtered_pressure_kg,
                                                 float pulley_velocity_rpm);
-
+static float_t integral_sum = 0.0f;  /* 积分累积和 - 必须在init和reset中清零 */
 /******************************************************************************
  * 初始化与反初始化
  ******************************************************************************/
@@ -63,7 +64,17 @@ static float calculate_motor_speed_by_friction(GravityUnloadController_t *ctrl,
 int gravity_unload_init(GravityUnloadController_t *ctrl) {
     if (ctrl == NULL) return -1;
     
-    memset(ctrl, 0, sizeof(GravityUnloadController_t));
+    /* 使用volatile防止编译器优化，确保所有字段被清零 */
+    volatile GravityUnloadController_t *vctrl = ctrl;
+    memset((void *)vctrl, 0, sizeof(GravityUnloadController_t));
+    
+    /* 显式清零关键字段（不依赖memset） */
+    ctrl->pressure_f0_kg = 0.0f;
+    ctrl->pressure_f0_calibrated = 0;
+    ctrl->pressure_f0_sum = 0.0f;
+    ctrl->pressure_f0_sample_count = 0;
+    ctrl->pressure_stabilize_count = 0;  /* 稳定延迟计数器清零 */
+    ctrl->last_current_mA = 0.0f;
     
     /* 初始化配置参数 */
     ctrl->pulley_r1_m = PULLEY_R1_MOTOR_RADIUS_M;
@@ -79,10 +90,6 @@ int gravity_unload_init(GravityUnloadController_t *ctrl) {
     memset(ctrl->pressure_buffer, 0, sizeof(ctrl->pressure_buffer));
     ctrl->pressure_buffer_index = 0;
     ctrl->pressure_buffer_count = 0;
-    ctrl->pressure_f0_kg = PRESSURE_F0_DEFAULT_KG;
-    ctrl->pressure_f0_calibrated = 0;
-    ctrl->pressure_f0_sum = 0.0f;
-    ctrl->pressure_f0_sample_count = 0;
 
     diff_init(&ctrl->position_diff, 0.0f);  /* 位置微分不使用LPF，避免双重滤波 */
     
@@ -91,10 +98,13 @@ int gravity_unload_init(GravityUnloadController_t *ctrl) {
              PID_OUTPUT_MIN, PID_OUTPUT_MAX, ALGO_CONTROL_PERIOD_S);
     ctrl->pid.integral_limit = PID_INTEGRAL_LIMIT;
     
-    /* 初始化离合器电流PI控制 - 增量式前馈+PID */
+    /* 初始化离合器电流PID控制 - 增量式前馈+PID */
     ctrl->clutch_pi_integral = 0.0f;
+    ctrl->clutch_pi_derivative = 0.0f;
     ctrl->last_deltaf = 0.0f;
-    ctrl->last_current_mA = 0.0f;  /* PI部分初始值为0（前馈部分单独计算） */
+    ctrl->last_last_deltaf = 0.0f;
+    ctrl->last_current_mA = 0.0f;  /* PID部分初始值为0（前馈部分单独计算） */
+    integral_sum = 0.0f;  /* 清零积分累积和 */
     
     /* 初始化安全监控 */
     safety_monitor_init(&ctrl->safety);
@@ -242,15 +252,19 @@ void gravity_unload_reset(GravityUnloadController_t *ctrl) {
     ctrl->pressure_f0_calibrated = 0;
     ctrl->pressure_f0_sum = 0.0f;
     ctrl->pressure_f0_sample_count = 0;
+    ctrl->pressure_stabilize_count = 0;  /* 稳定延迟计数器清零 */
     diff_reset(&ctrl->position_diff);
     
     /* 重置PID */
     pid_reset(&ctrl->pid);
     
-    /* 重置离合器电流PI控制 - 增量式前馈+PID */
+    /* 重置离合器电流PID控制 - 增量式前馈+PID */
     ctrl->clutch_pi_integral = 0.0f;
+    ctrl->clutch_pi_derivative = 0.0f;
     ctrl->last_deltaf = 0.0f;
-    ctrl->last_current_mA = 0.0f;  /* PI部分初始值为0（前馈部分单独计算） */
+    ctrl->last_last_deltaf = 0.0f;
+    ctrl->last_current_mA = 0.0f;  /* PID部分初始值为0（前馈部分单独计算） */
+    integral_sum = 0.0f;  /* 清零积分累积和 */
     
     /* 重置安全监控 */
     safety_clear_emergency_stop(&ctrl->safety);
@@ -304,15 +318,30 @@ static void calibrate_pressure_f0(GravityUnloadController_t *ctrl, float pressur
 
     /* 首次运行或需要重新校准时，使用一段时间内的平均压力值作为F0 */
     if (!ctrl->pressure_f0_calibrated) {
+        /* F0校准期间，强制pressure_f0_kg为0，避免显示未校准的F0值 */
+        ctrl->pressure_f0_kg = 0.0f;
+
+        /* 先进行稳定延迟，让系统稳定后再开始校准 */
+        if (ctrl->pressure_stabilize_count < PRESSURE_F0_STABILIZE_SAMPLES) {
+            ctrl->pressure_stabilize_count++;
+            if (ctrl->pressure_stabilize_count == PRESSURE_F0_STABILIZE_SAMPLES) {
+                printf("[GRAVITY_UNLOAD] Pressure stabilization complete, starting F0 calibration...\n");
+            }
+            return;  /* 稳定期间不进行校准 */
+        }
+
         /* 累加压力值 */
         ctrl->pressure_f0_sum += pressure_kg;
         ctrl->pressure_f0_sample_count++;
-        
+
         /* 采集够指定样本数后，计算平均值作为F0 */
         if (ctrl->pressure_f0_sample_count >= PRESSURE_F0_CALIBRATION_SAMPLES) {
             ctrl->pressure_f0_kg = ctrl->pressure_f0_sum / ctrl->pressure_f0_sample_count;
             ctrl->pressure_f0_calibrated = 1;
-            printf("[GRAVITY_UNLOAD] F0 calibrated: %.3f kg (avg of %d samples)\n", 
+            /* F0校准完成后，清零积分累积和与last_current_mA，确保从0开始 */
+            integral_sum = 0.0f;
+            ctrl->last_current_mA = 0.0f;
+            printf("[GRAVITY_UNLOAD] F0 calibrated: %.3f kg (avg of %d samples), integral_sum and last_current reset to 0\n",
                    ctrl->pressure_f0_kg, ctrl->pressure_f0_sample_count);
         }
     }
@@ -435,6 +464,8 @@ static void process_sensor_data(GravityUnloadController_t *ctrl,
 static void calculate_control_output(GravityUnloadController_t *ctrl,
                                      const SensorDataFiltered_t *filtered,
                                      ControlOutput_t *output) {
+
+    
     if (ctrl == NULL || filtered == NULL || output == NULL) return;
 
     /* 计算DeltaF（压力变化量）
@@ -471,45 +502,60 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     /* 限制前馈电流范围 */
     if (feedforward_current_mA < 50.0f) {
         feedforward_current_mA = 50.0f;
-    } else if (feedforward_current_mA > 110.0f) {
-        feedforward_current_mA = 110.0f;
+    } else if (feedforward_current_mA > 900.0f) {
+        feedforward_current_mA = 900.0f;
     }
     
     /* 增量式PID计算 - 用于微调 */
+
     /* 比例项增量：Kp * DeltaF */
     float proportional_increment = CLUTCH_PI_KP * delta_f_kg;
-    
+
     /* 积分项增量：Ki * DeltaF * dt */
-    float integral_increment = CLUTCH_PI_KI * delta_f_kg * ALGO_CONTROL_PERIOD_S;
-    
-    /* 总增量 = 比例增量 + 积分增量 */
-    float total_increment = proportional_increment + integral_increment;
-    
-    /* 计算PI部分电流：I_pi(k) = I_pi(k-1) + 总增量 */
+    integral_sum += delta_f_kg * ALGO_CONTROL_PERIOD_S;
+    float integral_increment = CLUTCH_PI_KI * integral_sum;
+
+    /* 微分项增量：Kd * (DeltaF(k) - 2*DeltaF(k-1) + DeltaF(k-2)) */
+    /* 增量式PID的微分项：Kd * (e(k) - 2*e(k-1) + e(k-2)) */
+    float derivative_increment = CLUTCH_PI_KD * (delta_f_kg - 2.0f * ctrl->last_deltaf + ctrl->last_last_deltaf);
+
+    /* 检测DeltaF变号，重置PID累积 - 必须在计算pi_current_mA之前！ */
+
+    /* 总增量 = 比例增量 + 积分增量 + 微分增量 */
+    float total_increment = proportional_increment + integral_increment + derivative_increment;
+
+    /* 计算PID部分电流：I_pid(k) = I_pid(k-1) + 总增量 */
     float pi_current_mA = ctrl->last_current_mA + total_increment;
-    
+
     /* 积分分离：当输出达到限幅时，停止积分累积，防止积分饱和 */
     if ((pi_current_mA <= 0.0f && delta_f_kg < 0.0f) ||       /* 电流已到下限且DeltaF仍为负 */
         (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg > 0.0f)) {  /* 电流已到上限且DeltaF仍为正 */
         /* 达到限幅，不更新积分 */
     } else {
-        /* 累积积分项（用于显示和数据记录） */
-        ctrl->clutch_pi_integral += integral_increment;
+        /* 更新积分项（不是累积，而是直接等于Ki * integral_sum） */
+        ctrl->clutch_pi_integral = integral_increment;
     }
-    
+
     /* 积分限幅 */
     if (ctrl->clutch_pi_integral > CLUTCH_PI_INTEGRAL_LIMIT) {
         ctrl->clutch_pi_integral = CLUTCH_PI_INTEGRAL_LIMIT;
     } else if (ctrl->clutch_pi_integral < -CLUTCH_PI_INTEGRAL_LIMIT) {
         ctrl->clutch_pi_integral = -CLUTCH_PI_INTEGRAL_LIMIT;
     }
-    
-    /* 计算PI输出（用于显示和数据记录） */
-    float pi_p_term_mA = CLUTCH_PI_KP * delta_f_kg;  /* P项（比例项） */
-    float pi_i_term_mA = ctrl->clutch_pi_integral;    /* I项（积分项） */
 
-    /* 计算总电流：前馈 + PI */
+    /* 更新微分项（用于显示和数据记录） */
+    ctrl->clutch_pi_derivative = CLUTCH_PI_KD * (delta_f_kg - ctrl->last_deltaf);
+
+    /* 计算PID输出（用于显示和数据记录） */
+    float pi_p_term_mA = CLUTCH_PI_KP * delta_f_kg;                    /* P项（比例项） */
+    float pi_i_term_mA = ctrl->clutch_pi_integral;                     /* I项（积分项） */
+    float pi_d_term_mA = ctrl->clutch_pi_derivative;                   /* D项（微分项） */
+
+    /* 计算总电流：前馈 + PID */
     float current_mA = feedforward_current_mA + pi_current_mA;
+    
+    /* 保存计算后的电流值（限制前）用于数据记录 */
+    float current_mA_raw = current_mA;
     
     /* 限制总电流范围 */
     if (current_mA < 0.0f) {
@@ -518,17 +564,30 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
         current_mA = SAFETY_CLUTCH_CURRENT_MAX_MA;
     }
     
-    /* 保存PI部分电流作为下一时刻的上一时刻值 */
-    ctrl->last_current_mA = pi_current_mA;
-    
+    /* 保存PID历史值用于下一时刻计算 */
+    /* 只有F0校准完成后才更新历史值，避免校准期间累积误差 */
+    if (ctrl->pressure_f0_calibrated) {
+        ctrl->last_last_deltaf = ctrl->last_deltaf;  /* 保存上上一次的DeltaF */
+        ctrl->last_deltaf = delta_f_kg;              /* 保存上一次的DeltaF */
+        ctrl->last_current_mA = pi_current_mA;       /* 保存上一时刻的电流值 */
+    } else {
+        ctrl->last_last_deltaf = 0.0f;  /* F0校准期间保持为0 */
+        ctrl->last_deltaf = 0.0f;       /* F0校准期间保持为0 */
+        ctrl->last_current_mA = 0.0f;   /* F0校准期间保持为0 */
+    }
+
     /* 输出最终电流 */
     output->clutch_current_mA = current_mA;
-    
-    /* 更新PI项到共享状态（用于数据采集） */
-    update_pi_terms(pi_p_term_mA, pi_i_term_mA);
+
+    /* 更新PID项到共享状态（用于数据采集） */
+    update_pi_terms(pi_p_term_mA, pi_i_term_mA, pi_d_term_mA);
+
+    /* 更新PI累积电流到共享状态（用于调试增量式PID） */
+    update_pi_last_current(ctrl->last_current_mA);
     
     /* 同时更新前馈电流、目标电流和算法DeltaF到共享状态（确保数据一致性） */
-    update_feedforward_and_target(feedforward_current_mA, current_mA, delta_f_kg);
+    /* 传入限制前的电流值，便于调试分析 */
+    update_feedforward_and_target(feedforward_current_mA, current_mA_raw, delta_f_kg, filtered->pressure_kg);
 
     /* 限制电流范围 */
     if (output->clutch_current_mA < 0.0f) {
@@ -609,7 +668,7 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     /* 使用PID控制器跟踪目标速度 */
     float pid_output = pid_update(&ctrl->pid, target_motor_speed, output->motor_velocity_actual);
 
-    output->motor_velocity_cmd = 150.0f;//-pid_output;
+    output->motor_velocity_cmd = 300.0f;//-pid_output;
     output->timestamp_ms = filtered->timestamp_ms;
 }
 

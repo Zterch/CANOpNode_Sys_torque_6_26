@@ -80,19 +80,39 @@ def analyze_gravity_performance(csv_file):
     print(f"  标准差: {steady_error.std():.3f} kg")
     print(f"  最大偏差: {steady_error.abs().max():.3f} kg")
     
-    # 从CSV读取真实的PI控制项数据
+    # 从CSV读取真实的PID控制项数据
     # 如果CSV中有PI_P(mA)和PI_I(mA)列，使用真实数据
     if 'PI_P(mA)' in df.columns and 'PI_I(mA)' in df.columns:
         # 使用采集的真实数据
         p_term = df['PI_P(mA)']
         i_term = df['PI_I(mA)']
-        pi_output = p_term + i_term
+        # 读取D项（如果存在）
+        if 'PI_D(mA)' in df.columns:
+            d_term = df['PI_D(mA)']
+            has_d_term = True
+            pi_output = p_term + i_term + d_term
+        else:
+            d_term = None
+            has_d_term = False
+            pi_output = p_term + i_term
         using_real_data = True
-        
-        print(f"\n【PI控制分析 - 使用真实采集数据】")
+
+        # 读取PI累积电流（last_current_mA）
+        if 'PI_LastCurrent(mA)' in df.columns:
+            pi_last_current = df['PI_LastCurrent(mA)']
+            has_last_current = True
+        else:
+            pi_last_current = None
+            has_last_current = False
+
+        print(f"\n【PID控制分析 - 使用真实采集数据】")
         print(f"P项范围: {p_term.min():.2f} ~ {p_term.max():.2f} mA")
         print(f"I项范围: {i_term.min():.2f} ~ {i_term.max():.2f} mA")
-        print(f"PI输出范围: {pi_output.min():.2f} ~ {pi_output.max():.2f} mA")
+        if has_d_term:
+            print(f"D项范围: {d_term.min():.2f} ~ {d_term.max():.2f} mA")
+        print(f"PID输出范围: {pi_output.min():.2f} ~ {pi_output.max():.2f} mA")
+        if has_last_current:
+            print(f"PID累积电流(LastCurrent)范围: {pi_last_current.min():.2f} ~ {pi_last_current.max():.2f} mA")
     else:
         # 从配置文件中读取参数并计算
         import re
@@ -395,24 +415,92 @@ def analyze_gravity_performance(csv_file):
     ax8.legend()
     ax8.grid(True, alpha=0.3)
     
-    # 图8b: 力传感器（压力）和实际电流的关系（新增）
+    # 图8b: 力传感器（压力）和实际电流的关系 - 电流变化段局部放大（新增）
     ax8b = fig.add_subplot(gs[5, 1])
-    ax8b.plot(df['Time_sec'], pressure, label='Pressure (Force)', color='blue', linewidth=2)
-    ax8b_twin = ax8b.twinx()
-    ax8b_twin.plot(df['Time_sec'], current, label='Actual Current', color='red', linewidth=2, linestyle='--')
-    ax8b.set_xlabel('Time (s)')
+    
+    # 找到电流快速上升的时间段（更精确的检测）
+    current_change_threshold = (current.max() - current.min()) * 0.05  # 5%阈值，更敏感
+    current_change_mask = (current - current.min()) > current_change_threshold
+    change_indices = np.where(current_change_mask)[0]
+    
+    if len(change_indices) > 0:
+        # 找到电流快速上升的起始点（斜率最大的区域）
+        current_diff = np.diff(current)
+        max_rise_idx = np.argmax(current_diff)  # 找到电流上升最快的点
+        
+        # 以最快上升点为中心，前后各取15个点（约300ms，50Hz采样）
+        zoom_center_idx = max_rise_idx
+        zoom_start_idx = max(0, zoom_center_idx - 15)
+        zoom_end_idx = min(len(df) - 1, zoom_center_idx + 15)
+        zoom_start_time = df['Time_sec'].iloc[zoom_start_idx]
+        zoom_end_idx = min(len(df) - 1, zoom_center_idx + 25)
+        zoom_end_time = df['Time_sec'].iloc[zoom_end_idx]
+        
+        # 局部放大显示
+        zoom_mask = (df['Time_sec'] >= zoom_start_time) & (df['Time_sec'] <= zoom_end_time)
+        time_ms = (df['Time_sec'][zoom_mask] - zoom_start_time) * 1000  # 转换为毫秒，从0开始
+        
+        ax8b.plot(time_ms, pressure[zoom_mask], label='Pressure (Force)', color='blue', linewidth=2.5, marker='o', markersize=4)
+        ax8b_twin = ax8b.twinx()
+        ax8b_twin.plot(time_ms, current[zoom_mask], label='Actual Current', color='red', linewidth=2.5, linestyle='--', marker='s', markersize=4)
+        
+        # 设置标题显示放大区间（精确到毫秒）
+        duration_ms = (zoom_end_time - zoom_start_time) * 1000
+        ax8b.set_title(f'Pressure vs Current (ZOOM: {duration_ms:.0f}ms window, {zoom_start_time:.3f}s start)', 
+                      fontsize=10, fontweight='bold')
+        
+        # X轴显示毫秒
+        ax8b.set_xlabel('Time (ms)', fontsize=11)
+        
+        # 标记重量添加时间点（转换为相对毫秒）
+        if weight_add_time is not None and zoom_start_time <= weight_add_time <= zoom_end_time:
+            weight_add_ms = (weight_add_time - zoom_start_time) * 1000
+            ax8b.axvline(x=weight_add_ms, color='orange', linestyle='--', linewidth=2, alpha=0.8, label='Weight Added')
+            
+        # 添加网格线便于读数
+        ax8b.grid(True, alpha=0.4, linestyle=':')
+        ax8b_twin.grid(False)
+        
+        # 计算并显示延迟
+        pressure_zoom = pressure[zoom_mask].values
+        current_zoom = current[zoom_mask].values
+        time_zoom_ms = time_ms.values
+        
+        # 找到压力上升50%和电流上升50%的时间点
+        pressure_50 = pressure_zoom.min() + (pressure_zoom.max() - pressure_zoom.min()) * 0.5
+        current_50 = current_zoom.min() + (current_zoom.max() - current_zoom.min()) * 0.5
+        
+        pressure_50_idx = np.argmin(np.abs(pressure_zoom - pressure_50))
+        current_50_idx = np.argmin(np.abs(current_zoom - current_50))
+        
+        delay_ms = time_zoom_ms[current_50_idx] - time_zoom_ms[pressure_50_idx]
+        
+        # 在图上标注延迟
+        ax8b.text(0.05, 0.95, f'Delay: {delay_ms:.1f}ms\n(Pressure→Current 50% rise)', 
+                 transform=ax8b.transAxes, fontsize=9, verticalalignment='top',
+                 bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
+        
+        # 标记50%上升点
+        ax8b.axvline(x=time_zoom_ms[pressure_50_idx], color='blue', linestyle=':', linewidth=1.5, alpha=0.6)
+        ax8b_twin.axvline(x=time_zoom_ms[current_50_idx], color='red', linestyle=':', linewidth=1.5, alpha=0.6)
+        
+    else:
+        # 如果没有明显的电流变化，显示全图
+        ax8b.plot(df['Time_sec'], pressure, label='Pressure (Force)', color='blue', linewidth=2)
+        ax8b_twin = ax8b.twinx()
+        ax8b_twin.plot(df['Time_sec'], current, label='Actual Current', color='red', linewidth=2, linestyle='--')
+        ax8b.set_title('Pressure vs Current Relationship (Full View)')
+        ax8b.set_xlabel('Time (s)')
+        
+        # 标记关键时间点
+        if weight_add_time is not None:
+            ax8b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
+    
     ax8b.set_ylabel('Pressure (kg)', color='blue')
     ax8b_twin.set_ylabel('Current (mA)', color='red')
-    ax8b.set_title('Pressure vs Current Relationship')
     ax8b.legend(loc='upper left')
     ax8b_twin.legend(loc='upper right')
     ax8b.grid(True, alpha=0.3)
-    
-    # 标记关键时间点
-    if weight_add_time is not None:
-        ax8b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
-    if stable_time is not None:
-        ax8b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
     
     # 图9: 压力误差分析
     ax9 = fig.add_subplot(gs[6, 0])
@@ -518,146 +606,143 @@ Weight added event not detected
     print(f"\n总览图表已保存: {output_file}")
     plt.close()
     
-    # 创建第二个图表 - PI控制项放大图
-    fig2, axes = plt.subplots(3, 1, figsize=(16, 12))
-    fig2.suptitle('PI Control Components - Detailed View', fontsize=16, fontweight='bold')
-    
-    # 子图1: P项和I项对比
+    # 创建第二个图表 - PID控制项放大图
+    # 根据数据可用性决定子图数量
+    num_plots = 3  # P, I, LastCurrent
+    if has_d_term:
+        num_plots = 4  # P, I, D, LastCurrent
+    if has_last_current:
+        pass  # LastCurrent已经包含在num_plots中
+
+    if num_plots == 4:
+        fig2, axes = plt.subplots(4, 1, figsize=(16, 16))
+    else:
+        fig2, axes = plt.subplots(3, 1, figsize=(16, 12))
+    fig2.suptitle('PID Control Components - Detailed View', fontsize=16, fontweight='bold')
+
+    # 子图1: P项、I项、D项对比
     ax_pi_1 = axes[0]
     ax_pi_1.plot(df['Time_sec'], p_term, label='P Term (Proportional)', color='orange', linewidth=2)
     ax_pi_1.plot(df['Time_sec'], i_term, label='I Term (Integral)', color='cyan', linewidth=2)
+    if has_d_term:
+        ax_pi_1.plot(df['Time_sec'], d_term, label='D Term (Derivative)', color='magenta', linewidth=2)
     ax_pi_1.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-    
+
     # 标记关键时间点
     if weight_add_time is not None:
         ax_pi_1.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added ({weight_add_time:.2f}s)')
     if stable_time is not None:
         ax_pi_1.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable ({stable_time:.2f}s)')
-    
+
     ax_pi_1.set_ylabel('Current (mA)', fontsize=12)
-    ax_pi_1.set_title('P Term vs I Term Comparison', fontsize=13, fontweight='bold')
+    ax_pi_1.set_title('P Term vs I Term vs D Term Comparison', fontsize=13, fontweight='bold')
     ax_pi_1.legend(loc='upper right', fontsize=11)
     ax_pi_1.grid(True, alpha=0.3)
     ax_pi_1.tick_params(labelsize=10)
-    
+
     # 子图2: P项单独显示
     ax_pi_2 = axes[1]
     ax_pi_2.plot(df['Time_sec'], p_term, label='P Term', color='orange', linewidth=2.5)
     ax_pi_2.fill_between(df['Time_sec'], p_term, alpha=0.3, color='orange')
     ax_pi_2.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-    
+
     # 标记关键时间点
     if weight_add_time is not None:
         ax_pi_2.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
     if stable_time is not None:
         ax_pi_2.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    
+
     ax_pi_2.set_ylabel('Current (mA)', fontsize=12)
     ax_pi_2.set_title(f'P Term (Proportional) - Kp × DeltaF', fontsize=13, fontweight='bold')
     ax_pi_2.legend(loc='upper right', fontsize=11)
     ax_pi_2.grid(True, alpha=0.3)
     ax_pi_2.tick_params(labelsize=10)
-    
-    # 子图3: I项单独显示
-    ax_pi_3 = axes[2]
-    ax_pi_3.plot(df['Time_sec'], i_term, label='I Term', color='cyan', linewidth=2.5)
-    ax_pi_3.fill_between(df['Time_sec'], i_term, alpha=0.3, color='cyan')
-    ax_pi_3.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-    
-    # 标记关键时间点
-    if weight_add_time is not None:
-        ax_pi_3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
-    if stable_time is not None:
-        ax_pi_3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    
-    ax_pi_3.set_ylabel('Current (mA)', fontsize=12)
-    ax_pi_3.set_xlabel('Time (s)', fontsize=12)
-    ax_pi_3.set_title(f'I Term (Integral) - Ki × ∫DeltaF dt', fontsize=13, fontweight='bold')
-    ax_pi_3.legend(loc='upper right', fontsize=11)
-    ax_pi_3.grid(True, alpha=0.3)
-    ax_pi_3.tick_params(labelsize=10)
-    
+
+    # 子图3: I项和D项显示（如果D项存在）
+    if has_d_term:
+        ax_pi_3 = axes[2]
+        ax_pi_3.plot(df['Time_sec'], i_term, label='I Term', color='cyan', linewidth=2.5)
+        ax_pi_3.plot(df['Time_sec'], d_term, label='D Term', color='magenta', linewidth=2.5)
+        ax_pi_3.fill_between(df['Time_sec'], i_term, alpha=0.3, color='cyan')
+        ax_pi_3.fill_between(df['Time_sec'], d_term, alpha=0.3, color='magenta')
+        ax_pi_3.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+
+        # 标记关键时间点
+        if weight_add_time is not None:
+            ax_pi_3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+        if stable_time is not None:
+            ax_pi_3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+
+        ax_pi_3.set_ylabel('Current (mA)', fontsize=12)
+        ax_pi_3.set_title(f'I Term (Integral) & D Term (Derivative)', fontsize=13, fontweight='bold')
+        ax_pi_3.legend(loc='upper right', fontsize=11)
+        ax_pi_3.grid(True, alpha=0.3)
+        ax_pi_3.tick_params(labelsize=10)
+
+        # 子图4: PID累积电流(LastCurrent)
+        if has_last_current:
+            ax_pi_4 = axes[3]
+            ax_pi_4.plot(df['Time_sec'], pi_last_current, label='Last Current (Accumulated)', color='purple', linewidth=2.5)
+            ax_pi_4.fill_between(df['Time_sec'], pi_last_current, alpha=0.3, color='purple')
+            ax_pi_4.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+
+            # 标记关键时间点
+            if weight_add_time is not None:
+                ax_pi_4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+            if stable_time is not None:
+                ax_pi_4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+
+            ax_pi_4.set_ylabel('Current (mA)', fontsize=12)
+            ax_pi_4.set_xlabel('Time (s)', fontsize=12)
+            ax_pi_4.set_title(f'PID Accumulated Current (last_current_mA) - Incremental PID Memory', fontsize=13, fontweight='bold')
+            ax_pi_4.legend(loc='upper right', fontsize=11)
+            ax_pi_4.grid(True, alpha=0.3)
+            ax_pi_4.tick_params(labelsize=10)
+    else:
+        # 子图3: I项单独显示（如果没有D项）
+        ax_pi_3 = axes[2]
+        ax_pi_3.plot(df['Time_sec'], i_term, label='I Term', color='cyan', linewidth=2.5)
+        ax_pi_3.fill_between(df['Time_sec'], i_term, alpha=0.3, color='cyan')
+        ax_pi_3.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+
+        # 标记关键时间点
+        if weight_add_time is not None:
+            ax_pi_3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+        if stable_time is not None:
+            ax_pi_3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+
+        ax_pi_3.set_ylabel('Current (mA)', fontsize=12)
+        ax_pi_3.set_title(f'I Term (Integral) - Ki × ∫DeltaF dt', fontsize=13, fontweight='bold')
+        ax_pi_3.legend(loc='upper right', fontsize=11)
+        ax_pi_3.grid(True, alpha=0.3)
+        ax_pi_3.tick_params(labelsize=10)
+
+        if has_last_current:
+            ax_pi_4 = axes[3]
+            ax_pi_4.plot(df['Time_sec'], pi_last_current, label='Last Current (Accumulated)', color='purple', linewidth=2.5)
+            ax_pi_4.fill_between(df['Time_sec'], pi_last_current, alpha=0.3, color='purple')
+            ax_pi_4.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+
+            if weight_add_time is not None:
+                ax_pi_4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+            if stable_time is not None:
+                ax_pi_4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+
+            ax_pi_4.set_ylabel('Current (mA)', fontsize=12)
+            ax_pi_4.set_xlabel('Time (s)', fontsize=12)
+            ax_pi_4.set_title(f'PID Accumulated Current (last_current_mA) - Incremental PID Memory', fontsize=13, fontweight='bold')
+            ax_pi_4.legend(loc='upper right', fontsize=11)
+            ax_pi_4.grid(True, alpha=0.3)
+            ax_pi_4.tick_params(labelsize=10)
+        else:
+            ax_pi_3.set_xlabel('Time (s)', fontsize=12)
+
     plt.tight_layout(rect=[0, 0, 1, 0.96])  # 为总标题留出空间
-    pi_output_file = os.path.join(os.getcwd(), base_name.replace('_performance_analysis.png', '_PI_detailed.png'))
+    pi_output_file = os.path.join(os.getcwd(), base_name.replace('_performance_analysis.png', '_PID_detailed.png'))
     plt.savefig(pi_output_file, dpi=150, bbox_inches='tight')
-    print(f"PI详细图表已保存: {pi_output_file}")
+    print(f"PID详细图表已保存: {pi_output_file}")
     plt.close()
-    
-    # 创建第三个图表 - 力与电流关系图
-    fig3, axes3 = plt.subplots(2, 2, figsize=(16, 12))
-    fig3.suptitle('Force vs Current Relationship Analysis', fontsize=16, fontweight='bold')
-    
-    # 子图1: DeltaF vs 实际电流（散点图）
-    ax_fc_1 = axes3[0, 0]
-    scatter = ax_fc_1.scatter(delta_f, current, c=df['Time_sec'], cmap='viridis', alpha=0.6, s=20)
-    ax_fc_1.set_xlabel('DeltaF (kg)', fontsize=12)
-    ax_fc_1.set_ylabel('Actual Current (mA)', fontsize=12)
-    ax_fc_1.set_title('DeltaF vs Actual Current (colored by time)')
-    ax_fc_1.grid(True, alpha=0.3)
-    plt.colorbar(scatter, ax=ax_fc_1, label='Time (s)')
-    
-    # 添加理论前馈线
-    delta_f_range = np.linspace(delta_f.min(), delta_f.max(), 100)
-    theoretical_feedforward = 50.0 + delta_f_range * 273.0
-    ax_fc_1.plot(delta_f_range, theoretical_feedforward, 'r--', linewidth=2, label='Theoretical Feedforward (50+273*dF)')
-    ax_fc_1.legend()
-    
-    # 子图2: DeltaF vs 目标电流（散点图）
-    ax_fc_2 = axes3[0, 1]
-    ax_fc_2.scatter(delta_f, target_current, c='orange', alpha=0.6, s=20, label='Target Current')
-    if 'Feedforward(mA)' in df.columns:
-        ax_fc_2.scatter(delta_f, df['Feedforward(mA)'], c='red', alpha=0.6, s=20, label='Feedforward Current')
-    ax_fc_2.set_xlabel('DeltaF (kg)', fontsize=12)
-    ax_fc_2.set_ylabel('Current (mA)', fontsize=12)
-    ax_fc_2.set_title('DeltaF vs Target/Feedforward Current')
-    ax_fc_2.grid(True, alpha=0.3)
-    ax_fc_2.legend()
-    
-    # 子图3: 电流-力关系的时间序列
-    ax_fc_3 = axes3[1, 0]
-    ax_fc_3.plot(df['Time_sec'], delta_f, label='DeltaF', color='purple', linewidth=2)
-    ax_fc_3_twin = ax_fc_3.twinx()
-    ax_fc_3_twin.plot(df['Time_sec'], current, label='Actual Current', color='blue', linewidth=2, alpha=0.7)
-    ax_fc_3_twin.plot(df['Time_sec'], target_current, label='Target Current', color='orange', linewidth=2, linestyle='--', alpha=0.7)
-    ax_fc_3.set_xlabel('Time (s)', fontsize=12)
-    ax_fc_3.set_ylabel('DeltaF (kg)', color='purple', fontsize=12)
-    ax_fc_3_twin.set_ylabel('Current (mA)', color='blue', fontsize=12)
-    ax_fc_3.set_title('DeltaF and Current vs Time')
-    ax_fc_3.grid(True, alpha=0.3)
-    ax_fc_3.legend(loc='upper left')
-    ax_fc_3_twin.legend(loc='upper right')
-    
-    # 标记关键时间点
-    if weight_add_time is not None:
-        ax_fc_3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
-    if stable_time is not None:
-        ax_fc_3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
-    
-    # 子图4: 电流跟踪误差分析
-    ax_fc_4 = axes3[1, 1]
-    current_error = target_current - current
-    ax_fc_4.plot(df['Time_sec'], current_error, label='Current Tracking Error', color='red', linewidth=1.5)
-    ax_fc_4.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-    ax_fc_4.axhline(y=current_error.mean(), color='blue', linestyle='--', linewidth=1, label=f'Mean Error: {current_error.mean():.1f}mA')
-    ax_fc_4.fill_between(df['Time_sec'], current_error, alpha=0.3, color='red')
-    ax_fc_4.set_xlabel('Time (s)', fontsize=12)
-    ax_fc_4.set_ylabel('Current Error (mA)', fontsize=12)
-    ax_fc_4.set_title('Current Tracking Error (Target - Actual)')
-    ax_fc_4.grid(True, alpha=0.3)
-    ax_fc_4.legend()
-    
-    # 标记关键时间点
-    if weight_add_time is not None:
-        ax_fc_4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
-    if stable_time is not None:
-        ax_fc_4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
-    
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    force_current_file = os.path.join(os.getcwd(), base_name.replace('_performance_analysis.png', '_force_current.png'))
-    plt.savefig(force_current_file, dpi=150, bbox_inches='tight')
-    print(f"力-电流关系图表已保存: {force_current_file}")
-    plt.close()
-    
+
     # 生成总结
     print("\n" + "=" * 80)
     print("【算法性能总结】")

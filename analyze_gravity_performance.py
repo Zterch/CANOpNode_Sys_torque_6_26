@@ -608,11 +608,14 @@ Weight added event not detected
     
     # 创建第二个图表 - PID控制项放大图
     # 根据数据可用性决定子图数量
-    num_plots = 3  # P, I, LastCurrent
-    if has_d_term:
-        num_plots = 4  # P, I, D, LastCurrent
-    if has_last_current:
-        pass  # LastCurrent已经包含在num_plots中
+    # 子图布局：
+    # - 子图1: P, I, D对比
+    # - 子图2: P单独
+    # - 子图3: I(+D)或I单独
+    # - 子图4(可选): LastCurrent
+    num_plots = 3  # 基础3个子图
+    if has_d_term or has_last_current:
+        num_plots = 4  # 有D项或有LastCurrent时需要4个子图
 
     if num_plots == 4:
         fig2, axes = plt.subplots(4, 1, figsize=(16, 16))
@@ -678,26 +681,6 @@ Weight added event not detected
         ax_pi_3.legend(loc='upper right', fontsize=11)
         ax_pi_3.grid(True, alpha=0.3)
         ax_pi_3.tick_params(labelsize=10)
-
-        # 子图4: PID累积电流(LastCurrent)
-        if has_last_current:
-            ax_pi_4 = axes[3]
-            ax_pi_4.plot(df['Time_sec'], pi_last_current, label='Last Current (Accumulated)', color='purple', linewidth=2.5)
-            ax_pi_4.fill_between(df['Time_sec'], pi_last_current, alpha=0.3, color='purple')
-            ax_pi_4.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-
-            # 标记关键时间点
-            if weight_add_time is not None:
-                ax_pi_4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
-            if stable_time is not None:
-                ax_pi_4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-
-            ax_pi_4.set_ylabel('Current (mA)', fontsize=12)
-            ax_pi_4.set_xlabel('Time (s)', fontsize=12)
-            ax_pi_4.set_title(f'PID Accumulated Current (last_current_mA) - Incremental PID Memory', fontsize=13, fontweight='bold')
-            ax_pi_4.legend(loc='upper right', fontsize=11)
-            ax_pi_4.grid(True, alpha=0.3)
-            ax_pi_4.tick_params(labelsize=10)
     else:
         # 子图3: I项单独显示（如果没有D项）
         ax_pi_3 = axes[2]
@@ -717,25 +700,28 @@ Weight added event not detected
         ax_pi_3.grid(True, alpha=0.3)
         ax_pi_3.tick_params(labelsize=10)
 
-        if has_last_current:
-            ax_pi_4 = axes[3]
-            ax_pi_4.plot(df['Time_sec'], pi_last_current, label='Last Current (Accumulated)', color='purple', linewidth=2.5)
-            ax_pi_4.fill_between(df['Time_sec'], pi_last_current, alpha=0.3, color='purple')
-            ax_pi_4.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+    # 子图4: PID累积电流(LastCurrent) - 如果有LastCurrent数据
+    if has_last_current:
+        ax_pi_4 = axes[3]
+        ax_pi_4.plot(df['Time_sec'], pi_last_current, label='Last Current (Accumulated)', color='purple', linewidth=2.5)
+        ax_pi_4.fill_between(df['Time_sec'], pi_last_current, alpha=0.3, color='purple')
+        ax_pi_4.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
 
-            if weight_add_time is not None:
-                ax_pi_4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
-            if stable_time is not None:
-                ax_pi_4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+        # 标记关键时间点
+        if weight_add_time is not None:
+            ax_pi_4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+        if stable_time is not None:
+            ax_pi_4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
 
-            ax_pi_4.set_ylabel('Current (mA)', fontsize=12)
-            ax_pi_4.set_xlabel('Time (s)', fontsize=12)
-            ax_pi_4.set_title(f'PID Accumulated Current (last_current_mA) - Incremental PID Memory', fontsize=13, fontweight='bold')
-            ax_pi_4.legend(loc='upper right', fontsize=11)
-            ax_pi_4.grid(True, alpha=0.3)
-            ax_pi_4.tick_params(labelsize=10)
-        else:
-            ax_pi_3.set_xlabel('Time (s)', fontsize=12)
+        ax_pi_4.set_ylabel('Current (mA)', fontsize=12)
+        ax_pi_4.set_xlabel('Time (s)', fontsize=12)
+        ax_pi_4.set_title(f'PID Accumulated Current (last_current_mA) - Incremental PID Memory', fontsize=13, fontweight='bold')
+        ax_pi_4.legend(loc='upper right', fontsize=11)
+        ax_pi_4.grid(True, alpha=0.3)
+        ax_pi_4.tick_params(labelsize=10)
+    else:
+        # 没有LastCurrent时，子图3添加x轴标签
+        ax_pi_3.set_xlabel('Time (s)', fontsize=12)
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])  # 为总标题留出空间
     pi_output_file = os.path.join(os.getcwd(), base_name.replace('_performance_analysis.png', '_PID_detailed.png'))

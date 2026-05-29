@@ -72,7 +72,7 @@ extern "C" {
 /* 离合器电流PID控制参数 - 增量式PID */
 #define CLUTCH_PI_KP                    80.00f       /* 电流PID比例系数 - 增量式PID需要较小值 */
 #define CLUTCH_PI_KI                    0.00f       /* 电流PID积分系数 - 增量式PID需要较小值 */
-#define CLUTCH_PI_KD                    0.00f       /* 电流PID微分系数 - 增量式PID需要较小值，建议从0开始调试 */
+#define CLUTCH_PI_KD                    0.1f       /* 电流PID微分系数 - 增量式PID需要较小值，建议从0开始调试 */
 #define CLUTCH_PI_INTEGRAL_LIMIT        100.0f      /* 电流PID积分限幅 */
 
 /* 摩擦力方向控制 - 用于测试

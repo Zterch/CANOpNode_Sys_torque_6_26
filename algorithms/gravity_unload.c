@@ -544,7 +544,8 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     }
 
     /* 更新微分项（用于显示和数据记录） */
-    ctrl->clutch_pi_derivative = CLUTCH_PI_KD * (delta_f_kg - ctrl->last_deltaf);
+    /* 显示增量式微分增量：Kd*(e(k)-2*e(k-1)+e(k-2))，与计算一致 */
+    ctrl->clutch_pi_derivative = derivative_increment;
 
     /* 计算PID输出（用于显示和数据记录） */
     float pi_p_term_mA = CLUTCH_PI_KP * delta_f_kg;                    /* P项（比例项） */

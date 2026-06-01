@@ -63,16 +63,17 @@ extern "C" {
 #define PRESSURE_FILTER_WINDOW_SIZE     30          /* 压力传感器平均值滤波窗口大小 - 增大到30 (0.3s) 以减小波动 */
 #define FRICTION_ANGLE_COS              0.861f      /* cos(30.5°) ≈ 0.861 */
 #define FRICTION_SPEED_OFFSET_C         15.0f       /* 速度偏移常量 C (rpm) - 减小值降低振荡幅度 */
-#define FRICTION_DEADZONE_KG            0.05f        /* 摩擦力死区 (kg) - 设置0.5kg死区，避免微小波动触发频繁换向 */
+#define FRICTION_DEADZONE_KG            0.01f        /* 摩擦力死区 (kg) - 设置0.5kg死区，避免微小波动触发频繁换向 */
+#define PRESSURE_DEADZONE_KG            0.01f        /* 压力死区 (kg) - 设置0.05kg死区，避免微小波动导致积分累积 */
 #define PRESSURE_F0_DEFAULT_KG          0.0f        /* 静止时压力默认值，运行时会自动校准 */
-#define PRESSURE_F0_CALIBRATION_SAMPLES 200         /* F0校准采样点数 (200点 = 4秒) - 增加校准时间提高稳定性 */
-#define PRESSURE_F0_STABILIZE_SAMPLES   100         /* F0校准前稳定延迟 (100点 = 2秒) - 算法启动后先稳定一段时间再校准 */
+#define PRESSURE_F0_CALIBRATION_SAMPLES 500         /* F0校准采样点数 (500点 = 5秒) - 增加校准时间提高稳定性 */
+#define PRESSURE_F0_STABILIZE_SAMPLES   300         /* F0校准前稳定延迟 (300点 = 3秒) - 算法启动后先稳定一段时间再校准 */
 #define MOTOR_SPEED_COMPENSATION_C      0.0f        /* 电机速度补偿系数 - 新算法中不再使用，保留兼容性 */
 
 /* 离合器电流PID控制参数 - 增量式PID */
 #define CLUTCH_PI_KP                    80.00f       /* 电流PID比例系数 - 增量式PID需要较小值 */
-#define CLUTCH_PI_KI                    0.00f       /* 电流PID积分系数 - 增量式PID需要较小值 */
-#define CLUTCH_PI_KD                    0.1f       /* 电流PID微分系数 - 增量式PID需要较小值，建议从0开始调试 */
+#define CLUTCH_PI_KI                    30.00f       /* 电流PID积分系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_KD                    30.00f       /* 电流PID微分系数 - 增量式PID需要较小值，建议从0开始调试 */
 #define CLUTCH_PI_INTEGRAL_LIMIT        100.0f      /* 电流PID积分限幅 */
 
 /* 摩擦力方向控制 - 用于测试

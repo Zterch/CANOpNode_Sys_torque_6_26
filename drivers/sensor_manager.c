@@ -479,7 +479,7 @@ static ErrorCode_t read_pressure(SensorManager_t *manager, SensorData_t *data) {
  * 采集策略：
  * - 编码器：每10ms采集一次（100Hz）
  * - 压力传感器：每10ms采集一次（100Hz）
- * - 总周期：20ms（编码器和压力传感器交替采集，各10ms）
+ * - 总周期：10ms（两个传感器在同一周期内顺序采集）
  * 
  * 使用绝对时间戳确保严格的周期控制
  */
@@ -493,9 +493,8 @@ static void* sensor_thread(void* arg) {
         printf("[SENSOR] Warning: Failed to set high priority for sensor thread\n");
     }
     
-    /* 定义严格的采集周期 */
+    /* 定义严格的采集周期 - 10ms = 100Hz */
     #define SENSOR_SAMPLE_PERIOD_US 10000  /* 10ms = 100Hz */
-    #define SENSOR_CYCLE_PERIOD_US 20000   /* 20ms总周期 */
     
     /* 获取起始时间戳 */
     struct timespec next_time;
@@ -503,37 +502,31 @@ static void* sensor_thread(void* arg) {
     
     /* 转换为微秒 */
     uint64_t next_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
-    uint64_t cycle_start_us = next_time_us;
-    int sample_phase = 0;  /* 0=编码器, 1=压力传感器 */
     
-    printf("[SENSOR] Thread started with strict 10ms/20ms cycle\n");
+    printf("[SENSOR] Thread started with strict 10ms cycle (100Hz for both sensors)\n");
     
     while (manager->running) {
         /* 记录本次采集开始时间 */
         uint64_t sample_start_us = get_time_us();
         
-        if (sample_phase == 0) {
-            /* 相位0：采集编码器 */
-            ErrorCode_t ret = read_encoder(manager, &manager->datas[SENSOR_TYPE_ENCODER]);
-            if (ret != ERR_OK) {
-                manager->datas[SENSOR_TYPE_ENCODER].error_count++;
-            } else {
-                manager->datas[SENSOR_TYPE_ENCODER].read_count++;
-            }
-            sample_phase = 1;
+        /* 采集编码器（100Hz） */
+        ErrorCode_t ret = read_encoder(manager, &manager->datas[SENSOR_TYPE_ENCODER]);
+        if (ret != ERR_OK) {
+            manager->datas[SENSOR_TYPE_ENCODER].error_count++;
         } else {
-            /* 相位1：采集压力传感器 */
-            ErrorCode_t ret = read_pressure(manager, &manager->datas[SENSOR_TYPE_PRESSURE]);
-            if (ret != ERR_OK) {
-                manager->datas[SENSOR_TYPE_PRESSURE].error_count++;
-            } else {
-                manager->datas[SENSOR_TYPE_PRESSURE].read_count++;
-            }
-            sample_phase = 0;
-            
-            /* 完成一个20ms周期 */
-            manager->cycle_count++;
+            manager->datas[SENSOR_TYPE_ENCODER].read_count++;
         }
+        
+        /* 采集压力传感器（100Hz） */
+        ret = read_pressure(manager, &manager->datas[SENSOR_TYPE_PRESSURE]);
+        if (ret != ERR_OK) {
+            manager->datas[SENSOR_TYPE_PRESSURE].error_count++;
+        } else {
+            manager->datas[SENSOR_TYPE_PRESSURE].read_count++;
+        }
+        
+        /* 完成一个10ms周期 */
+        manager->cycle_count++;
         
         /* 计算下一次采集的绝对时间点 */
         next_time_us += SENSOR_SAMPLE_PERIOD_US;

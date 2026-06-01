@@ -1,3 +1,4 @@
+
 /******************************************************************************
  * @file    system_config.h
  * @brief   系统配置文件 - 包含所有设备的配置参数
@@ -70,7 +71,7 @@ extern "C" {
 #define ENCODER_RESOLUTION      4096        /* 编码器分辨率 */
 
 /* 编码器读取频率配置 */
-#define ENCODER_READ_PERIOD_MS      20      /* 编码器读取周期 50Hz (原100Hz可能太快) */
+#define ENCODER_READ_PERIOD_MS      10      /* 编码器读取周期 100Hz */
 #define ENCODER_PRINT_PERIOD_MS     500     /* 编码器打印周期 2Hz */
 #define ENCODER_MODBUS_REG_ADDR     0x0000  /* 位置数据寄存器地址 */
 #define ENCODER_MODBUS_FUNC_CODE    0x03    /* 读取保持寄存器功能码 */
@@ -90,7 +91,7 @@ extern "C" {
 #define PRESSURE_UNIT           "kg"        /* 单位 */
 
 /* 压力计读取频率配置 */
-#define PRESSURE_READ_PERIOD_MS     20      /* 压力计读取周期 50Hz */
+#define PRESSURE_READ_PERIOD_MS     10      /* 压力计读取周期 100Hz */
 #define PRESSURE_PRINT_PERIOD_MS    1000    /* 压力计打印周期 1Hz */
 #define PRESSURE_MODBUS_REG_ADDR    0x0000  /* 压力值寄存器地址 */
 #define PRESSURE_MODBUS_FUNC_CODE   0x03    /* 读取保持寄存器功能码 */

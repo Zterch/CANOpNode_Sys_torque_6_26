@@ -10,13 +10,15 @@ import matplotlib.pyplot as plt
 import sys
 from matplotlib.gridspec import GridSpec
 
-def analyze_gravity_performance(csv_file):
+def analyze_gravity_performance(csv_file, sample_period_ms=10):
     # 读取CSV数据
     df = pd.read_csv(csv_file, skipinitialspace=True)
     df.columns = df.columns.str.strip()
     
     # 创建时间序列（秒）
-    df['Time_sec'] = np.arange(len(df)) * 0.02  # 50Hz采样
+    # 默认使用10ms周期（100Hz），可通过参数调整
+    sample_period_s = sample_period_ms / 1000.0
+    df['Time_sec'] = np.arange(len(df)) * sample_period_s
     
     print("=" * 80)
     print("重力卸载算法性能分析报告")
@@ -26,7 +28,8 @@ def analyze_gravity_performance(csv_file):
     print("\n【1. 基本统计信息】")
     print(f"数据点数: {len(df)}")
     print(f"时间跨度: {df['Time_sec'].iloc[-1]:.1f} 秒")
-    print(f"采样频率: 50 Hz")
+    print(f"采样频率: {int(1/sample_period_s)} Hz")
+    print(f"采样周期: {sample_period_ms} ms")
     
     # 2. 压力控制性能分析
     print("\n【2. 压力控制性能分析】")
@@ -133,7 +136,7 @@ def analyze_gravity_performance(csv_file):
         # 读取配置值
         KP = read_config_value(config_file, r'CLUTCH_PI_KP\s+(\d+\.?\d*)f?')
         KI = read_config_value(config_file, r'CLUTCH_PI_KI\s+(\d+\.?\d*)f?')
-        DT = 0.02   # ALGO_CONTROL_PERIOD_S = 20ms (固定值)
+        DT = sample_period_s   # 使用实际采样周期（默认10ms = 0.01s）
         
         # 如果读取失败，使用默认值
         if KP is None:
@@ -606,122 +609,86 @@ Weight added event not detected
     print(f"\n总览图表已保存: {output_file}")
     plt.close()
     
-    # 创建第二个图表 - PID控制项放大图
-    # 根据数据可用性决定子图数量
+    # 创建第二个图表 - PID控制项详细图（整合力-电流关系和PID分量）
     # 子图布局：
-    # - 子图1: P, I, D对比
-    # - 子图2: P单独
-    # - 子图3: I(+D)或I单独
-    # - 子图4(可选): LastCurrent
-    num_plots = 3  # 基础3个子图
-    if has_d_term or has_last_current:
-        num_plots = 4  # 有D项或有LastCurrent时需要4个子图
+    # - 子图1: 增量式PID三个分量(P、I、D) + 总PID输出 + 前馈量 放在同一个图中
+    # - 子图2: 力（压力）和电流的关系
+    fig2, axes = plt.subplots(2, 1, figsize=(16, 14))
+    fig2.suptitle('PID Control Components & Force-Current Relationship', fontsize=16, fontweight='bold')
 
-    if num_plots == 4:
-        fig2, axes = plt.subplots(4, 1, figsize=(16, 16))
-    else:
-        fig2, axes = plt.subplots(3, 1, figsize=(16, 12))
-    fig2.suptitle('PID Control Components - Detailed View', fontsize=16, fontweight='bold')
-
-    # 子图1: P项、I项、D项对比
-    ax_pi_1 = axes[0]
-    ax_pi_1.plot(df['Time_sec'], p_term, label='P Term (Proportional)', color='orange', linewidth=2)
-    ax_pi_1.plot(df['Time_sec'], i_term, label='I Term (Integral)', color='cyan', linewidth=2)
+    # 子图1: 增量式PID三个分量 + 总PID输出 + 前馈量
+    ax_pid_all = axes[0]
+    
+    # P项（比例项）
+    ax_pid_all.plot(df['Time_sec'], p_term, label='P Term (Proportional)', 
+                    color='#FF8C00', linewidth=2.5, alpha=0.9)
+    # I项（积分项）
+    ax_pid_all.plot(df['Time_sec'], i_term, label='I Term (Integral)', 
+                    color='#00CED1', linewidth=2.5, alpha=0.9)
+    # D项（微分项）
     if has_d_term:
-        ax_pi_1.plot(df['Time_sec'], d_term, label='D Term (Derivative)', color='magenta', linewidth=2)
-    ax_pi_1.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+        ax_pid_all.plot(df['Time_sec'], d_term, label='D Term (Derivative)', 
+                        color='#FF69B4', linewidth=2.5, alpha=0.9)
+    # 总PID输出
+    ax_pid_all.plot(df['Time_sec'], pi_output, label='Total PID Output', 
+                    color='#DC143C', linewidth=3, linestyle='--')
+    # 前馈量
+    if 'Feedforward(mA)' in df.columns:
+        ax_pid_all.plot(df['Time_sec'], df['Feedforward(mA)'], label='Feedforward', 
+                        color='#32CD32', linewidth=2.5, linestyle='-.')
+    
+    ax_pid_all.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
 
     # 标记关键时间点
     if weight_add_time is not None:
-        ax_pi_1.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added ({weight_add_time:.2f}s)')
+        ax_pid_all.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, 
+                          label=f'Weight Added ({weight_add_time:.2f}s)')
     if stable_time is not None:
-        ax_pi_1.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable ({stable_time:.2f}s)')
+        ax_pid_all.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, 
+                          label=f'Stable ({stable_time:.2f}s)')
 
-    ax_pi_1.set_ylabel('Current (mA)', fontsize=12)
-    ax_pi_1.set_title('P Term vs I Term vs D Term Comparison', fontsize=13, fontweight='bold')
-    ax_pi_1.legend(loc='upper right', fontsize=11)
-    ax_pi_1.grid(True, alpha=0.3)
-    ax_pi_1.tick_params(labelsize=10)
+    ax_pid_all.set_ylabel('Current (mA)', fontsize=12)
+    ax_pid_all.set_title('Incremental PID Components (P, I, D) + Total PID Output + Feedforward', 
+                        fontsize=13, fontweight='bold')
+    ax_pid_all.legend(loc='upper right', fontsize=11, ncol=2)
+    ax_pid_all.grid(True, alpha=0.3)
+    ax_pid_all.tick_params(labelsize=10)
 
-    # 子图2: P项单独显示
-    ax_pi_2 = axes[1]
-    ax_pi_2.plot(df['Time_sec'], p_term, label='P Term', color='orange', linewidth=2.5)
-    ax_pi_2.fill_between(df['Time_sec'], p_term, alpha=0.3, color='orange')
-    ax_pi_2.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+    # 子图2: 力（压力）和电流的关系（双Y轴）
+    ax_force_current = axes[1]
+    
+    # 左Y轴：压力（力）
+    ax_force_current.plot(df['Time_sec'], pressure, label='Pressure (Force)', 
+                         color='blue', linewidth=2.5)
+    ax_force_current.axhline(y=f0, color='green', linestyle='--', linewidth=1.5, 
+                            label=f'Target F0 = {f0:.2f} kg')
+    ax_force_current.set_ylabel('Pressure (kg)', color='blue', fontsize=12)
+    ax_force_current.tick_params(axis='y', labelcolor='blue')
+    
+    # 右Y轴：实际电流
+    ax_force_current_twin = ax_force_current.twinx()
+    ax_force_current_twin.plot(df['Time_sec'], current, label='Actual Current', 
+                               color='red', linewidth=2.5, linestyle='--')
+    ax_force_current_twin.plot(df['Time_sec'], target_current, label='Target Current', 
+                               color='orange', linewidth=2, linestyle=':')
+    ax_force_current_twin.set_ylabel('Current (mA)', color='red', fontsize=12)
+    ax_force_current_twin.tick_params(axis='y', labelcolor='red')
 
     # 标记关键时间点
     if weight_add_time is not None:
-        ax_pi_2.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+        ax_force_current.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
     if stable_time is not None:
-        ax_pi_2.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+        ax_force_current.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
 
-    ax_pi_2.set_ylabel('Current (mA)', fontsize=12)
-    ax_pi_2.set_title(f'P Term (Proportional) - Kp × DeltaF', fontsize=13, fontweight='bold')
-    ax_pi_2.legend(loc='upper right', fontsize=11)
-    ax_pi_2.grid(True, alpha=0.3)
-    ax_pi_2.tick_params(labelsize=10)
-
-    # 子图3: I项和D项显示（如果D项存在）
-    if has_d_term:
-        ax_pi_3 = axes[2]
-        ax_pi_3.plot(df['Time_sec'], i_term, label='I Term', color='cyan', linewidth=2.5)
-        ax_pi_3.plot(df['Time_sec'], d_term, label='D Term', color='magenta', linewidth=2.5)
-        ax_pi_3.fill_between(df['Time_sec'], i_term, alpha=0.3, color='cyan')
-        ax_pi_3.fill_between(df['Time_sec'], d_term, alpha=0.3, color='magenta')
-        ax_pi_3.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-
-        # 标记关键时间点
-        if weight_add_time is not None:
-            ax_pi_3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
-        if stable_time is not None:
-            ax_pi_3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-
-        ax_pi_3.set_ylabel('Current (mA)', fontsize=12)
-        ax_pi_3.set_title(f'I Term (Integral) & D Term (Derivative)', fontsize=13, fontweight='bold')
-        ax_pi_3.legend(loc='upper right', fontsize=11)
-        ax_pi_3.grid(True, alpha=0.3)
-        ax_pi_3.tick_params(labelsize=10)
-    else:
-        # 子图3: I项单独显示（如果没有D项）
-        ax_pi_3 = axes[2]
-        ax_pi_3.plot(df['Time_sec'], i_term, label='I Term', color='cyan', linewidth=2.5)
-        ax_pi_3.fill_between(df['Time_sec'], i_term, alpha=0.3, color='cyan')
-        ax_pi_3.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-
-        # 标记关键时间点
-        if weight_add_time is not None:
-            ax_pi_3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
-        if stable_time is not None:
-            ax_pi_3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-
-        ax_pi_3.set_ylabel('Current (mA)', fontsize=12)
-        ax_pi_3.set_title(f'I Term (Integral) - Ki × ∫DeltaF dt', fontsize=13, fontweight='bold')
-        ax_pi_3.legend(loc='upper right', fontsize=11)
-        ax_pi_3.grid(True, alpha=0.3)
-        ax_pi_3.tick_params(labelsize=10)
-
-    # 子图4: PID累积电流(LastCurrent) - 如果有LastCurrent数据
-    if has_last_current:
-        ax_pi_4 = axes[3]
-        ax_pi_4.plot(df['Time_sec'], pi_last_current, label='Last Current (Accumulated)', color='purple', linewidth=2.5)
-        ax_pi_4.fill_between(df['Time_sec'], pi_last_current, alpha=0.3, color='purple')
-        ax_pi_4.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-
-        # 标记关键时间点
-        if weight_add_time is not None:
-            ax_pi_4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
-        if stable_time is not None:
-            ax_pi_4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-
-        ax_pi_4.set_ylabel('Current (mA)', fontsize=12)
-        ax_pi_4.set_xlabel('Time (s)', fontsize=12)
-        ax_pi_4.set_title(f'PID Accumulated Current (last_current_mA) - Incremental PID Memory', fontsize=13, fontweight='bold')
-        ax_pi_4.legend(loc='upper right', fontsize=11)
-        ax_pi_4.grid(True, alpha=0.3)
-        ax_pi_4.tick_params(labelsize=10)
-    else:
-        # 没有LastCurrent时，子图3添加x轴标签
-        ax_pi_3.set_xlabel('Time (s)', fontsize=12)
+    ax_force_current.set_xlabel('Time (s)', fontsize=12)
+    ax_force_current.set_title('Force (Pressure) vs Current Relationship', fontsize=13, fontweight='bold')
+    
+    # 合并两个Y轴的图例
+    lines1, labels1 = ax_force_current.get_legend_handles_labels()
+    lines2, labels2 = ax_force_current_twin.get_legend_handles_labels()
+    ax_force_current.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=11)
+    
+    ax_force_current.grid(True, alpha=0.3)
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])  # 为总标题留出空间
     pi_output_file = os.path.join(os.getcwd(), base_name.replace('_performance_analysis.png', '_PID_detailed.png'))
@@ -782,7 +749,15 @@ Tuning Suggestions:
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Usage: python3 analyze_gravity_performance.py <csv_file>")
+        print("Usage: python3 analyze_gravity_performance.py <csv_file> [sample_period_ms]")
+        print("  sample_period_ms: 采样周期（毫秒），默认10ms（100Hz）")
         sys.exit(1)
     
-    analyze_gravity_performance(sys.argv[1])
+    csv_file = sys.argv[1]
+    sample_period_ms = 10  # 默认10ms = 100Hz
+    
+    if len(sys.argv) >= 3:
+        sample_period_ms = int(sys.argv[2])
+        print(f"使用指定采样周期: {sample_period_ms}ms ({int(1000/sample_period_ms)}Hz)")
+    
+    analyze_gravity_performance(csv_file, sample_period_ms)

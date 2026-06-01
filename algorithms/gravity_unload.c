@@ -507,17 +507,23 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     }
     
     /* 增量式PID计算 - 用于微调 */
+    
+    /* 死区判断：只有当|DeltaF|超过死区阈值时才进行PID计算 */
+    float deadzone_deltaf = fabs(delta_f_kg) > PRESSURE_DEADZONE_KG ? delta_f_kg : 0.0f;
 
-    /* 比例项增量：Kp * DeltaF */
-    float proportional_increment = CLUTCH_PI_KP * delta_f_kg;
+    /* 比例项增量：Kp * DeltaF（带死区） */
+    float proportional_increment = CLUTCH_PI_KP * deadzone_deltaf;
 
-    /* 积分项增量：Ki * DeltaF * dt */
-    integral_sum += delta_f_kg * ALGO_CONTROL_PERIOD_S;
+    /* 积分项增量：Ki * DeltaF * dt（带死区） */
+    //integral_sum = 0.0;
+    if (fabs(delta_f_kg) > PRESSURE_DEADZONE_KG) {
+        integral_sum += delta_f_kg * ALGO_CONTROL_PERIOD_S;
+    }
     float integral_increment = CLUTCH_PI_KI * integral_sum;
 
-    /* 微分项增量：Kd * (DeltaF(k) - 2*DeltaF(k-1) + DeltaF(k-2)) */
+    /* 微分项增量：Kd * (DeltaF(k) - 2*DeltaF(k-1) + DeltaF(k-2))（带死区） */
     /* 增量式PID的微分项：Kd * (e(k) - 2*e(k-1) + e(k-2)) */
-    float derivative_increment = CLUTCH_PI_KD * (delta_f_kg - 2.0f * ctrl->last_deltaf + ctrl->last_last_deltaf);
+    float derivative_increment = CLUTCH_PI_KD * (deadzone_deltaf - 2.0f * ctrl->last_deltaf + ctrl->last_last_deltaf);
 
     /* 检测DeltaF变号，重置PID累积 - 必须在计算pi_current_mA之前！ */
 
@@ -527,12 +533,30 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     /* 计算PID部分电流：I_pid(k) = I_pid(k-1) + 总增量 */
     float pi_current_mA = ctrl->last_current_mA + total_increment;
 
+    /* 限制PID电流累积范围，防止过度偏离零点（针对小DeltaF波动的累积保护） */
+    /* 当死区生效且last_current_mA累积过大时，逐步衰减回零 */
+    if (deadzone_deltaf == 0.0f && fabs(ctrl->last_current_mA) > 5.0f) {
+        /* 死区范围内，对累积的电流进行衰减 */
+        pi_current_mA = ctrl->last_current_mA * 0.95f;  /* 5%衰减系数 */
+    }
+    
     /* 积分分离：当输出达到限幅时，停止积分累积，防止积分饱和 */
-    if ((pi_current_mA <= 0.0f && delta_f_kg < 0.0f) ||       /* 电流已到下限且DeltaF仍为负 */
-        (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg > 0.0f)) {  /* 电流已到上限且DeltaF仍为正 */
-        /* 达到限幅，不更新积分 */
+    /* 条件1：电流在下限且DeltaF为负（需要减小电流但已到下限）→ 停止积分 */
+    /* 条件2：电流在上限且DeltaF为正（需要增加电流但已到上限）→ 停止积分 */
+    /* 条件3：电流在下限且DeltaF为正（需要增加电流但在下限）→ 说明积分过负，需要重置 */
+    /* 条件4：电流在上限且DeltaF为负（需要减小电流但在上限）→ 说明积分过正，需要重置 */
+    if ((pi_current_mA <= 0.0f && delta_f_kg < 0.0f) ||       /* 条件1 */
+        (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg > 0.0f)) {  /* 条件2 */
+        /* 达到限幅且方向一致，不更新积分（积分分离） */
+    } else if ((pi_current_mA <= 0.0f && delta_f_kg > 0.0f) ||  /* 条件3：在下限但需要增加 */
+               (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg < 0.0f)) {  /* 条件4：在上限但需要减小 */
+        /* 达到限幅但方向相反，说明积分饱和，重置积分 */
+        integral_sum = 0.0f;
+        ctrl->clutch_pi_integral = 0.0f;
+        printf("[PID] Integral reset due to saturation: current=%.2f, delta_f=%.3f\n", 
+               pi_current_mA, delta_f_kg);
     } else {
-        /* 更新积分项（不是累积，而是直接等于Ki * integral_sum） */
+        /* 正常情况，更新积分项 */
         ctrl->clutch_pi_integral = integral_increment;
     }
 
@@ -559,10 +583,13 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     float current_mA_raw = current_mA;
     
     /* 限制总电流范围 */
+    int current_limited = 0;  /* 标记电流是否被限制 */
     if (current_mA < 0.0f) {
         current_mA = 0.0f;
+        current_limited = -1;  /* 被限制到下限 */
     } else if (current_mA > SAFETY_CLUTCH_CURRENT_MAX_MA) {
         current_mA = SAFETY_CLUTCH_CURRENT_MAX_MA;
+        current_limited = 1;   /* 被限制到上限 */
     }
     
     /* 保存PID历史值用于下一时刻计算 */
@@ -570,7 +597,14 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     if (ctrl->pressure_f0_calibrated) {
         ctrl->last_last_deltaf = ctrl->last_deltaf;  /* 保存上上一次的DeltaF */
         ctrl->last_deltaf = delta_f_kg;              /* 保存上一次的DeltaF */
-        ctrl->last_current_mA = pi_current_mA;       /* 保存上一时刻的电流值 */
+        /* 如果电流被限制，同步限制last_current_mA，避免累积误差 */
+        if (current_limited == -1 && pi_current_mA < 0.0f) {
+            ctrl->last_current_mA = 0.0f;  /* 被限制到下限，重置为0 */
+        } else if (current_limited == 1 && pi_current_mA > SAFETY_CLUTCH_CURRENT_MAX_MA) {
+            ctrl->last_current_mA = SAFETY_CLUTCH_CURRENT_MAX_MA;  /* 被限制到上限 */
+        } else {
+            ctrl->last_current_mA = pi_current_mA;  /* 正常情况，保存计算值 */
+        }
     } else {
         ctrl->last_last_deltaf = 0.0f;  /* F0校准期间保持为0 */
         ctrl->last_deltaf = 0.0f;       /* F0校准期间保持为0 */

@@ -1092,8 +1092,8 @@ static void* data_collection_thread(void* arg) {
             pressure_deltaf = pressure_kg - g_manual_f0_kg;
         }
 
-        /* 50Hz数据记录（集成到采集线程，避免锁竞争） */
-        if (g_log_file != NULL && g_logging_enabled && (log_counter % 2 == 0)) {
+        /* 100Hz数据记录（集成到采集线程，避免锁竞争） */
+        if (g_log_file != NULL && g_logging_enabled) {
             struct timeval tv;
             struct tm *t;
             gettimeofday(&tv, NULL);

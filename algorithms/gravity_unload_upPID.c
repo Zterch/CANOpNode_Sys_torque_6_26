@@ -497,7 +497,7 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
      * 0-220g (0-0.2kg) 对应 50-110mA
      * 斜率 = (110 - 50) / 0.22 = 273 mA/kg
      */
-    float feedforward_current_mA = 50.0f + (delta_f_kg * 273.0f)*0.5f;  /* 50 + DeltaF * 273 */
+    float feedforward_current_mA = 50.0f + delta_f_kg * 273.0f;  /* 50 + DeltaF * 273 */
     
     /* 限制前馈电流范围 */
     if (feedforward_current_mA < 50.0f) {
@@ -531,7 +531,7 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     float total_increment = proportional_increment + integral_increment + derivative_increment;
 
     /* 计算PID部分电流：I_pid(k) = I_pid(k-1) + 总增量 */
-    float pi_current_mA = ctrl->last_current_mA*0.0 + total_increment;
+    float pi_current_mA = ctrl->last_current_mA + total_increment;
 
     /* 限制PID电流累积范围，防止过度偏离零点（针对小DeltaF波动的累积保护） */
     /* 当死区生效且last_current_mA累积过大时，逐步衰减回零 */
@@ -545,20 +545,20 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     /* 条件2：电流在上限且DeltaF为正（需要增加电流但已到上限）→ 停止积分 */
     /* 条件3：电流在下限且DeltaF为正（需要增加电流但在下限）→ 说明积分过负，需要重置 */
     /* 条件4：电流在上限且DeltaF为负（需要减小电流但在上限）→ 说明积分过正，需要重置 */
-    // if ((pi_current_mA <= 0.0f && delta_f_kg < 0.0f) ||       /* 条件1 */
-    //     (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg > 0.0f)) {  /* 条件2 */
-    //     /* 达到限幅且方向一致，不更新积分（积分分离） */
-    // } else if ((pi_current_mA <= 0.0f && delta_f_kg > 0.0f) ||  /* 条件3：在下限但需要增加 */
-    //            (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg < 0.0f)) {  /* 条件4：在上限但需要减小 */
-    //     /* 达到限幅但方向相反，说明积分饱和，重置积分 */
-    //     integral_sum = 0.0f;
-    //     ctrl->clutch_pi_integral = 0.0f;
-    //     printf("[PID] Integral reset due to saturation: current=%.2f, delta_f=%.3f\n", 
-    //            pi_current_mA, delta_f_kg);
-    // } else {
+    if ((pi_current_mA <= 0.0f && delta_f_kg < 0.0f) ||       /* 条件1 */
+        (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg > 0.0f)) {  /* 条件2 */
+        /* 达到限幅且方向一致，不更新积分（积分分离） */
+    } else if ((pi_current_mA <= 0.0f && delta_f_kg > 0.0f) ||  /* 条件3：在下限但需要增加 */
+               (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg < 0.0f)) {  /* 条件4：在上限但需要减小 */
+        /* 达到限幅但方向相反，说明积分饱和，重置积分 */
+        integral_sum = 0.0f;
+        ctrl->clutch_pi_integral = 0.0f;
+        printf("[PID] Integral reset due to saturation: current=%.2f, delta_f=%.3f\n", 
+               pi_current_mA, delta_f_kg);
+    } else {
         /* 正常情况，更新积分项 */
         ctrl->clutch_pi_integral = integral_increment;
-    // }
+    }
 
     /* 积分限幅 */
     if (ctrl->clutch_pi_integral > CLUTCH_PI_INTEGRAL_LIMIT) {
@@ -577,7 +577,7 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     float pi_d_term_mA = ctrl->clutch_pi_derivative;                   /* D项（微分项） */
 
     /* 计算总电流：前馈 + PID */
-    float current_mA =  pi_current_mA + feedforward_current_mA;//feedforward_current_mA
+    float current_mA = feedforward_current_mA + pi_current_mA;
     
     /* 保存计算后的电流值（限制前）用于数据记录 */
     float current_mA_raw = current_mA;

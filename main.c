@@ -1052,18 +1052,11 @@ static void* data_collection_thread(void* arg) {
             update_motor_to_buffer();
         }
         
-        /* ========== 第三步：读取重量采集数据（10Hz降频采集） ========== */
-        /* 每10个周期（100ms）采集一次重量数据，避免影响主采集频率 */
-        static int weight_sample_counter = 0;
-        static float weight_filtered_kg = 0.0f;
-        weight_sample_counter++;
-        
-        if (g_weight.initialized && (weight_sample_counter % 10 == 0)) {
-            /* 每100ms采集一次 */
-            float temp_weight = 0.0f;
-            if (weight_get_weight(&g_weight, &temp_weight) == ERR_OK) {
-                weight_filtered_kg = temp_weight;
-            }
+        /* ========== 第三步：读取重量采集数据（50Hz后台采集） ========== */
+        /* 与电源板方案一致：直接读取后台线程缓存的数据，不调用串口通信 */
+        float weight_filtered_kg = 0.0f;
+        if (g_weight.initialized && g_weight.thread_running) {
+            weight_get_data(&g_weight, &weight_filtered_kg, 1);  /* 1=读取滤波后数据 */
         }
         
         /* 更新重量数据到共享缓冲区 */
@@ -1259,15 +1252,22 @@ int main(int argc, char *argv[]) {
         printf("OK\n");
     }
     
-    /* 3. 初始化重量采集模块（新增 - UART/TTL, 10Hz降频采集） */
+    /* 3. 初始化重量采集模块（新增 - UART/TTL, 50Hz后台采集） */
     printf("  -> Weight driver... ");
     fflush(stdout);
     if (weight_init(&g_weight, WEIGHT_UART_DEVICE, WEIGHT_UART_BAUDRATE) != ERR_OK) {
         printf("WARNING (weight disabled)\n");
         printf("     ! Weight monitoring will not be available\n");
     } else {
-        printf("OK (10Hz sampling in main loop)\n");
-        /* 不启动后台采集线程，改为在主循环中降频采集 */
+        printf("OK\n");
+        /* 启动后台采集线程（50Hz），与电源板方案一致 */
+        printf("  -> Starting weight collection thread (50Hz)... ");
+        fflush(stdout);
+        if (weight_start_collection(&g_weight) == ERR_OK) {
+            printf("OK\n");
+        } else {
+            printf("WARNING\n");
+        }
     }
     
     /* 4. 初始化电机 */

@@ -272,8 +272,8 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     print("\n正在生成分析图表...")
     
     # 创建第一个图表 - 总览图
-    fig = plt.figure(figsize=(18, 22))
-    gs = GridSpec(9, 2, figure=fig, hspace=0.35, wspace=0.3)
+    fig = plt.figure(figsize=(18, 24))
+    gs = GridSpec(10, 2, figure=fig, hspace=0.35, wspace=0.3)
     
     # 图1: 压力控制效果（带关键时间点标记）
     ax1 = fig.add_subplot(gs[0, :])
@@ -614,9 +614,43 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax10.legend(loc='upper right')
     ax10.grid(True, alpha=0.3)
     
-    # 图11: 关键时间点总结（新增）- 使用英文避免乱码
+    # 图11: 编码器长度与滤波后重量关系（新增）
     ax11 = fig.add_subplot(gs[8, :])
-    ax11.axis('off')
+    
+    # 左Y轴：编码器长度（绳子长度）
+    ax11.plot(df['Time_sec'], df['RopeLength(m)'] * 1000, label='Encoder Length (Rope)', 
+              color='blue', linewidth=2)
+    ax11.set_ylabel('Encoder Length (mm)', color='blue', fontsize=12)
+    ax11.tick_params(axis='y', labelcolor='blue')
+    
+    # 右Y轴：滤波后重量
+    if has_weight_data:
+        ax11_twin = ax11.twinx()
+        ax11_twin.plot(df['Time_sec'], weight_filtered, label='Filtered Weight', 
+                       color='darkgreen', linewidth=2, linestyle='--')
+        ax11_twin.set_ylabel('Filtered Weight (kg)', color='darkgreen', fontsize=12)
+        ax11_twin.tick_params(axis='y', labelcolor='darkgreen')
+        
+        # 合并图例
+        lines1, labels1 = ax11.get_legend_handles_labels()
+        lines2, labels2 = ax11_twin.get_legend_handles_labels()
+        ax11.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+    else:
+        ax11.legend(loc='upper right')
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax11.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
+    if stable_time is not None:
+        ax11.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
+    
+    ax11.set_xlabel('Time (s)')
+    ax11.set_title('Encoder Length vs Filtered Weight', fontsize=13, fontweight='bold')
+    ax11.grid(True, alpha=0.3)
+    
+    # 图12: 关键时间点总结（新增）- 使用英文避免乱码
+    ax12 = fig.add_subplot(gs[9, :])
+    ax12.axis('off')
     
     if weight_add_time is not None and stable_time is not None and settling_time is not None:
         summary_text = f"""Key Timing Summary
@@ -639,7 +673,7 @@ Stable Time:           Not detected (dF did not return to zero)
 Weight added event not detected
 {'='*60}"""
     
-    ax11.text(0.5, 0.5, summary_text, transform=ax11.transAxes, fontsize=11,
+    ax12.text(0.5, 0.5, summary_text, transform=ax12.transAxes, fontsize=11,
               verticalalignment='center', horizontalalignment='center',
               fontfamily='monospace', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 

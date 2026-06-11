@@ -1053,15 +1053,12 @@ static void* data_collection_thread(void* arg) {
         }
         
         /* ========== 第三步：读取重量采集数据（非阻塞方式） ========== */
-        /* 每10个周期（100ms）采集一次重量数据，使用非阻塞方式 */
-        static int weight_sample_counter = 0;
+        /* 每周期都从后台线程缓存读取重量数据（100Hz），与传感器采集一致 */
         static float weight_cached_kg = 0.0f;
-        weight_sample_counter++;
         
-        if (g_weight.initialized && (weight_sample_counter % 10 == 0)) {
-            /* 尝试非阻塞采集，如果失败使用缓存值 */
-            float temp_weight = 0.0f;
+        if (g_weight.initialized) {
             /* 使用weight_get_data直接读取缓存，不触发串口通信 */
+            float temp_weight = 0.0f;
             weight_get_data(&g_weight, &temp_weight, 1);
             if (temp_weight > 0.0f) {
                 weight_cached_kg = temp_weight;

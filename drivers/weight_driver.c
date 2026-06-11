@@ -51,15 +51,16 @@ uint16_t weight_crc16(const uint8_t *data, uint8_t len) {
  * 串口操作函数
  ******************************************************************************/
 static int serial_open(const char *device, int baudrate) {
-    int fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY);
+    /* 使用非阻塞模式打开，与RS485总线驱动一致 */
+    int fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) {
         LOG_ERROR(LOG_MODULE_POWER, "Failed to open %s: %s", device, strerror(errno));
         return -1;
     }
     
-    /* 清除非阻塞标志 */
+    /* 保持非阻塞模式，与RS485总线驱动一致 */
     int flags = fcntl(fd, F_GETFL, 0);
-    fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
     
     struct termios tty;
     memset(&tty, 0, sizeof(tty));
@@ -75,8 +76,8 @@ static int serial_open(const char *device, int baudrate) {
     switch (baudrate) {
         case 9600:   baud = B9600;   break;
         case 19200:  baud = B19200;  break;
-        case 38400:  baud = B38400;  break;
-        case 57600:  baud = B57600;  break;
+        case 38400:  baud = B38400;   break;
+        case 57600:  baud = B57600;   break;
         case 115200: baud = B115200; break;
         default:     baud = B115200; break;
     }
@@ -96,15 +97,17 @@ static int serial_open(const char *device, int baudrate) {
     tty.c_iflag &= ~(IXON | IXOFF | IXANY);
     tty.c_oflag &= ~OPOST;
     
-    /* 设置超时 - 与测试工具一致，使用500ms超时 */
+    /* 设置超时 - 与RS485总线驱动一致，使用非阻塞模式 */
     tty.c_cc[VMIN] = 0;
-    tty.c_cc[VTIME] = 5;  /* 500ms超时，给设备足够时间响应 */
+    tty.c_cc[VTIME] = 1;  /* 100ms超时，与RS485一致 */
     
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
         LOG_ERROR(LOG_MODULE_POWER, "tcsetattr failed: %s", strerror(errno));
         close(fd);
         return -1;
     }
+    
+    tcflush(fd, TCIOFLUSH);
     
     return fd;
 }
@@ -185,7 +188,11 @@ static ErrorCode_t weight_receive_response(WeightDriver_t *weight, uint16_t *dat
     pthread_mutex_unlock(&weight->mutex);
     
     if (rx_len <= 0) {
-        LOG_WARN(LOG_MODULE_POWER, "Weight receive timeout or error: ret=%d", rx_len);
+        /* 超时或错误，添加更多调试信息 */
+        static int error_count = 0;
+        if (++error_count <= 3) {
+            LOG_WARN(LOG_MODULE_POWER, "Weight receive timeout or error: ret=%d (error_count=%d)", rx_len, error_count);
+        }
         return ERR_COMM_FAIL;
     }
     
@@ -208,18 +215,17 @@ static ErrorCode_t weight_receive_response(WeightDriver_t *weight, uint16_t *dat
         return ERR_COMM_FAIL;
     }
     
-    /* 验证CRC - 注意：某些设备固件有bug，CRC校验被禁用，这里我们记录但不强制失败 */
+    /* 验证CRC */
     uint16_t rx_crc = (rx_buf[rx_len - 2] << 8) | rx_buf[rx_len - 1];
     uint16_t calc_crc = weight_crc16(rx_buf, rx_len - 2);
     
     if (rx_crc != calc_crc) {
-        /* CRC不匹配，但某些设备固件有bug，CRC计算错误，这里只记录警告 */
-        LOG_WARN(LOG_MODULE_POWER, "Weight response CRC mismatch: RX=0x%04X, CALC=0x%04X (device firmware bug?)", 
+        LOG_WARN(LOG_MODULE_POWER, "Weight response CRC mismatch: RX=0x%04X, CALC=0x%04X", 
                  rx_crc, calc_crc);
-        /* 不返回错误，继续处理数据，因为某些设备CRC校验被禁用 */
+        /* 继续处理数据，即使CRC不匹配 */
     }
     
-    /* 提取数据 - 数据在字节4和5（从0开始计数） */
+    /* 提取数据 - 压力采集板格式：字节2-3是寄存器地址，字节4-5是数据 */
     if (data != NULL) {
         *data = (rx_buf[4] << 8) | rx_buf[5];
         LOG_DEBUG(LOG_MODULE_POWER, "Weight data received: 0x%04X (%u)", *data, *data);
@@ -342,11 +348,15 @@ ErrorCode_t weight_get_weight(WeightDriver_t *weight, float *weight_kg) {
         return ret;
     }
     
-    /* 优化：使用更短的等待时间和超时，避免阻塞主采集线程 */
-    usleep(2000);  /* 等待2ms，给设备足够时间响应 */
+    /* DMA优化后的压力采集板响应更快：
+     * - DMA发送8字节响应约 700μs（@115200bps）
+     * - 设备处理延迟 < 1ms
+     * 因此使用更短的等待时间
+     */
+    usleep(1500);  /* 等待1.5ms，给DMA传输足够时间 */
     
     uint16_t data;
-    ret = weight_receive_response(weight, &data, 20);  /* 超时20ms，快速失败 */
+    ret = weight_receive_response(weight, &data, 5);  /* 超时5ms，快速响应 */
     if (ret != ERR_OK) {
         /* 采集失败，使用上一次的值 */
         LOG_DEBUG(LOG_MODULE_POWER, "weight_get_weight: receive timeout, using cached value");
@@ -485,22 +495,28 @@ ErrorCode_t weight_get_data(WeightDriver_t *weight, float *weight_kg, int is_fil
 
 /******************************************************************************
  * 后台采集线程 - 100Hz独立采集
+ * 配合DMA优化的压力采集板固件，实现100Hz采集
  ******************************************************************************/
 static void* weight_collection_thread(void* arg) {
     WeightDriver_t *weight = (WeightDriver_t *)arg;
     
-    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread started (10Hz)");
+    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread started (100Hz)");
     
-    /* 使用普通调度策略，避免与实时线程竞争 */
+    /* 使用普通调度策略，避免与实时线程竞争CPU */
     struct sched_param param;
     param.sched_priority = 0;
     pthread_setschedparam(pthread_self(), SCHED_OTHER, &param);
     
-    /* 降低采集频率到10Hz（100ms周期），大幅减少CPU占用 */
-    #define WEIGHT_SAMPLE_PERIOD_US 100000
+    /* 100Hz采集周期 = 10ms */
+    #define WEIGHT_SAMPLE_PERIOD_US 10000  /* 10ms = 100Hz */
+    
+    /* 获取起始时间戳 */
+    struct timespec next_time;
+    clock_gettime(CLOCK_MONOTONIC, &next_time);
+    uint64_t next_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
     
     while (weight->thread_running) {
-        /* 采集重量数据 - 使用非阻塞方式 */
+        /* 采集重量数据 - 使用非阻塞方式，5ms超时 */
         float weight_kg = 0.0f;
         ErrorCode_t ret = weight_get_weight(weight, &weight_kg);
         
@@ -511,8 +527,31 @@ static void* weight_collection_thread(void* arg) {
             pthread_mutex_unlock(&weight->mutex);
         }
         
-        /* 简单延迟，不严格周期控制，避免影响主线程 */
-        usleep(WEIGHT_SAMPLE_PERIOD_US);
+        /* 严格周期控制 */
+        next_time_us += WEIGHT_SAMPLE_PERIOD_US;
+        
+        /* 获取当前时间 */
+        struct timespec current_ts;
+        clock_gettime(CLOCK_MONOTONIC, &current_ts);
+        uint64_t current_time_us = current_ts.tv_sec * 1000000ULL + current_ts.tv_nsec / 1000;
+        
+        /* 计算需要等待的时间 */
+        int64_t sleep_us = (int64_t)(next_time_us - current_time_us);
+        
+        if (sleep_us > 0) {
+            /* 正常情况：等待到下一个采集时间点 */
+            struct timespec sleep_ts;
+            sleep_ts.tv_sec = sleep_us / 1000000;
+            sleep_ts.tv_nsec = (sleep_us % 1000000) * 1000;
+            nanosleep(&sleep_ts, NULL);
+        } else if (sleep_us < -5000) {
+            /* 严重超时（超过5ms）：打印警告并重新同步 */
+            LOG_WARN(LOG_MODULE_POWER, "Weight sample deadline missed by %ld us, resynchronizing...", 
+                     (long)(-sleep_us));
+            /* 重新同步到下一个周期 */
+            next_time_us = current_time_us + WEIGHT_SAMPLE_PERIOD_US;
+        }
+        /* 如果sleep_us在[-5000, 0]之间，说明轻微超时，继续执行不等待 */
     }
     
     LOG_INFO(LOG_MODULE_POWER, "Weight collection thread stopped, total samples: %u", weight->sample_count);

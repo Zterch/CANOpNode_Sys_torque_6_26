@@ -1,143 +1,315 @@
-zterch@zterch-TM1701:~/VS_Project/Nimo_COp_Prj/CANOpNode_Sys$ make clean && make
-Clean completed
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c main.c -o build/main.o
-In file included from algorithms/gravity_unload.h:20,
-                 from main.c:34:
-algorithms/algorithm_config.h:55: warning: "SPEED_FILTER_WINDOW_SIZE" redefined
-   55 | #define SPEED_FILTER_WINDOW_SIZE        10          /* 0.2s滑动平均 = 10个采样点（20ms周期） */
-      | 
-In file included from main.c:27:
-config/system_config.h:126: note: this is the location of the previous definition
-  126 | #define SPEED_FILTER_WINDOW_SIZE        5           /* 速度移动平均滤波窗口大小 */
-      | 
-main.c: In function ‘command_handler_thread’:
-main.c:827:50: warning: unused variable ‘kff’ [-Wunused-variable]
-  827 |                                 uint16_t kp, ki, kff;
-      |                                                  ^~~
-main.c:827:46: warning: unused variable ‘ki’ [-Wunused-variable]
-  827 |                                 uint16_t kp, ki, kff;
-      |                                              ^~
-main.c:827:42: warning: unused variable ‘kp’ [-Wunused-variable]
-  827 |                                 uint16_t kp, ki, kff;
-      |                                          ^~
-main.c:826:45: warning: unused variable ‘ret’ [-Wunused-variable]
-  826 |                                 ErrorCode_t ret = motor_enable(&g_motor);
-      |                                             ^~~
-main.c: In function ‘data_collection_thread’:
-main.c:1012:18: warning: unused variable ‘cycle_start_time’ [-Wunused-variable]
- 1012 |         uint32_t cycle_start_time = get_timestamp_ms();
-      |                  ^~~~~~~~~~~~~~~~
-At top level:
-main.c:438:16: warning: ‘calculate_encoder_delta’ defined but not used [-Wunused-function]
-  438 | static int32_t calculate_encoder_delta(uint32_t current, uint32_t last) {
-      |                ^~~~~~~~~~~~~~~~~~~~~~~
-CC main.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c utils/logger.c -o build/utils/logger.o
-CC utils/logger.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c utils/thread_manager.c -o build/utils/thread_manager.o
-utils/thread_manager.c: In function ‘thread_wrapper’:
-utils/thread_manager.c:31:22: warning: unused variable ‘mgr’ [-Wunused-variable]
-   31 |     ThreadManager_t *mgr = wrapper->mgr;
-      |                      ^~~
-CC utils/thread_manager.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c utils/shared_memory.c -o build/utils/shared_memory.o
-CC utils/shared_memory.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/sine_wave.c -o build/algorithms/sine_wave.o
-CC algorithms/sine_wave.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/signal_filter.c -o build/algorithms/signal_filter.o
-CC algorithms/signal_filter.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/pid_controller.c -o build/algorithms/pid_controller.o
-CC algorithms/pid_controller.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/safety_monitor.c -o build/algorithms/safety_monitor.o
-CC algorithms/safety_monitor.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/gravity_unload.c -o build/algorithms/gravity_unload.o
-algorithms/gravity_unload.c: In function ‘calculate_control_output’:
-algorithms/gravity_unload.c:704:11: warning: unused variable ‘pid_output’ [-Wunused-variable]
-  704 |     float pid_output = pid_update(&ctrl->pid, target_motor_speed, output->motor_velocity_actual);
-      |           ^~~~~~~~~~
-At top level:
-algorithms/gravity_unload.c:354:14: warning: ‘calculate_motor_speed_by_friction’ defined but not used [-Wunused-function]
-  354 | static float calculate_motor_speed_by_friction(GravityUnloadController_t *ctrl,
-      |              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-algorithms/gravity_unload.c:292:14: warning: ‘pressure_filter_update’ defined but not used [-Wunused-function]
-  292 | static float pressure_filter_update(GravityUnloadController_t *ctrl, float raw_pressure) {
-      |              ^~~~~~~~~~~~~~~~~~~~~~
-CC algorithms/gravity_unload.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/system_check.c -o build/algorithms/system_check.o
-CC algorithms/system_check.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c drivers/motor_driver.c -o build/drivers/motor_driver.o
-drivers/motor_driver.c: In function ‘motor_set_velocity’:
-drivers/motor_driver.c:476:20: warning: implicit declaration of function ‘get_timestamp_ms’ [-Wimplicit-function-declaration]
-  476 |     uint32_t now = get_timestamp_ms();
-      |                    ^~~~~~~~~~~~~~~~
-drivers/motor_driver.c: In function ‘motor_init’:
-drivers/motor_driver.c:144:9: warning: ignoring return value of ‘chdir’, declared with attribute warn_unused_result [-Wunused-result]
-  144 |         chdir(current_dir);  /* 恢复原目录 */
-      |         ^~~~~~~~~~~~~~~~~~
-drivers/motor_driver.c:172:9: warning: ignoring return value of ‘chdir’, declared with attribute warn_unused_result [-Wunused-result]
-  172 |         chdir(current_dir);  /* 恢复原目录 */
-      |         ^~~~~~~~~~~~~~~~~~
-CC drivers/motor_driver.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c drivers/power_driver.c -o build/drivers/power_driver.o
-drivers/power_driver.c: In function ‘power_set_current’:
-drivers/power_driver.c:317:24: warning: implicit declaration of function ‘get_timestamp_ms’ [-Wimplicit-function-declaration]
-  317 |         uint32_t now = get_timestamp_ms();
-      |                        ^~~~~~~~~~~~~~~~
-drivers/power_driver.c:318:13: warning: implicit declaration of function ‘abs’ [-Wimplicit-function-declaration]
-  318 |         if (abs((int)current_ma - (int)old_setpoint) > 5 || (now - last_log_time) > 1000) {
-      |             ^~~
-CC drivers/power_driver.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c drivers/sensor_manager.c -o build/drivers/sensor_manager.o
-drivers/sensor_manager.c:1: warning: "_GNU_SOURCE" redefined
-    1 | #define _GNU_SOURCE
-      | 
-<command-line>: note: this is the location of the previous definition
-drivers/sensor_manager.c: In function ‘sensor_thread’:
-drivers/sensor_manager.c:520:18: warning: unused variable ‘sample_start_us’ [-Wunused-variable]
-  520 |         uint64_t sample_start_us = get_time_us();
-      |                  ^~~~~~~~~~~~~~~
-drivers/sensor_manager.c: In function ‘sensor_mgr_print_status’:
-drivers/sensor_manager.c:850:28: warning: format ‘%lu’ expects argument of type ‘long unsigned int’, but argument 2 has type ‘uint32_t’ {aka ‘unsigned int’} [-Wformat=]
-  850 |         printf("  Reads: %lu, Errors: %lu, Success: %.1f%%\n",
-      |                          ~~^
-      |                            |
-      |                            long unsigned int
-      |                          %u
-  851 |                data->read_count, data->error_count, success_rate);
-      |                ~~~~~~~~~~~~~~~~
-      |                    |
-      |                    uint32_t {aka unsigned int}
-drivers/sensor_manager.c:850:41: warning: format ‘%lu’ expects argument of type ‘long unsigned int’, but argument 3 has type ‘uint32_t’ {aka ‘unsigned int’} [-Wformat=]
-  850 |         printf("  Reads: %lu, Errors: %lu, Success: %.1f%%\n",
-      |                                       ~~^
-      |                                         |
-      |                                         long unsigned int
-      |                                       %u
-  851 |                data->read_count, data->error_count, success_rate);
-      |                                  ~~~~~~~~~~~~~~~~~
-      |                                      |
-      |                                      uint32_t {aka unsigned int}
-At top level:
-drivers/sensor_manager.c:172:12: warning: ‘s_ctrl_mt_initialized’ defined but not used [-Wunused-variable]
-  172 | static int s_ctrl_mt_initialized = 0;
-      |            ^~~~~~~~~~~~~~~~~~~~~
-drivers/sensor_manager.c:171:17: warning: ‘s_ctrl_mt_last_encoder_value’ defined but not used [-Wunused-variable]
-  171 | static uint32_t s_ctrl_mt_last_encoder_value = 0;
-      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-drivers/sensor_manager.c:170:17: warning: ‘s_ctrl_mt_last_time_us’ defined but not used [-Wunused-variable]
-  170 | static uint32_t s_ctrl_mt_last_time_us = 0;
-      |                 ^~~~~~~~~~~~~~~~~~~~~~
-CC drivers/sensor_manager.c
-gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c drivers/rs485_bus.c -o build/drivers/rs485_bus.o
-CC drivers/rs485_bus.c
-gcc build/main.o build/utils/logger.o build/utils/thread_manager.o build/utils/shared_memory.o build/algorithms/sine_wave.o build/algorithms/signal_filter.o build/algorithms/pid_controller.o build/algorithms/safety_monitor.o build/algorithms/gravity_unload.o build/algorithms/system_check.o build/drivers/motor_driver.o build/drivers/power_driver.o build/drivers/sensor_manager.o build/drivers/rs485_bus.o -o bin/CANOpNode_Sys -pthread -lm -lrt -L./lib -lNimServoSDK -lNiMotionUSBCAN -lCANopenMaster -lAbstractMaster -lAbstractCanDevice -lGlobal -lDataBase -lNiMotionCanDevice -lTcpCanDevice -Wl,-rpath,./lib
-/usr/bin/ld: build/main.o: in function `data_collection_thread':
-main.c:(.text+0x10d5): undefined reference to `weight_get_weight_raw'
-/usr/bin/ld: main.c:(.text+0x10e6): undefined reference to `weight_get_weight'
-/usr/bin/ld: build/main.o: in function `main':
-main.c:(.text.startup+0x2fa): undefined reference to `weight_init'
-/usr/bin/ld: main.c:(.text.startup+0x61d): undefined reference to `weight_deinit'
-/usr/bin/ld: main.c:(.text.startup+0xdd8): undefined reference to `weight_deinit'
-collect2: error: ld returned 1 exit status
-make: *** [Makefile:86：bin/CANOpNode_Sys] 错误 1
-zterch@zterch-TM1701:~/VS_Project/Nimo_COp_Prj/CANOpNode_Sys$ 
+zterch@zterch-TM1701:~/VS_Project/Nimo_COp_Prj/CANOpNode_Sys$ sudo ./bin/CANOpNode_Sys 
+[sudo] zterch 的密码： 
+Running from SDK directory: /home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/lib
+Motor control enabled (use -n or --no-motor to disable)
+========================================
+CANOpNode_Sys v4.0.0 (Gravity Unload)
+NiMotion SDK Integration - Industrial Grade
+Shared Memory Communication Enabled
+========================================
+
+[INIT] Phase 1: Initializing hardware...
+  -> Sensor manager... [SENSOR] Loaded: length=721.74mm, encoder=9353
+[2026-06-11 14:24:51]INFO [SYS] [rs485_bus.c:111] RS485 bus /dev/ttyUSB1 opened at 115200 baud
+[2026-06-11 14:24:51]INFO [SYS] [rs485_bus.c:197] RS485 bus initialized (device=/dev/ttyUSB1, baud=115200)
+[SENSOR] Initialized
+OK
+  -> Power driver... [2026-06-11 14:24:51]INFO [POWER] [power_driver.c:113] Serial port /dev/ttyUSB0 opened at 115200 baud
+[2026-06-11 14:24:51]INFO [POWER] [power_driver.c:272] Power driver initialized (device=/dev/ttyUSB0, baud=115200)
+OK
+  -> Weight driver... [2026-06-11 14:24:51]WARN [POWER] [weight_driver.c:229] Weight device communication test failed
+WARNING (weight disabled)
+     ! Weight monitoring will not be available
+  -> Motor driver... [2026-06-11 14:24:51]INFO [MOTOR] [motor_driver.c:110] Initializing NiMotion SDK...
+[2026-06-11 14:24:51]INFO [MOTOR] [motor_driver.c:129] Changed to SDK lib directory: .
+"[2026-06-11 14:24:51.043] SDK init"
+"[2026-06-11 14:24:51.057] 0 : CANopen Master"
+"[2026-06-11 14:24:51.057] 1 : EtherCAT Master"
+"[2026-06-11 14:24:51.057] 2 : Modbus Master"
+[2026-06-11 14:24:51]INFO [MOTOR] [motor_driver.c:137] SDK initialized from lib directory
+"[2026-06-11 14:24:51.062] 1001 : NiMotion USB-CAN Device"
+"[2026-06-11 14:24:51.062] 1004 : NiMotion TCP-CAN Device"
+[2026-06-11 14:24:51]ERROR [MOTOR] [motor_driver.c:150] Nim_create_master returned null handle
+[2026-06-11 14:24:51]INFO [MOTOR] [motor_driver.c:156] SDK master created successfully, handle=0x00000000
+[2026-06-11 14:24:51]INFO [MOTOR] [motor_driver.c:164] Connection string: {"DevType": "1001", "DevIndex": 0, "Baudrate": 8, "PDOIntervalMS": 10, "SyncIntervalMS": 10}
+create UsbDevice instance faild"[2026-06-11 14:24:51.546] NiMotionCanDevice::open() failed on NiM_OpenDevice"
+[2026-06-11 14:24:51]ERROR [MOTOR] [motor_driver.c:169] Nim_master_run failed with error 7
+[2026-06-11 14:24:51]ERROR [MOTOR] [motor_driver.c:170] Error code 4 means DeviceOpenFailed - check USB permissions or device connection
+WARNING (non-critical)
+  -> Starting sensor manager thread... [SENSOR] Started
+OK
+  -> Waiting for sensors to stabilize... [SENSOR] Thread started with strict 10ms cycle (100Hz for both sensors)
+[SENSOR] Initializing zero_offset: 0 (first run)
+[SENSOR] WARNING: Sample deadline missed by 1781143651183540 us, resynchronizing...
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10013
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10000
+OK
+  -> Calibrating sensors... [SENSOR] Encoder zero calibrated: offset=0
+[SENSOR] Pressure tared: offset=0
+OK
+
+[INIT] Phase 2: Initializing shared memory...
+  -> Creating shared memory segment... [SHM] Shared memory permissions: 666
+OK (name=/gravshow_shm, size=4096)
+
+[INIT] Phase 3: System health check...
+[CHECK] Checking sensors...
+[CHECK PASS] Sensors OK (Pressure: 11.711 kg filtered, 11.720 kg raw, Encoder: 0.000 m)
+[CHECK SKIP] Motor disabled
+[CHECK PASS] Power board OK (8.98 V, 0.439 A)
+[CHECK PASS] Safety check OK
+
+[INIT] All system checks PASSED!
+
+[INIT] Phase 4: Starting communication threads...
+  -> Starting data collection thread (100Hz)... OK
+  -> Starting motor state update thread... [DATA] Data collection thread started (100Hz) - Industrial Grade Strict Timing
+OK
+  -> Starting power state update thread... [MOTOR] Motor state update thread started
+OK
+  -> Starting asynchronous actuator control thread (100Hz)... [POWER] Power state update thread started
+OK
+  -> Starting data output thread (20Hz)... [ACTUATOR] Asynchronous actuator control thread started (100Hz)
+OK
+  -> Starting command handler thread... [SHM] Data output thread started (20Hz)
+OK
+
+[INIT] Phase 5: System ready for remote monitoring
+  - Shared Memory: ACTIVE
+  - Data Output: 20Hz
+  - Data Collection: 100Hz
+  - Data Logging: 50Hz (on demand)
+  - Motor Control: Available (manual mode)
+  - Algorithm: Standby
+
+[SHM] Command handler thread started
+Waiting for commands from GravShow...
+Or press Enter to start algorithm mode locally
+Press Ctrl+C to exit
+
+[INFO] Running in manual mode (remote control enabled)
+
+========================================
+System RUNNING
+Mode: MANUAL (Remote Control)
+Press Ctrl+C to stop
+========================================
+
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10018
+[DATA] P=11.702kg Pos=0.000m I=0.441A V=8.96V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=9999
+[DATA] P=11.712kg Pos=0.000m I=0.439A V=9.01V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10001
+[DATA] P=11.713kg Pos=0.000m I=0.439A V=8.98V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10019
+[DATA] P=11.708kg Pos=0.000m I=0.441A V=8.98V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10003
+[SHM] Data written, sequence=100, pressure=11.704, motor=0
+[DATA] P=11.704kg Pos=0.000m I=0.441A V=9.04V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10001
+[DATA] P=11.710kg Pos=0.000m I=0.441A V=8.99V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10008
+[DATA] P=11.704kg Pos=0.000m I=0.441A V=8.98V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10002
+[DATA] P=11.711kg Pos=0.000m I=0.439A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10007
+[DATA] P=11.706kg Pos=0.000m I=0.441A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10014
+[SHM] Data written, sequence=200, pressure=11.705, motor=0
+[DATA] P=11.705kg Pos=0.000m I=0.441A V=9.01V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10007
+[DATA] P=11.711kg Pos=0.000m I=0.441A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10009
+[DATA] P=11.702kg Pos=0.000m I=0.441A V=9.01V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10004
+[DATA] P=11.705kg Pos=0.000m I=0.439A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10000
+[DATA] P=11.704kg Pos=0.000m I=0.441A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10012
+[SHM] Data written, sequence=300, pressure=11.702, motor=0
+[DATA] P=11.702kg Pos=0.000m I=0.441A V=9.01V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10001
+[DATA] P=11.714kg Pos=0.000m I=0.439A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10000
+[DATA] P=11.713kg Pos=0.000m I=0.439A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10000
+[DATA] P=11.708kg Pos=0.000m I=0.441A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=0, last=0, delta=0, acc_delta=0, time_us=10002
+[DATA] P=11.710kg Pos=0.000m I=0.443A V=9.04V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=30, last=26, delta=4, acc_delta=4, time_us=9987
+[SHM] Data written, sequence=400, pressure=12.572, motor=0
+[DATA] P=12.572kg Pos=0.013m I=0.441A V=9.04V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=221, last=219, delta=2, acc_delta=2, time_us=10006
+[DATA] P=11.393kg Pos=0.014m I=0.441A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483591, last=2147483592, delta=-1, acc_delta=-1, time_us=9999
+[DATA] P=11.828kg Pos=-0.004m I=0.441A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10005
+[DATA] P=11.831kg Pos=-0.004m I=0.441A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9993
+[DATA] P=11.842kg Pos=-0.004m I=0.441A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9998
+[SHM] Data written, sequence=500, pressure=11.839, motor=0
+[DATA] P=11.839kg Pos=-0.004m I=0.439A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10009
+[DATA] P=11.815kg Pos=-0.004m I=0.441A V=9.02V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10003
+[DATA] P=11.846kg Pos=-0.004m I=0.441A V=9.04V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10003
+[DATA] P=11.839kg Pos=-0.004m I=0.441A V=9.04V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9994
+[DATA] P=11.828kg Pos=-0.004m I=0.439A V=9.01V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10002
+[SHM] Data written, sequence=600, pressure=11.845, motor=0
+[DATA] P=11.845kg Pos=-0.004m I=0.439A V=9.06V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10001
+[DATA] P=11.855kg Pos=-0.004m I=0.441A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10009
+[DATA] P=11.819kg Pos=-0.004m I=0.441A V=9.09V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[DATA] WARNING: Cycle deadline missed by 29088 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9983
+[DATA] P=11.831kg Pos=-0.004m I=0.439A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10005
+[DATA] P=11.844kg Pos=-0.004m I=0.441A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10002
+[SHM] Data written, sequence=700, pressure=11.831, motor=0
+[DATA] P=11.831kg Pos=-0.004m I=0.439A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10009
+[DATA] P=11.838kg Pos=-0.004m I=0.441A V=9.09V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10015
+[DATA] P=11.849kg Pos=-0.004m I=0.438A V=9.06V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10000
+[DATA] P=11.827kg Pos=-0.004m I=0.441A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10000
+[DATA] P=11.839kg Pos=-0.004m I=0.441A V=9.09V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10008
+[SHM] Data written, sequence=800, pressure=11.844, motor=0
+[DATA] P=11.844kg Pos=-0.004m I=0.441A V=9.09V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10006
+[DATA] P=11.833kg Pos=-0.004m I=0.439A V=9.09V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10005
+[DATA] P=11.845kg Pos=-0.004m I=0.441A V=9.11V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10000
+[DATA] P=11.842kg Pos=-0.004m I=0.441A V=9.09V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9982
+[DATA] P=11.828kg Pos=-0.004m I=0.441A V=9.09V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9994
+[SHM] Data written, sequence=900, pressure=11.843, motor=0
+[DATA] P=11.843kg Pos=-0.004m I=0.441A V=9.09V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9999
+[DATA] P=11.843kg Pos=-0.004m I=0.439A V=9.11V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10008
+[DATA] P=11.833kg Pos=-0.004m I=0.438A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9989
+[DATA] P=11.849kg Pos=-0.004m I=0.441A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9987
+[DATA] P=11.839kg Pos=-0.004m I=0.441A V=9.11V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10009
+[SHM] Data written, sequence=1000, pressure=11.829, motor=0
+[DATA] P=11.829kg Pos=-0.004m I=0.439A V=9.07V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10002
+[DATA] P=11.834kg Pos=-0.004m I=0.439A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9994
+[DATA] P=11.835kg Pos=-0.004m I=0.438A V=9.11V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9996
+[DATA] P=11.834kg Pos=-0.004m I=0.441A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9995
+[DATA] P=11.845kg Pos=-0.004m I=0.441A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9992
+[SHM] Data written, sequence=1100, pressure=11.843, motor=0
+[DATA] P=11.843kg Pos=-0.004m I=0.441A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9990
+[DATA] P=11.832kg Pos=-0.004m I=0.441A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10009
+[DATA] P=11.840kg Pos=-0.004m I=0.439A V=9.11V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9985
+[DATA] P=11.845kg Pos=-0.004m I=0.439A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9996
+[DATA] P=11.831kg Pos=-0.004m I=0.441A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9981
+[SHM] Data written, sequence=1200, pressure=11.832, motor=0
+[DATA] P=11.832kg Pos=-0.004m I=0.441A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9983
+[DATA] P=11.834kg Pos=-0.004m I=0.438A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9984
+[DATA] P=11.833kg Pos=-0.004m I=0.441A V=9.11V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10005
+[DATA] P=11.842kg Pos=-0.004m I=0.439A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10002
+[DATA] P=11.835kg Pos=-0.004m I=0.441A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9982
+[SHM] Data written, sequence=1300, pressure=11.831, motor=0
+[DATA] P=11.831kg Pos=-0.004m I=0.441A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9985
+[DATA] P=11.834kg Pos=-0.004m I=0.439A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10001
+[DATA] P=11.834kg Pos=-0.004m I=0.441A V=9.15V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9982
+[DATA] P=11.838kg Pos=-0.004m I=0.441A V=9.15V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9983
+[DATA] P=11.837kg Pos=-0.004m I=0.438A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9998
+[SHM] Data written, sequence=1400, pressure=11.837, motor=0
+[DATA] P=11.837kg Pos=-0.004m I=0.441A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9993
+[DATA] P=11.836kg Pos=-0.004m I=0.441A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9999
+[DATA] P=11.838kg Pos=-0.004m I=0.439A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9995
+[DATA] P=11.834kg Pos=-0.004m I=0.441A V=9.15V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9979
+[DATA] P=11.843kg Pos=-0.004m I=0.439A V=9.19V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[CMD] Starting data logging...
+[LOG] Started logging to: /home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/logdata/gravity_data_20260611_142608.csv
+[LOG] Reset last_current_mA to 0 for clean recording start
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9967
+[SHM] Data written, sequence=1500, pressure=11.835, motor=0
+[DATA] P=11.835kg Pos=-0.004m I=0.441A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9969
+[DATA] P=11.836kg Pos=-0.004m I=0.439A V=9.12V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9962
+[DATA] P=11.839kg Pos=-0.004m I=0.441A V=9.19V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[CMD] Stopping data logging...
+[LOG] Stopped logging, total records: 289
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9998
+[DATA] P=11.839kg Pos=-0.004m I=0.438A V=9.14V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10000
+[DATA] P=11.840kg Pos=-0.004m I=0.441A V=9.17V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9999
+[SHM] Data written, sequence=1600, pressure=11.833, motor=0
+[DATA] P=11.833kg Pos=-0.004m I=0.439A V=9.17V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9994
+^C
+[INFO] Signal received, shutting down...
+[EMERGENCY STOP] Stopping motor and clutch immediately...
+[SHM] Command handler thread stopped
+[DATA] Data collection thread stopped
+[ACTUATOR] Actuator control thread stopped
+[2026-06-11 14:26:14]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
+[2026-06-11 14:26:14]INFO [POWER] [power_driver.c:293] Power driver deinitialized
+[EMERGENCY STOP] Clutch current set to 0
+[SENSOR] Saved: length=-3.53mm, encoder=2147483602
+[2026-06-11 14:26:14]INFO [SYS] [rs485_bus.c:214] RS485 bus deinitialized
+
+[SHUTDOWN] Stopping system...
+  -> Waiting for communication threads... [SHM] Data output thread stopped
+OK
+  -> Stopping sensor manager... OK
+
+
+=== Sensor Manager Status ===
+Cycle count: 8323
+Total errors: 0
+
+Encoder (addr=2):
+  Reads: 8322, Errors: 1, Success: 100.0%
+  Multi-turn: 2147483602
+  Angle: 355.96 deg
+  Rope: -3.53 mm
+
+Pressure (addr=1):
+  Reads: 8317, Errors: 6, Success: 99.9%
+  Pressure: 11.840 kg (raw=1184, offset=0)
+[2026-06-11 14:26:14]INFO [POWER] [weight_driver.c:264] Weight driver deinitialized
+  -> Closing shared memory... OK
+
+[System shutdown completed]

@@ -480,3 +480,90 @@ ErrorCode_t weight_get_data(WeightDriver_t *weight, float *weight_kg, int is_fil
     
     return ERR_OK;
 }
+
+/******************************************************************************
+ * 后台采集线程 - 100Hz独立采集
+ ******************************************************************************/
+static void* weight_collection_thread(void* arg) {
+    WeightDriver_t *weight = (WeightDriver_t *)arg;
+    
+    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread started (100Hz)");
+    
+    /* 设置线程高优先级 */
+    struct sched_param param;
+    param.sched_priority = 85;
+    pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
+    
+    /* 100Hz周期 = 10ms */
+    #define WEIGHT_SAMPLE_PERIOD_US 10000
+    
+    struct timespec next_time;
+    clock_gettime(CLOCK_MONOTONIC, &next_time);
+    uint64_t next_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
+    
+    while (weight->thread_running) {
+        /* 采集重量数据 */
+        float weight_kg = 0.0f;
+        ErrorCode_t ret = weight_get_weight(weight, &weight_kg);
+        
+        if (ret == ERR_OK) {
+            pthread_mutex_lock(&weight->mutex);
+            weight->weight_filtered = weight_kg;
+            weight->sample_count++;
+            pthread_mutex_unlock(&weight->mutex);
+        }
+        
+        /* 严格周期控制 */
+        next_time_us += WEIGHT_SAMPLE_PERIOD_US;
+        uint64_t current_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
+        int64_t sleep_us = (int64_t)(next_time_us - current_time_us);
+        
+        if (sleep_us > 0) {
+            usleep(sleep_us);
+        }
+        
+        clock_gettime(CLOCK_MONOTONIC, &next_time);
+    }
+    
+    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread stopped");
+    return NULL;
+}
+
+/******************************************************************************
+ * 启动后台采集线程（100Hz）
+ ******************************************************************************/
+ErrorCode_t weight_start_collection(WeightDriver_t *weight) {
+    if (weight == NULL || !weight->initialized) {
+        return ERR_INVALID_PARAM;
+    }
+    
+    if (weight->thread_running) {
+        return ERR_OK;  /* 已经在运行 */
+    }
+    
+    weight->thread_running = 1;
+    
+    int ret = pthread_create(&weight->collect_thread, NULL, weight_collection_thread, weight);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_POWER, "Failed to create weight collection thread: %s", strerror(ret));
+        weight->thread_running = 0;
+        return ERR_THREAD_CREATE;
+    }
+    
+    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread created (100Hz)");
+    return ERR_OK;
+}
+
+/******************************************************************************
+ * 停止后台采集线程
+ ******************************************************************************/
+void weight_stop_collection(WeightDriver_t *weight) {
+    if (weight == NULL || !weight->thread_running) {
+        return;
+    }
+    
+    weight->thread_running = 0;
+    pthread_join(weight->collect_thread, NULL);
+    
+    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread stopped, total samples: %u", weight->sample_count);
+}

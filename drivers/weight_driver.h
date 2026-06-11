@@ -75,6 +75,11 @@ typedef struct {
     /* 线程安全 */
     pthread_mutex_t mutex;
     int initialized;
+    
+    /* 后台采集线程 */
+    pthread_t collect_thread;       /* 采集线程ID */
+    int thread_running;             /* 线程运行标志 */
+    uint32_t sample_count;          /* 采样计数 */
 } WeightDriver_t;
 
 /******************************************************************************
@@ -135,6 +140,19 @@ ErrorCode_t weight_get_all(WeightDriver_t *weight);
  * @return ErrorCode_t
  */
 ErrorCode_t weight_get_data(WeightDriver_t *weight, float *weight_kg, int is_filtered);
+
+/**
+ * @brief 启动后台采集线程（100Hz）
+ * @param weight 重量驱动结构指针
+ * @return ErrorCode_t
+ */
+ErrorCode_t weight_start_collection(WeightDriver_t *weight);
+
+/**
+ * @brief 停止后台采集线程
+ * @param weight 重量驱动结构指针
+ */
+void weight_stop_collection(WeightDriver_t *weight);
 
 /**
  * @brief CRC16计算（重量采集协议 - 与电源板相同）

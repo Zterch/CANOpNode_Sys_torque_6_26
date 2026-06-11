@@ -1053,15 +1053,15 @@ static void* data_collection_thread(void* arg) {
         }
         
         /* ========== 第三步：读取重量采集数据（100Hz同步） ========== */
-        /* 优化：只读取一次滤波后的重量数据，减少通信时间 */
+        /* 从后台采集线程缓存中读取重量数据，避免实时串口通信阻塞 */
         float weight_filtered_kg = 0.0f;
-        if (g_weight.initialized) {
-            weight_get_weight(&g_weight, &weight_filtered_kg);
+        if (g_weight.initialized && g_weight.thread_running) {
+            weight_get_data(&g_weight, &weight_filtered_kg, 1);  /* 1=读取滤波后数据 */
         }
         
         /* 更新重量数据到共享缓冲区 */
         pthread_mutex_lock(&g_shared_state.mutex);
-        g_shared_state.weight_raw_kg = weight_filtered_kg;  /* 临时使用滤波值作为原始值 */
+        g_shared_state.weight_raw_kg = weight_filtered_kg;  /* 使用滤波值作为原始值 */
         g_shared_state.weight_filtered_kg = weight_filtered_kg;
         pthread_mutex_unlock(&g_shared_state.mutex);
         
@@ -1260,6 +1260,14 @@ int main(int argc, char *argv[]) {
         printf("     ! Weight monitoring will not be available\n");
     } else {
         printf("OK\n");
+        /* 启动后台采集线程（100Hz） */
+        printf("  -> Starting weight collection thread (100Hz)... ");
+        fflush(stdout);
+        if (weight_start_collection(&g_weight) == ERR_OK) {
+            printf("OK\n");
+        } else {
+            printf("WARNING\n");
+        }
     }
     
     /* 4. 初始化电机 */
@@ -1344,6 +1352,7 @@ int main(int argc, char *argv[]) {
         printf("\n[ERROR] System check FAILED! Please check hardware connections.\n");
         sensor_mgr_stop(&g_sensor_mgr);
         power_deinit(&g_power);
+        weight_stop_collection(&g_weight);  /* 停止重量采集线程 */
         weight_deinit(&g_weight);  /* 新增重量采集驱动反初始化 */
         sensor_mgr_deinit(&g_sensor_mgr);
         if (g_shm_initialized) shm_close(&g_shm_mgr);
@@ -1536,6 +1545,7 @@ int main(int argc, char *argv[]) {
     
     /* 反初始化设备 */
     power_deinit(&g_power);
+    weight_stop_collection(&g_weight);  /* 停止重量采集线程 */
     weight_deinit(&g_weight);  /* 新增重量采集驱动反初始化 */
     sensor_mgr_deinit(&g_sensor_mgr);
     

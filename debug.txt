@@ -9,44 +9,44 @@ Shared Memory Communication Enabled
 
 [INIT] Phase 1: Initializing hardware...
   -> Sensor manager... [SENSOR] Loaded: length=0.00mm, encoder=2147483602
-[2026-06-11 15:05:18]INFO [SYS] [rs485_bus.c:111] RS485 bus /dev/ttyUSB1 opened at 115200 baud
-[2026-06-11 15:05:18]INFO [SYS] [rs485_bus.c:197] RS485 bus initialized (device=/dev/ttyUSB1, baud=115200)
+[2026-06-11 15:19:15]INFO [SYS] [rs485_bus.c:111] RS485 bus /dev/ttyUSB1 opened at 115200 baud
+[2026-06-11 15:19:15]INFO [SYS] [rs485_bus.c:197] RS485 bus initialized (device=/dev/ttyUSB1, baud=115200)
 [SENSOR] Initialized
 OK
-  -> Power driver... [2026-06-11 15:05:18]INFO [POWER] [power_driver.c:113] Serial port /dev/ttyUSB0 opened at 115200 baud
-[2026-06-11 15:05:18]INFO [POWER] [power_driver.c:272] Power driver initialized (device=/dev/ttyUSB0, baud=115200)
+  -> Power driver... [2026-06-11 15:19:15]INFO [POWER] [power_driver.c:113] Serial port /dev/ttyUSB0 opened at 115200 baud
+[2026-06-11 15:19:15]INFO [POWER] [power_driver.c:272] Power driver initialized (device=/dev/ttyUSB0, baud=115200)
 OK
-  -> Weight driver... [2026-06-11 15:05:18]DEBUG [POWER] [weight_driver.c:335] weight_get_weight: device not initialized yet
-[2026-06-11 15:05:18]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:18]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AA 04 02 (len=8)
-[2026-06-11 15:05:18]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AA (426)
-[2026-06-11 15:05:18]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=426, weight=4.260 kg
-[2026-06-11 15:05:18]INFO [POWER] [weight_driver.c:266] Weight device communication test passed (attempt 1/5), weight=4.260 kg
-[2026-06-11 15:05:18]INFO [POWER] [weight_driver.c:295] Weight driver initialized: /dev/ttyUSB2 @ 115200 baud
+  -> Weight driver... [2026-06-11 15:19:15]DEBUG [POWER] [weight_driver.c:335] weight_get_weight: device not initialized yet
+[2026-06-11 15:19:16]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:16]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B0 85 C9 (len=8)
+[2026-06-11 15:19:16]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B0 (432)
+[2026-06-11 15:19:16]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=432, weight=4.320 kg
+[2026-06-11 15:19:16]INFO [POWER] [weight_driver.c:266] Weight device communication test passed (attempt 1/5), weight=4.320 kg
+[2026-06-11 15:19:16]INFO [POWER] [weight_driver.c:295] Weight driver initialized: /dev/ttyUSB2 @ 115200 baud
 OK
-  -> Motor driver... [2026-06-11 15:05:18]INFO [MOTOR] [motor_driver.c:110] Initializing NiMotion SDK...
-[2026-06-11 15:05:18]INFO [MOTOR] [motor_driver.c:129] Changed to SDK lib directory: .
-"[2026-06-11 15:05:18.555] SDK init"
-"[2026-06-11 15:05:18.558] 0 : CANopen Master"
-"[2026-06-11 15:05:18.558] 1 : EtherCAT Master"
-"[2026-06-11 15:05:18.558] 2 : Modbus Master"
-[2026-06-11 15:05:18]INFO [MOTOR] [motor_driver.c:137] SDK initialized from lib directory
-"[2026-06-11 15:05:18.561] 1001 : NiMotion USB-CAN Device"
-"[2026-06-11 15:05:18.561] 1004 : NiMotion TCP-CAN Device"
-[2026-06-11 15:05:18]ERROR [MOTOR] [motor_driver.c:150] Nim_create_master returned null handle
-[2026-06-11 15:05:18]INFO [MOTOR] [motor_driver.c:156] SDK master created successfully, handle=0x00000000
-[2026-06-11 15:05:18]INFO [MOTOR] [motor_driver.c:164] Connection string: {"DevType": "1001", "DevIndex": 0, "Baudrate": 8, "PDOIntervalMS": 10, "SyncIntervalMS": 10}
-create UsbDevice instance faild"[2026-06-11 15:05:19.030] NiMotionCanDevice::open() failed on NiM_OpenDevice"
-[2026-06-11 15:05:19]ERROR [MOTOR] [motor_driver.c:169] Nim_master_run failed with error 7
-[2026-06-11 15:05:19]ERROR [MOTOR] [motor_driver.c:170] Error code 4 means DeviceOpenFailed - check USB permissions or device connection
+  -> Motor driver... [2026-06-11 15:19:16]INFO [MOTOR] [motor_driver.c:110] Initializing NiMotion SDK...
+[2026-06-11 15:19:16]INFO [MOTOR] [motor_driver.c:129] Changed to SDK lib directory: .
+"[2026-06-11 15:19:16.119] SDK init"
+"[2026-06-11 15:19:16.122] 0 : CANopen Master"
+"[2026-06-11 15:19:16.122] 1 : EtherCAT Master"
+"[2026-06-11 15:19:16.122] 2 : Modbus Master"
+[2026-06-11 15:19:16]INFO [MOTOR] [motor_driver.c:137] SDK initialized from lib directory
+"[2026-06-11 15:19:16.127] 1001 : NiMotion USB-CAN Device"
+"[2026-06-11 15:19:16.127] 1004 : NiMotion TCP-CAN Device"
+[2026-06-11 15:19:16]ERROR [MOTOR] [motor_driver.c:150] Nim_create_master returned null handle
+[2026-06-11 15:19:16]INFO [MOTOR] [motor_driver.c:156] SDK master created successfully, handle=0x00000000
+[2026-06-11 15:19:16]INFO [MOTOR] [motor_driver.c:164] Connection string: {"DevType": "1001", "DevIndex": 0, "Baudrate": 8, "PDOIntervalMS": 10, "SyncIntervalMS": 10}
+create UsbDevice instance faild"[2026-06-11 15:19:16.610] NiMotionCanDevice::open() failed on NiM_OpenDevice"
+[2026-06-11 15:19:16]ERROR [MOTOR] [motor_driver.c:169] Nim_master_run failed with error 7
+[2026-06-11 15:19:16]ERROR [MOTOR] [motor_driver.c:170] Error code 4 means DeviceOpenFailed - check USB permissions or device connection
 WARNING (non-critical)
   -> Starting sensor manager thread... [SENSOR] Started
 OK
   -> Waiting for sensors to stabilize... [SENSOR] Thread started with strict 10ms cycle (100Hz for both sensors)
 [SENSOR] Initializing zero_offset: 2147483602 (first run)
-[SENSOR] WARNING: Sample deadline missed by 1781143651184090 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10006
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9999
+[SENSOR] WARNING: Sample deadline missed by 1781143651184426 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10001
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9995
 OK
   -> Calibrating sensors... [SENSOR] Encoder zero calibrated: offset=2147483602
 [SENSOR] Pressure tared: offset=0
@@ -58,9 +58,9 @@ OK (name=/gravshow_shm, size=4096)
 
 [INIT] Phase 3: System health check...
 [CHECK] Checking sensors...
-[CHECK PASS] Sensors OK (Pressure: 11.860 kg filtered, 11.860 kg raw, Encoder: 0.000 m)
+[CHECK PASS] Sensors OK (Pressure: 11.864 kg filtered, 11.870 kg raw, Encoder: 0.000 m)
 [CHECK SKIP] Motor disabled
-[CHECK PASS] Power board OK (0.87 V, 0.049 A)
+[CHECK PASS] Power board OK (0.85 V, 0.051 A)
 [CHECK PASS] Safety check OK
 
 [INIT] All system checks PASSED!
@@ -83,7 +83,6 @@ OK
   - Data Output: 20Hz
   - Data Collection: 100Hz
   - Data Logging: 50Hz (on demand)
-[SHM] Command handler thread started
   - Motor Control: Available (manual mode)
   - Algorithm: Standby
 
@@ -91,6 +90,7 @@ Waiting for commands from GravShow...
 Or press Enter to start algorithm mode locally
 Press Ctrl+C to exit
 
+[SHM] Command handler thread started
 [INFO] Running in manual mode (remote control enabled)
 
 ========================================
@@ -99,370 +99,237 @@ Mode: MANUAL (Remote Control)
 Press Ctrl+C to stop
 ========================================
 
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10000
-[2026-06-11 15:05:22]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:22]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 BE 44 FC (len=8)
-[2026-06-11 15:05:22]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01BE (446)
-[DATA] P=11.866kg Pos=0.000m I=0.049A V=0.87V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:22]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:22]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
-[2026-06-11 15:05:22]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[2026-06-11 15:05:22]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
-[DATA] WARNING: Cycle deadline missed by 1030665 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10018
-[2026-06-11 15:05:23]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:23]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B7 84 FA (len=8)
-[2026-06-11 15:05:23]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B7 (439)
-[DATA] P=11.866kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:23]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:23]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:23]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:23]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1032001 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10005
-[2026-06-11 15:05:24]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:24]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B3 85 39 (len=8)
-[2026-06-11 15:05:24]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B3 (435)
-[DATA] P=11.869kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:24]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:24]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B0 85 C9 (len=8)
-[2026-06-11 15:05:24]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B0 (432)
-[2026-06-11 15:05:24]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=432, weight=4.320 kg
-[DATA] WARNING: Cycle deadline missed by 1035984 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9997
-[2026-06-11 15:05:25]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:25]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 AE 45 30 (len=8)
-[2026-06-11 15:05:25]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[DATA] P=11.879kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:25]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:25]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B2 04 08 (len=8)
-[2026-06-11 15:05:25]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B2 (434)
-[2026-06-11 15:05:25]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=434, weight=4.340 kg
-[DATA] WARNING: Cycle deadline missed by 1004017 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10020
-[2026-06-11 15:05:26]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:26]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B1 04 F8 (len=8)
-[2026-06-11 15:05:26]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B1 (433)
-[SHM] Data written, sequence=100, pressure=11.862, motor=0
-[DATA] P=11.862kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:26]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:26]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
-[2026-06-11 15:05:26]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[2026-06-11 15:05:26]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
-[DATA] WARNING: Cycle deadline missed by 1036027 us, resynchronizing...
 [MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9999
-[2026-06-11 15:05:27]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:27]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 BB 84 FF (len=8)
-[2026-06-11 15:05:27]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01BB (443)
-[DATA] P=11.868kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:27]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:27]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:27]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:27]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1004023 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9999
-[2026-06-11 15:05:28]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:28]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B6 45 3A (len=8)
-[2026-06-11 15:05:28]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B6 (438)
-[DATA] P=11.864kg Pos=0.000m I=0.049A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:28]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:28]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:28]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:28]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1035986 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9977
-[2026-06-11 15:05:29]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:29]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 9A 44 E7 (len=8)
-[2026-06-11 15:05:29]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x019A (410)
-[DATA] P=11.861kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:29]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:29]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
-[2026-06-11 15:05:29]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[2026-06-11 15:05:29]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
-[DATA] WARNING: Cycle deadline missed by 1004047 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10001
-[2026-06-11 15:05:30]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:30]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 BC C5 3D (len=8)
-[2026-06-11 15:05:30]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01BC (444)
-[DATA] P=11.862kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:30]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:30]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
-[2026-06-11 15:05:30]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
-[2026-06-11 15:05:30]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
-[DATA] WARNING: Cycle deadline missed by 1035913 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9980
-[2026-06-11 15:05:31]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:31]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 AF 84 F0 (len=8)
-[2026-06-11 15:05:31]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[SHM] Data written, sequence=200, pressure=11.867, motor=0
-[DATA] P=11.867kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:31]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:31]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
-[2026-06-11 15:05:31]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[2026-06-11 15:05:31]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
-[DATA] WARNING: Cycle deadline missed by 1008003 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9979
-[2026-06-11 15:05:32]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:32]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B4 C4 FB (len=8)
-[2026-06-11 15:05:32]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B4 (436)
-[DATA] P=11.869kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:33]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:33]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:33]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:33]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1031996 us, resynchronizing...
+[2026-06-11 15:19:19]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:19]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:19]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:19]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 498560 us, resynchronizing...
+[DATA] P=11.876kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:20]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:20]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
+[2026-06-11 15:19:20]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
+[2026-06-11 15:19:20]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
+[DATA] WARNING: Cycle deadline missed by 495862 us, resynchronizing...
 [MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10003
-[DATA] P=11.859kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:33]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:33]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 C1 05 1C (len=8)
-[2026-06-11 15:05:33]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01C1 (449)
-[2026-06-11 15:05:34]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10000
-[2026-06-11 15:05:34]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
-[2026-06-11 15:05:34]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
-[2026-06-11 15:05:34]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
-[DATA] WARNING: Cycle deadline missed by 1004017 us, resynchronizing...
-[DATA] P=11.883kg Pos=0.000m I=0.051A V=0.90V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:34]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:34]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 AF 84 F0 (len=8)
-[2026-06-11 15:05:34]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9978
-[2026-06-11 15:05:35]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:35]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
-[2026-06-11 15:05:35]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
-[2026-06-11 15:05:35]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
-[DATA] WARNING: Cycle deadline missed by 1036026 us, resynchronizing...
-[DATA] P=11.865kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:35]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:35]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 BB 84 FF (len=8)
-[2026-06-11 15:05:35]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01BB (443)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10000
-[2026-06-11 15:05:36]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:36]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:36]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:36]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1003974 us, resynchronizing...
-[SHM] Data written, sequence=300, pressure=11.886, motor=0
-[DATA] P=11.886kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:36]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:36]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B9 05 3E (len=8)
-[2026-06-11 15:05:36]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B9 (441)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10005
-[2026-06-11 15:05:37]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:37]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
-[2026-06-11 15:05:37]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[2026-06-11 15:05:37]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
-[DATA] WARNING: Cycle deadline missed by 1036148 us, resynchronizing...
-[DATA] P=11.862kg Pos=0.000m I=0.049A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:37]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:37]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 A7 85 36 (len=8)
-[2026-06-11 15:05:37]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01A7 (423)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10019
-[2026-06-11 15:05:38]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:38]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:38]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:38]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1003916 us, resynchronizing...
-[DATA] P=11.872kg Pos=0.000m I=0.049A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:38]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:38]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 A2 45 35 (len=8)
-[2026-06-11 15:05:38]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01A2 (418)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10028
-[2026-06-11 15:05:39]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:39]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:39]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:39]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1035987 us, resynchronizing...
-[DATA] P=11.856kg Pos=0.000m I=0.049A V=0.87V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:39]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:39]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 BB 84 FF (len=8)
-[2026-06-11 15:05:39]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01BB (443)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9993
-[2026-06-11 15:05:40]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:40]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B1 44 09 (len=8)
-[2026-06-11 15:05:40]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B1 (433)
-[2026-06-11 15:05:40]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=433, weight=4.330 kg
-[DATA] WARNING: Cycle deadline missed by 1003938 us, resynchronizing...
-[DATA] P=11.853kg Pos=0.000m I=0.049A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:40]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:40]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 AC C4 F1 (len=8)
-[2026-06-11 15:05:40]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AC (428)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9974
-[2026-06-11 15:05:41]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:41]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B1 44 09 (len=8)
-[2026-06-11 15:05:41]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B1 (433)
-[2026-06-11 15:05:41]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=433, weight=4.330 kg
-[DATA] WARNING: Cycle deadline missed by 1036057 us, resynchronizing...
-[SHM] Data written, sequence=400, pressure=11.868, motor=0
-[DATA] P=11.868kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:41]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:41]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 94 C5 23 (len=8)
-[2026-06-11 15:05:41]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x0194 (404)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10002
-[2026-06-11 15:05:42]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:42]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:42]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:42]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1004003 us, resynchronizing...
-[DATA] P=11.863kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:42]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:42]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 8F 85 28 (len=8)
-[2026-06-11 15:05:42]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x018F (399)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9999
-[2026-06-11 15:05:43]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:43]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
-[2026-06-11 15:05:43]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
-[2026-06-11 15:05:43]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
-[DATA] WARNING: Cycle deadline missed by 1040001 us, resynchronizing...
-[DATA] P=11.865kg Pos=0.000m I=0.049A V=0.87V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:43]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:43]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 C4 C5 1F (len=8)
-[2026-06-11 15:05:43]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01C4 (452)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10001
-[2026-06-11 15:05:44]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:44]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
-[2026-06-11 15:05:44]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
-[2026-06-11 15:05:44]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
-[DATA] WARNING: Cycle deadline missed by 1031986 us, resynchronizing...
-[DATA] P=11.867kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:45]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:45]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B4 C4 FB (len=8)
-[2026-06-11 15:05:45]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B4 (436)
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10011
-[CMD] Starting data logging...
-[LOG] Started logging to: /home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/logdata/gravity_data_20260611_150545.csv
-[LOG] Reset last_current_mA to 0 for clean recording start
-[DATA] P=11.867kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:45]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:45]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
-[2026-06-11 15:05:45]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
-[2026-06-11 15:05:45]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
-[DATA] WARNING: Cycle deadline missed by 1040204 us, resynchronizing...
+[2026-06-11 15:19:20]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:20]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
+[2026-06-11 15:19:20]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
+[2026-06-11 15:19:20]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
+[DATA] WARNING: Cycle deadline missed by 519993 us, resynchronizing...
+[DATA] P=11.880kg Pos=0.000m I=0.049A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:21]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:21]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:21]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:21]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 495980 us, resynchronizing...
 [MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9977
-[2026-06-11 15:05:46]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:46]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 A6 44 F6 (len=8)
-[2026-06-11 15:05:46]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01A6 (422)
-[SHM] Data written, sequence=500, pressure=11.870, motor=0
+[2026-06-11 15:19:21]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:21]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B0 85 C9 (len=8)
+[2026-06-11 15:19:21]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B0 (432)
+[2026-06-11 15:19:21]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=432, weight=4.320 kg
+[DATA] WARNING: Cycle deadline missed by 488011 us, resynchronizing...
+[DATA] P=11.878kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:22]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:22]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:22]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:22]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 491989 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10021
+[2026-06-11 15:19:22]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:22]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
+[2026-06-11 15:19:22]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
+[2026-06-11 15:19:22]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
+[DATA] WARNING: Cycle deadline missed by 496006 us, resynchronizing...
+[DATA] P=11.888kg Pos=0.000m I=0.051A V=0.88V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:23]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:23]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:23]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:23]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 519971 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10001
+[2026-06-11 15:19:23]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:23]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
+[2026-06-11 15:19:23]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
+[2026-06-11 15:19:23]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
+[DATA] WARNING: Cycle deadline missed by 496055 us, resynchronizing...
+[SHM] Data written, sequence=100, pressure=11.870, motor=0
+[DATA] P=11.870kg Pos=0.000m I=0.051A V=0.87V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:24]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:24]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:24]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:24]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 520034 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10020
+[2026-06-11 15:19:24]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:24]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:24]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:24]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 527971 us, resynchronizing...
+[DATA] P=11.874kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[CMD] Starting data logging...
+[LOG] Started logging to: /home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/logdata/gravity_data_20260611_151925.csv
+[LOG] Reset last_current_mA to 0 for clean recording start
+[2026-06-11 15:19:25]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:25]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:25]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:25]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 487995 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10001
+[2026-06-11 15:19:25]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:25]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
+[2026-06-11 15:19:25]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
+[2026-06-11 15:19:25]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
+[DATA] WARNING: Cycle deadline missed by 491983 us, resynchronizing...
+[DATA] P=11.885kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:26]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:26]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
+[2026-06-11 15:19:26]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
+[2026-06-11 15:19:26]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
+[DATA] WARNING: Cycle deadline missed by 492025 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9997
+[2026-06-11 15:19:26]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:26]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AB C5 C2 (len=8)
+[2026-06-11 15:19:26]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AB (427)
+[2026-06-11 15:19:26]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=427, weight=4.270 kg
+[DATA] WARNING: Cycle deadline missed by 524042 us, resynchronizing...
+[DATA] P=11.882kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:27]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:27]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:27]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:27]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 495975 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10025
+[2026-06-11 15:19:28]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:28]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:28]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:28]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 520035 us, resynchronizing...
+[DATA] P=11.877kg Pos=0.000m I=0.049A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:28]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:28]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
+[2026-06-11 15:19:28]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
+[2026-06-11 15:19:28]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
+[DATA] WARNING: Cycle deadline missed by 523961 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10000
+[2026-06-11 15:19:29]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:29]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
+[2026-06-11 15:19:29]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
+[2026-06-11 15:19:29]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
+[DATA] WARNING: Cycle deadline missed by 492016 us, resynchronizing...
+[SHM] Data written, sequence=200, pressure=11.870, motor=0
 [DATA] P=11.870kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:46]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:46]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:46]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:46]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1035812 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9996
-[2026-06-11 15:05:47]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:47]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B6 45 3A (len=8)
-[2026-06-11 15:05:47]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B6 (438)
-[DATA] P=11.860kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:47]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:47]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
-[2026-06-11 15:05:47]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
-[2026-06-11 15:05:47]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
-[DATA] WARNING: Cycle deadline missed by 1036050 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10009
-[2026-06-11 15:05:48]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:48]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B1 04 F8 (len=8)
-[2026-06-11 15:05:48]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B1 (433)
-[DATA] P=11.865kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:48]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:48]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:48]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:48]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1035935 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10018
-[2026-06-11 15:05:49]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:49]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 81 04 EC (len=8)
-[2026-06-11 15:05:49]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x0181 (385)
-[DATA] P=11.863kg Pos=0.000m I=0.051A V=0.87V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:49]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:49]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
-[2026-06-11 15:05:49]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[2026-06-11 15:05:49]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
-[DATA] WARNING: Cycle deadline missed by 1036064 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9979
+[2026-06-11 15:19:29]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:29]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:29]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:29]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 495999 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10015
 [CMD] Stopping data logging...
-[LOG] Stopped logging, total records: 5
-[2026-06-11 15:05:50]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:50]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 BE 44 FC (len=8)
-[2026-06-11 15:05:50]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01BE (446)
-[DATA] P=11.861kg Pos=0.000m I=0.051A V=0.82V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:50]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:50]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
-[2026-06-11 15:05:50]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
-[2026-06-11 15:05:50]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
-[DATA] WARNING: Cycle deadline missed by 1031915 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9998
-[2026-06-11 15:05:51]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:51]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B3 85 39 (len=8)
-[2026-06-11 15:05:51]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B3 (435)
-[SHM] Data written, sequence=600, pressure=11.859, motor=0
-[DATA] P=11.859kg Pos=0.000m I=0.051A V=0.82V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:51]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:51]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
-[2026-06-11 15:05:51]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
-[2026-06-11 15:05:51]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
-[DATA] WARNING: Cycle deadline missed by 1004005 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10019
-[2026-06-11 15:05:52]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:52]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 BF 85 3C (len=8)
-[2026-06-11 15:05:52]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01BF (447)
-[DATA] P=11.863kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:52]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:52]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B0 85 C9 (len=8)
-[2026-06-11 15:05:52]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B0 (432)
-[2026-06-11 15:05:52]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=432, weight=4.320 kg
-[DATA] WARNING: Cycle deadline missed by 1036000 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9979
-[2026-06-11 15:05:53]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:53]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 B3 85 39 (len=8)
-[2026-06-11 15:05:53]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B3 (435)
-[DATA] P=11.864kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
-[2026-06-11 15:05:53]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:53]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AC 84 00 (len=8)
-[2026-06-11 15:05:53]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AC (428)
-[2026-06-11 15:05:53]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=428, weight=4.280 kg
-[DATA] WARNING: Cycle deadline missed by 1004005 us, resynchronizing...
-[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9996
+[LOG] Stopped logging, total records: 9
+[DATA] P=11.872kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:30]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:30]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:30]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:30]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 520022 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=9981
+[2026-06-11 15:19:30]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:30]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B1 44 09 (len=8)
+[2026-06-11 15:19:30]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B1 (433)
+[2026-06-11 15:19:30]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=433, weight=4.330 kg
+[DATA] WARNING: Cycle deadline missed by 491996 us, resynchronizing...
+[DATA] P=11.889kg Pos=0.000m I=0.051A V=0.85V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:31]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:31]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:31]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:31]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 492001 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10003
+[2026-06-11 15:19:31]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:31]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B0 85 C9 (len=8)
+[2026-06-11 15:19:31]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B0 (432)
+[2026-06-11 15:19:31]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=432, weight=4.320 kg
+[DATA] WARNING: Cycle deadline missed by 491933 us, resynchronizing...
+[DATA] P=11.884kg Pos=0.000m I=0.051A V=0.88V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:32]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:32]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:32]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:32]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 492063 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10017
+[2026-06-11 15:19:32]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:32]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
+[2026-06-11 15:19:32]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
+[2026-06-11 15:19:32]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
+[DATA] WARNING: Cycle deadline missed by 528009 us, resynchronizing...
+[DATA] P=11.880kg Pos=0.000m I=0.049A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:33]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:33]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
+[2026-06-11 15:19:33]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
+[2026-06-11 15:19:33]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
+[DATA] WARNING: Cycle deadline missed by 487955 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10005
+[2026-06-11 15:19:33]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:33]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:33]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:33]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 496041 us, resynchronizing...
+[SHM] Data written, sequence=300, pressure=11.867, motor=0
+[DATA] P=11.867kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:34]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:34]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
+[2026-06-11 15:19:34]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
+[2026-06-11 15:19:34]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
+[DATA] WARNING: Cycle deadline missed by 520025 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10043
+[2026-06-11 15:19:34]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:34]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 B0 85 C9 (len=8)
+[2026-06-11 15:19:34]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01B0 (432)
+[2026-06-11 15:19:34]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=432, weight=4.320 kg
+[DATA] WARNING: Cycle deadline missed by 491917 us, resynchronizing...
+[DATA] P=11.878kg Pos=0.000m I=0.051A V=0.84V Motor=0.00rpm Vline=0.000m/s Algo=STOP
+[2026-06-11 15:19:35]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:35]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AF C4 01 (len=8)
+[2026-06-11 15:19:35]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AF (431)
+[2026-06-11 15:19:35]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=431, weight=4.310 kg
+[DATA] WARNING: Cycle deadline missed by 491995 us, resynchronizing...
+[MT DEBUG] current=2147483602, last=2147483602, delta=0, acc_delta=0, time_us=10004
 ^C
 [INFO] Signal received, shutting down...
 [EMERGENCY STOP] Stopping motor and clutch immediately...
 [ACTUATOR] Actuator control thread stopped
+[2026-06-11 15:19:35]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
 [SHM] Command handler thread stopped
-[2026-06-11 15:05:54]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
-[2026-06-11 15:05:54]INFO [POWER] [power_driver.c:293] Power driver deinitialized
+[2026-06-11 15:19:35]INFO [POWER] [power_driver.c:293] Power driver deinitialized
 [EMERGENCY STOP] Clutch current set to 0
 [SENSOR] Saved: length=0.00mm, encoder=2147483602
-[2026-06-11 15:05:54]INFO [SYS] [rs485_bus.c:214] RS485 bus deinitialized
+[2026-06-11 15:19:35]INFO [SYS] [rs485_bus.c:214] RS485 bus deinitialized
 
 [SHUTDOWN] Stopping system...
   -> Waiting for communication threads... [SHM] Data output thread stopped
-[2026-06-11 15:05:54]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 05 06 00 02 44 DD (reg=0x0506)
-[2026-06-11 15:05:54]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 05 06 01 A2 45 35 (len=8)
-[2026-06-11 15:05:54]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01A2 (418)
-[2026-06-11 15:05:54]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
-[2026-06-11 15:05:54]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AD 45 C0 (len=8)
-[2026-06-11 15:05:54]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AD (429)
-[2026-06-11 15:05:54]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=429, weight=4.290 kg
-[DATA] WARNING: Cycle deadline missed by 1036092 us, resynchronizing...
+[2026-06-11 15:19:35]DEBUG [POWER] [weight_driver.c:163] Weight TX: AA 01 01 02 00 02 04 2C (reg=0x0102)
+[2026-06-11 15:19:35]DEBUG [POWER] [weight_driver.c:201] Weight RX: AA 01 01 02 01 AE 05 C1 (len=8)
+[2026-06-11 15:19:35]DEBUG [POWER] [weight_driver.c:225] Weight data received: 0x01AE (430)
+[2026-06-11 15:19:35]DEBUG [POWER] [weight_driver.c:361] weight_get_weight: success, raw=430, weight=4.300 kg
+[DATA] WARNING: Cycle deadline missed by 492010 us, resynchronizing...
 [DATA] Data collection thread stopped
 OK
   -> Stopping sensor manager... OK
 
 
 === Sensor Manager Status ===
-Cycle count: 3510
+Cycle count: 1916
 Total errors: 0
 
 Encoder (addr=2):
-  Reads: 3510, Errors: 0, Success: 100.0%
+  Reads: 1916, Errors: 0, Success: 100.0%
   Multi-turn: 2147483602
   Angle: 355.96 deg
   Rope: 0.00 mm
 
 Pressure (addr=1):
-  Reads: 3510, Errors: 0, Success: 100.0%
+  Reads: 1916, Errors: 0, Success: 100.0%
   Pressure: 11.870 kg (raw=1187, offset=0)
-[2026-06-11 15:05:54]INFO [POWER] [weight_driver.c:321] Weight driver deinitialized
+[2026-06-11 15:19:35]INFO [POWER] [weight_driver.c:321] Weight driver deinitialized
   -> Closing shared memory... OK
-
-[System shutdown completed]

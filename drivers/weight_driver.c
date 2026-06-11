@@ -96,9 +96,9 @@ static int serial_open(const char *device, int baudrate) {
     tty.c_iflag &= ~(IXON | IXOFF | IXANY);
     tty.c_oflag &= ~OPOST;
     
-    /* 设置超时 - 使用更短的超时时间以便快速响应 */
+    /* 设置超时 - 与测试工具一致，使用500ms超时 */
     tty.c_cc[VMIN] = 0;
-    tty.c_cc[VTIME] = 2;  /* 200ms超时，给设备足够时间响应 */
+    tty.c_cc[VTIME] = 5;  /* 500ms超时，给设备足够时间响应 */
     
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
         LOG_ERROR(LOG_MODULE_POWER, "tcsetattr failed: %s", strerror(errno));
@@ -142,6 +142,7 @@ static int serial_receive(int fd, uint8_t *data, uint8_t max_len, int timeout_ms
  ******************************************************************************/
 static ErrorCode_t weight_send_read_cmd(WeightDriver_t *weight, uint16_t reg_addr) {
     uint8_t tx_buf[8];
+    uint8_t temp_buf[256];
     
     tx_buf[0] = 0xAA;  /* 设备地址 */
     tx_buf[1] = 0x01;  /* 功能码：读取 */
@@ -154,10 +155,14 @@ static ErrorCode_t weight_send_read_cmd(WeightDriver_t *weight, uint16_t reg_add
     tx_buf[6] = (crc >> 8) & 0xFF;  /* CRC高字节 */
     tx_buf[7] = crc & 0xFF;         /* CRC低字节 */
     
+    pthread_mutex_lock(&weight->mutex);
+    
+    /* 清空接收缓冲区 - 避免读取到旧数据 */
+    while (read(weight->fd, temp_buf, sizeof(temp_buf)) > 0);
+    
     LOG_DEBUG(LOG_MODULE_POWER, "Weight TX: %02X %02X %02X %02X %02X %02X %02X %02X (reg=0x%04X)",
               tx_buf[0], tx_buf[1], tx_buf[2], tx_buf[3], tx_buf[4], tx_buf[5], tx_buf[6], tx_buf[7], reg_addr);
     
-    pthread_mutex_lock(&weight->mutex);
     int ret = serial_send(weight->fd, tx_buf, 8);
     pthread_mutex_unlock(&weight->mutex);
     
@@ -320,21 +325,29 @@ void weight_deinit(WeightDriver_t *weight) {
  * 读取重量数据（滤波后）
  ******************************************************************************/
 ErrorCode_t weight_get_weight(WeightDriver_t *weight, float *weight_kg) {
-    if (weight == NULL || weight_kg == NULL || !weight->initialized) {
+    if (weight == NULL || weight_kg == NULL) {
+        LOG_ERROR(LOG_MODULE_POWER, "weight_get_weight: invalid parameters");
         return ERR_INVALID_PARAM;
+    }
+    
+    if (!weight->initialized) {
+        /* 初始化时调用，允许未初始化状态 */
+        LOG_DEBUG(LOG_MODULE_POWER, "weight_get_weight: device not initialized yet");
     }
     
     ErrorCode_t ret = weight_send_read_cmd(weight, WEIGHT_REG_WEIGHT_FILTERED);
     if (ret != ERR_OK) {
+        LOG_WARN(LOG_MODULE_POWER, "weight_get_weight: send command failed");
         weight->error_count++;
         return ret;
     }
     
-    usleep(5000);  /* 等待5ms */
+    usleep(10000);  /* 等待10ms，给设备足够时间响应 */
     
     uint16_t data;
-    ret = weight_receive_response(weight, &data, 50);
+    ret = weight_receive_response(weight, &data, 100);  /* 增加超时到100ms */
     if (ret != ERR_OK) {
+        LOG_WARN(LOG_MODULE_POWER, "weight_get_weight: receive response failed");
         weight->error_count++;
         return ret;
     }
@@ -344,6 +357,8 @@ ErrorCode_t weight_get_weight(WeightDriver_t *weight, float *weight_kg) {
     weight->read_count++;
     
     *weight_kg = weight->weight_filtered;
+    
+    LOG_DEBUG(LOG_MODULE_POWER, "weight_get_weight: success, raw=%u, weight=%.3f kg", data, *weight_kg);
     
     return ERR_OK;
 }

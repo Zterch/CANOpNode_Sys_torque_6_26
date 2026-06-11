@@ -1052,16 +1052,23 @@ static void* data_collection_thread(void* arg) {
             update_motor_to_buffer();
         }
         
-        /* ========== 第三步：读取重量采集数据（100Hz同步） ========== */
-        /* 从后台采集线程缓存中读取重量数据，避免实时串口通信阻塞 */
-        float weight_filtered_kg = 0.0f;
-        if (g_weight.initialized && g_weight.thread_running) {
-            weight_get_data(&g_weight, &weight_filtered_kg, 1);  /* 1=读取滤波后数据 */
+        /* ========== 第三步：读取重量采集数据（10Hz降频采集） ========== */
+        /* 每10个周期（100ms）采集一次重量数据，避免影响主采集频率 */
+        static int weight_sample_counter = 0;
+        static float weight_filtered_kg = 0.0f;
+        weight_sample_counter++;
+        
+        if (g_weight.initialized && (weight_sample_counter % 10 == 0)) {
+            /* 每100ms采集一次 */
+            float temp_weight = 0.0f;
+            if (weight_get_weight(&g_weight, &temp_weight) == ERR_OK) {
+                weight_filtered_kg = temp_weight;
+            }
         }
         
         /* 更新重量数据到共享缓冲区 */
         pthread_mutex_lock(&g_shared_state.mutex);
-        g_shared_state.weight_raw_kg = weight_filtered_kg;  /* 使用滤波值作为原始值 */
+        g_shared_state.weight_raw_kg = weight_filtered_kg;
         g_shared_state.weight_filtered_kg = weight_filtered_kg;
         pthread_mutex_unlock(&g_shared_state.mutex);
         
@@ -1252,22 +1259,15 @@ int main(int argc, char *argv[]) {
         printf("OK\n");
     }
     
-    /* 3. 初始化重量采集模块（新增 - UART/TTL, 100Hz） */
+    /* 3. 初始化重量采集模块（新增 - UART/TTL, 10Hz降频采集） */
     printf("  -> Weight driver... ");
     fflush(stdout);
     if (weight_init(&g_weight, WEIGHT_UART_DEVICE, WEIGHT_UART_BAUDRATE) != ERR_OK) {
         printf("WARNING (weight disabled)\n");
         printf("     ! Weight monitoring will not be available\n");
     } else {
-        printf("OK\n");
-        /* 启动后台采集线程（100Hz） */
-        printf("  -> Starting weight collection thread (100Hz)... ");
-        fflush(stdout);
-        if (weight_start_collection(&g_weight) == ERR_OK) {
-            printf("OK\n");
-        } else {
-            printf("WARNING\n");
-        }
+        printf("OK (10Hz sampling in main loop)\n");
+        /* 不启动后台采集线程，改为在主循环中降频采集 */
     }
     
     /* 4. 初始化电机 */

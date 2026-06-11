@@ -497,7 +497,7 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
      * 0-220g (0-0.2kg) 对应 50-110mA
      * 斜率 = (110 - 50) / 0.22 = 273 mA/kg
      */
-    float feedforward_current_mA = 50.0f + (delta_f_kg * 273.0f)*0.5f;  /* 50 + DeltaF * 273 */
+    float feedforward_current_mA = 50.0f + (delta_f_kg * 273.0f);  /* 50 + DeltaF * 273 */
     
     /* 限制前馈电流范围 */
     if (feedforward_current_mA < 50.0f) {

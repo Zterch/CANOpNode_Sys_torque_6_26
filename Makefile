@@ -55,7 +55,8 @@ SOURCES = main.c \
           drivers/motor_driver.c \
           drivers/power_driver.c \
           drivers/sensor_manager.c \
-          drivers/rs485_bus.c
+          drivers/rs485_bus.c \
+          drivers/weight_driver.c
 
 # 对象文件
 OBJECTS = $(SOURCES:%.c=$(BUILD_DIR)/%.o)

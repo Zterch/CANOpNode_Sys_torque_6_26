@@ -30,6 +30,7 @@
 #include "drivers/sensor_manager.h"
 #include "drivers/power_driver.h"
 #include "drivers/motor_driver.h"
+#include "drivers/weight_driver.h"  /* 新增重量采集驱动 */
 #include "algorithms/gravity_unload.h"
 #include "algorithms/system_check.h"
 
@@ -44,6 +45,7 @@ static volatile uint32_t g_last_cmd_id = 0;
 static SensorManager_t g_sensor_mgr;
 static PowerDriver_t g_power;
 static MotorDriver_t g_motor;
+static WeightDriver_t g_weight;  /* 新增重量采集驱动 */
 static GravityUnloadController_t g_gravity_ctrl;
 static ShmManager_t g_shm_mgr;
 
@@ -188,6 +190,9 @@ typedef struct {
     float rope_length_m;
     uint32_t encoder_value;
     float encoder_angle_deg;
+    /* 新增重量采集模块数据 (UART/TTL, 100Hz) */
+    float weight_raw_kg;
+    float weight_filtered_kg;
     /* 电源数据 */
     float current_a;
     float voltage_v;
@@ -698,6 +703,10 @@ static void* data_output_thread(void* arg) {
         data.encoder_value = g_shared_state.encoder_value;
         data.encoder_angle_deg = g_shared_state.encoder_angle_deg;
         
+        /* 重量采集模块数据 - 从共享缓冲区读取 (UART/TTL, 100Hz) */
+        data.weight_raw_kg = g_shared_state.weight_raw_kg;
+        data.weight_filtered_kg = g_shared_state.weight_filtered_kg;
+        
         /* 电源数据 - 从共享缓冲区读取 */
         data.current_a = g_shared_state.current_a;
         data.voltage_v = g_shared_state.voltage_v;
@@ -958,12 +967,12 @@ void start_logging(void) {
 
     g_log_file = fopen(g_log_filename, "w");
     if (g_log_file != NULL) {
-        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s\n",
+        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s,%-14s,%-14s\n",
                 "Time", "Current(A)", "TargetCurrent(A)", "Voltage(V)", "PressureRaw(kg)", "PressureFiltered(kg)", "F0(kg)", "DeltaF",
                 "PI_P(mA)", "PI_I(mA)", "PI_D(mA)", "PI_LastCurrent(mA)", "Feedforward(mA)", "AlgoDeltaF(kg)", "AlgoPressure(kg)",
                 "RopeLength(m)", "EncoderValue", "EncoderAngle(deg)", "MotorSpeed(rpm)",
                 "MotorLinearVel(m/s)", "MotorTheoryVel(m/s)", "MotorPosition(m)",
-                "RopeVelocityRaw(m/s)", "RopeVelocityFiltered(m/s)");
+                "RopeVelocityRaw(m/s)", "RopeVelocityFiltered(m/s)", "WeightRaw(kg)", "WeightFiltered(kg)");
         printf("[LOG] Started logging to: %s\n", g_log_filename);
         g_log_count = 0;
 
@@ -1043,7 +1052,20 @@ static void* data_collection_thread(void* arg) {
             update_motor_to_buffer();
         }
         
-        /* ========== 第三步：原子性读取所有数据（关键！） ========== */
+        /* ========== 第三步：读取重量采集数据（100Hz同步） ========== */
+        float weight_raw_kg = 0.0f, weight_filtered_kg = 0.0f;
+        if (g_weight.initialized) {
+            weight_get_weight_raw(&g_weight, &weight_raw_kg);
+            weight_get_weight(&g_weight, &weight_filtered_kg);
+        }
+        
+        /* 更新重量数据到共享缓冲区 */
+        pthread_mutex_lock(&g_shared_state.mutex);
+        g_shared_state.weight_raw_kg = weight_raw_kg;
+        g_shared_state.weight_filtered_kg = weight_filtered_kg;
+        pthread_mutex_unlock(&g_shared_state.mutex);
+        
+        /* ========== 第四步：原子性读取所有数据（关键！） ========== */
         float current_a = 0.0f, voltage_v = 0.0f;
         float motor_speed_rpm = 0.0f, motor_pos_m = 0.0f, motor_linear_vel = 0.0f;
         float motor_theory_vel = 0.0f;
@@ -1105,13 +1127,13 @@ static void* data_collection_thread(void* arg) {
 
             /* 在手动模式下，记录手动计算的F0 */
             float log_f0_kg = (pressure_f0_kg != 0.0f) ? pressure_f0_kg : g_manual_f0_kg;
-            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f\n",
+            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f,%-14.3f,%-14.3f\n",
                     time_str,
                     current_a, target_current_a, voltage_v, pressure_raw_kg, pressure_kg, log_f0_kg, pressure_deltaf,
                     pi_p_term_mA, pi_i_term_mA, pi_d_term_mA, pi_last_current_mA, feedforward_current_mA, algo_deltaf_kg, algo_pressure_kg, rope_length_m,
                     encoder_value, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,
-                    rope_vel_raw, rope_vel_filtered);
+                    rope_vel_raw, rope_vel_filtered, weight_raw_kg, weight_filtered_kg);
             
             g_log_count++;
             
@@ -1223,7 +1245,17 @@ int main(int argc, char *argv[]) {
         printf("OK\n");
     }
     
-    /* 3. 初始化电机 */
+    /* 3. 初始化重量采集模块（新增 - UART/TTL, 100Hz） */
+    printf("  -> Weight driver... ");
+    fflush(stdout);
+    if (weight_init(&g_weight, WEIGHT_UART_DEVICE, WEIGHT_UART_BAUDRATE) != ERR_OK) {
+        printf("WARNING (weight disabled)\n");
+        printf("     ! Weight monitoring will not be available\n");
+    } else {
+        printf("OK\n");
+    }
+    
+    /* 4. 初始化电机 */
     if (g_motor_enabled) {
         printf("  -> Motor driver... ");
         fflush(stdout);
@@ -1305,6 +1337,7 @@ int main(int argc, char *argv[]) {
         printf("\n[ERROR] System check FAILED! Please check hardware connections.\n");
         sensor_mgr_stop(&g_sensor_mgr);
         power_deinit(&g_power);
+        weight_deinit(&g_weight);  /* 新增重量采集驱动反初始化 */
         sensor_mgr_deinit(&g_sensor_mgr);
         if (g_shm_initialized) shm_close(&g_shm_mgr);
         return 1;
@@ -1496,6 +1529,7 @@ int main(int argc, char *argv[]) {
     
     /* 反初始化设备 */
     power_deinit(&g_power);
+    weight_deinit(&g_weight);  /* 新增重量采集驱动反初始化 */
     sensor_mgr_deinit(&g_sensor_mgr);
     
     /* 关闭共享内存 */

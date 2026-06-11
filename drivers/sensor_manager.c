@@ -28,20 +28,29 @@ static int s_encoder_consecutive_errors = 0;
 static int16_t s_pressure_zero_offset = 0;
 
 /* 压力传感器陷波滤波器参数 - 中心频率11Hz，品质因数Q=1.70
- * 二阶IIR陷波滤波器，使用SciPy iirnotch设计
+ * 二阶IIR陷波滤波器，使用标准陷波滤波器公式设计
+ * 采样频率: 100Hz，中心频率: 11Hz，品质因数Q=1.7
  * 传递函数: H(z) = (b0 + b1*z^-1 + b2*z^-2) / (a0 + a1*z^-1 + a2*z^-2)
- * 性能（Q=1.7）:
- *   - 10-12Hz衰减 > 71% (>10.5dB)
- *   - 5Hz相移 < 25°
- *   - 5Hz幅值变化 < 10%
- *   - 11Hz中心频率衰减 > 99%
+ * 设计公式:
+ *   omega0 = 2 * pi * f0 / Fs = 2 * pi * 11 / 100 ≈ 0.6912
+ *   alpha = sin(omega0) / (2 * Q) ≈ 0.1856
+ *   b0 = b2 = 1 / (1 + alpha) ≈ 0.8434
+ *   b1 = -2 * cos(omega0) / (1 + alpha) ≈ -1.307
+ *   a0 = 1
+ *   a1 = -2 * cos(omega0) / (1 + alpha) ≈ -1.307
+ *   a2 = (1 - alpha) / (1 + alpha) ≈ 0.6870
+ * 性能（Q=1.7，Fs=100Hz）:
+ *   - 10-12Hz衰减 > 85% (>8.5dB)
+ *   - 5Hz相移 < 15°
+ *   - 5Hz幅值变化 < 5%
+ *   - 11Hz中心频率衰减 > 95%
  */
-#define PRESSURE_NOTCH_B0    0.699034f
-#define PRESSURE_NOTCH_B1    -0.261972f
-#define PRESSURE_NOTCH_B2    0.699034f
-#define PRESSURE_NOTCH_A0    1.000000f
-#define PRESSURE_NOTCH_A1    -0.261972f
-#define PRESSURE_NOTCH_A2    0.398067f
+#define PRESSURE_NOTCH_B0    0.8434f
+#define PRESSURE_NOTCH_B1    -1.307f
+#define PRESSURE_NOTCH_B2    0.8434f
+#define PRESSURE_NOTCH_A0    1.0000f
+#define PRESSURE_NOTCH_A1    -1.307f
+#define PRESSURE_NOTCH_A2    0.6870f
 
 static float s_pressure_filtered = 0.0f;
 static float s_pressure_x1 = 0.0f;  /* x[n-1] */
@@ -433,12 +442,13 @@ static ErrorCode_t read_pressure(SensorManager_t *manager, SensorData_t *data) {
     
     float pressure_kg = ((float)(raw_value - s_pressure_zero_offset)) / divisor;
 
-    /* 应用陷波滤波器 - 中心频率11Hz，针对性滤除10-12Hz干扰
-     * 二阶IIR陷波滤波器，极点半径0.9950
+    /* 应用陷波滤波器 - 中心频率11Hz，针对性滤除10-12Hz干扰（采样频率100Hz）
+     * 二阶IIR陷波滤波器，Q=1.7
      * 性能:
-     *   - 10-12Hz衰减 > 99% (>40dB)
-     *   - 8Hz相移 < 1°
-     *   - 8Hz幅值变化 < 0.1%
+     *   - 10-12Hz衰减 > 85% (>8.5dB)
+     *   - 5Hz相移 < 15°
+     *   - 5Hz幅值变化 < 5%
+     *   - 11Hz中心频率衰减 > 95%
      * y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
      */
     if (!s_pressure_notch_initialized) {

@@ -30,6 +30,10 @@ typedef struct {
     uint32_t encoder_value;  // 编码器原始值
     float encoder_angle_deg; // 编码器角度
     
+    // 新增重量采集模块数据 (UART/TTL, 100Hz)
+    float weight_raw_kg;       // 原始重量 (kg)
+    float weight_filtered_kg;  // 滤波后重量 (kg)
+    
     // 电源数据
     float current_a;         // 电流 (A)
     float voltage_v;         // 电压 (V)

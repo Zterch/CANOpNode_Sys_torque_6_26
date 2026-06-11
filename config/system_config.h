@@ -98,6 +98,20 @@ extern "C" {
 #define PRESSURE_DECIMAL_REG_ADDR   0x0001  /* 小数点设置寄存器地址 */
 
 /******************************************************************************
+ * 新增重量采集模块配置 (UART - TTL, /dev/ttyUSB2)
+ * 协议与电源板兼容，使用相同的通信协议
+ ******************************************************************************/
+#define WEIGHT_UART_DEVICE      "/dev/ttyUSB2"  /* 重量采集模块串口设备 */
+#define WEIGHT_UART_BAUDRATE    115200
+#define WEIGHT_UART_DATA_BITS   8
+#define WEIGHT_UART_STOP_BITS   1
+#define WEIGHT_UART_PARITY      'N'         /* N=None, O=Odd, E=Even */
+
+/* 重量采集模块读取频率配置 */
+#define WEIGHT_READ_PERIOD_MS   10          /* 重量采集读取周期 100Hz */
+#define WEIGHT_PRINT_PERIOD_MS  1000        /* 重量采集打印周期 1Hz */
+
+/******************************************************************************
  * 系统运行参数
  ******************************************************************************/
 #define SYS_CONTROL_PERIOD_MS           10          /* 主控制周期 (ms) */

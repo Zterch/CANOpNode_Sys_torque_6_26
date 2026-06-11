@@ -48,6 +48,17 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         has_raw_filtered = False
         print("  使用旧的CSV格式（仅压力值）")
     
+    # 检查是否有新的重量采集数据列（新增UART/TTL重量采集模块）
+    if 'WeightRaw(kg)' in df.columns and 'WeightFiltered(kg)' in df.columns:
+        weight_raw = df['WeightRaw(kg)']
+        weight_filtered = df['WeightFiltered(kg)']
+        has_weight_data = True
+        print("  检测到新的重量采集数据（UART/TTL模块，100Hz）")
+    else:
+        weight_raw = None
+        weight_filtered = None
+        has_weight_data = False
+    
     f0 = df['F0(kg)'].iloc[0]  # 目标压力
     delta_f = df['DeltaF']
     
@@ -73,6 +84,19 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         print(f"实际压力 - 最小值: {pressure.min():.3f} kg, 最大值: {pressure.max():.3f} kg")
         print(f"实际压力 - 平均值: {pressure.mean():.3f} kg, 标准差: {pressure.std():.3f} kg")
         print(f"压力变化范围: {pressure.max() - pressure.min():.3f} kg")
+    
+    # 显示重量采集数据统计（新增）
+    if has_weight_data:
+        print(f"\n【2.1 重量采集模块数据（UART/TTL, 100Hz）】")
+        print(f"原始重量值:")
+        print(f"  最小值: {weight_raw.min():.3f} kg, 最大值: {weight_raw.max():.3f} kg")
+        print(f"  平均值: {weight_raw.mean():.3f} kg, 标准差: {weight_raw.std():.3f} kg")
+        print(f"  变化范围: {weight_raw.max() - weight_raw.min():.3f} kg")
+        
+        print(f"\n滤波后重量值:")
+        print(f"  最小值: {weight_filtered.min():.3f} kg, 最大值: {weight_filtered.max():.3f} kg")
+        print(f"  平均值: {weight_filtered.mean():.3f} kg, 标准差: {weight_filtered.std():.3f} kg")
+        print(f"  变化范围: {weight_filtered.max() - weight_filtered.min():.3f} kg")
     
     # 计算稳态误差
     steady_state_start = int(len(df) * 0.3)  # 后70%作为稳态
@@ -288,6 +312,25 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         ax1b.set_title('Raw vs Filtered Pressure Comparison', fontsize=13, fontweight='bold')
         ax1b.legend(loc='best', fontsize=10)
         ax1b.grid(True, alpha=0.3)
+    
+    # 图1c: 重量采集模块数据（新增）
+    if has_weight_data:
+        ax1c = fig.add_subplot(gs[2, :])
+        ax1c.plot(df['Time_sec'], weight_raw, label='Weight Raw (UART/TTL)', color='brown', 
+                 linewidth=1.5, alpha=0.7, linestyle='--')
+        ax1c.plot(df['Time_sec'], weight_filtered, label='Weight Filtered (100Hz)', 
+                 color='darkgreen', linewidth=2)
+        
+        # 标记关键时间点
+        if weight_add_time is not None:
+            ax1c.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+        if stable_time is not None:
+            ax1c.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+        
+        ax1c.set_ylabel('Weight (kg)')
+        ax1c.set_title('Weight Sensor Data (New UART/TTL Module, 100Hz)', fontsize=13, fontweight='bold')
+        ax1c.legend(loc='best', fontsize=10)
+        ax1c.grid(True, alpha=0.3)
     
     # 图2: DeltaF + 前馈电流 + AlgoDeltaF对比（双Y轴）
     ax2 = fig.add_subplot(gs[2, 0])

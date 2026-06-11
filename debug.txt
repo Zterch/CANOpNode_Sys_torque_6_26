@@ -1,520 +1,143 @@
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: 123.19 rpm (internal: 2.05)
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: -166.67 rpm (internal: -2.78)
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: -166.56 rpm (internal: -2.78)
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: -165.61 rpm (internal: -2.76)
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: -101.56 rpm (internal: -1.69)
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: -100.73 rpm (internal: -1.68)
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: 204.26 rpm (internal: 3.40)
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: 285.58 rpm (internal: 4.76)
-[2026-05-26 10:24:42]INFO [MOTOR] [motor_driver.c:478] Set velocity: 296.40 rpm (internal: 4.94)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 296.59 rpm (internal: 4.94)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 250.03 rpm (internal: 4.17)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 180.06 rpm (internal: 3.00)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -106.57 rpm (internal: -1.78)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -106.35 rpm (internal: -1.77)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -128.71 rpm (internal: -2.15)
-[2026-05-26 10:24:43]INFO [POWER] [power_driver.c:319] Current set to 148 mA (0.15 A)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -68.01 rpm (internal: -1.13)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 213.58 rpm (internal: 3.56)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 214.29 rpm (internal: 3.57)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 282.17 rpm (internal: 4.70)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 276.42 rpm (internal: 4.61)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 226.62 rpm (internal: 3.78)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 226.74 rpm (internal: 3.78)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 170.21 rpm (internal: 2.84)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -76.08 rpm (internal: -1.27)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -95.21 rpm (internal: -1.59)
-[DATA] P=21.360kg Pos=0.610m I=0.148A V=2.90V Motor=82.40rpm Vline=0.288m/s Algo=RUN
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -73.87 rpm (internal: -1.23)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -72.94 rpm (internal: -1.22)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 192.34 rpm (internal: 3.21)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 259.87 rpm (internal: 4.33)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 260.60 rpm (internal: 4.34)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 321.62 rpm (internal: 5.36)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 291.88 rpm (internal: 4.86)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 195.33 rpm (internal: 3.26)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 195.21 rpm (internal: 3.25)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -88.34 rpm (internal: -1.47)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -131.66 rpm (internal: -2.19)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -121.23 rpm (internal: -2.02)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -120.74 rpm (internal: -2.01)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -59.50 rpm (internal: -0.99)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 221.75 rpm (internal: 3.70)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 275.55 rpm (internal: 4.59)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 275.90 rpm (internal: 4.60)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 282.76 rpm (internal: 4.71)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 248.82 rpm (internal: 4.15)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 167.87 rpm (internal: 2.80)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 70.40 rpm (internal: 1.17)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -129.82 rpm (internal: -2.16)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -146.53 rpm (internal: -2.44)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -116.33 rpm (internal: -1.94)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -116.10 rpm (internal: -1.94)
-[VEL MT] pulse_delta=-51, time_us=20005, pos_delta=-0.003912, vel=-0.195536
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -48.98 rpm (internal: -0.82)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 244.56 rpm (internal: 4.08)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 307.77 rpm (internal: 5.13)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 307.38 rpm (internal: 5.12)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 296.05 rpm (internal: 4.93)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 231.87 rpm (internal: 3.86)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 5309
-Running time: 53.1 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 20.12 to 22.01 kg
-  Max velocity: 0.200 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 146.90 rpm (internal: 2.45)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -53.92 rpm (internal: -0.90)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -128.06 rpm (internal: -2.13)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -128.76 rpm (internal: -2.15)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -110.40 rpm (internal: -1.84)
-[2026-05-26 10:24:43]INFO [POWER] [power_driver.c:319] Current set to 141 mA (0.14 A)
-[DATA] P=19.734kg F0=21.055kg dF=-1.321 PI_int=94.369 Pos=-0.715m V_raw=-0.146 V_filt=-0.188 V_motor_linear=-0.473 I_clutch=133.8mA V_motor_rpm=-45.2 Mode=2
-[CURRENT_DETAIL] base=50.0mA P=-13.2mA I=94.4mA PI_total=81.2mA I_total=133.8mA Mode=2(0=双向,1=减,2=增)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -45.18 rpm (internal: -0.75)
-[2026-05-26 10:24:43]INFO [POWER] [power_driver.c:319] Current set to 134 mA (0.13 A)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -47.50 rpm (internal: -0.79)
-[2026-05-26 10:24:43]INFO [POWER] [power_driver.c:319] Current set to 126 mA (0.13 A)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 21.95 rpm (internal: 0.37)
-[2026-05-26 10:24:43]INFO [POWER] [power_driver.c:319] Current set to 111 mA (0.11 A)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 60.78 rpm (internal: 1.01)
-[2026-05-26 10:24:43]INFO [POWER] [power_driver.c:319] Current set to 101 mA (0.10 A)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 62.40 rpm (internal: 1.04)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 53.48 rpm (internal: 0.89)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 44.90 rpm (internal: 0.75)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 39.15 rpm (internal: 0.65)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 25.39 rpm (internal: 0.42)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 17.60 rpm (internal: 0.29)
-[MT DEBUG] current=9427, last=9421, delta=6, acc_delta=6, time_us=19989
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 7.21 rpm (internal: 0.12)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.27 rpm (internal: 0.02)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -2.24 rpm (internal: -0.04)
-[2026-05-26 10:24:43]INFO [MOTOR] [motor_driver.c:478] Set velocity: -6.54 rpm (internal: -0.11)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -7.40 rpm (internal: -0.12)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -0.75 rpm (internal: -0.01)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.16 rpm (internal: 0.05)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.35 rpm (internal: 0.01)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.97 rpm (internal: 0.03)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.69 rpm (internal: 0.01)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.10 rpm (internal: 0.09)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.85 rpm (internal: 0.05)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.87 rpm (internal: 0.03)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.06 rpm (internal: 0.02)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.23 rpm (internal: 0.00)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -3.84 rpm (internal: -0.06)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -5.72 rpm (internal: -0.10)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -9.15 rpm (internal: -0.15)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -7.40 rpm (internal: -0.12)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -8.85 rpm (internal: -0.15)
-[DATA] P=20.180kg Pos=0.722m I=0.062A V=0.90V Motor=3.20rpm Vline=0.011m/s Algo=RUN
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -11.34 rpm (internal: -0.19)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -8.98 rpm (internal: -0.15)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -10.67 rpm (internal: -0.18)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -11.36 rpm (internal: -0.19)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -9.05 rpm (internal: -0.15)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -9.37 rpm (internal: -0.16)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -9.87 rpm (internal: -0.16)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -10.07 rpm (internal: -0.17)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -6.90 rpm (internal: -0.12)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -7.04 rpm (internal: -0.12)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -7.27 rpm (internal: -0.12)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -4.02 rpm (internal: -0.07)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -3.76 rpm (internal: -0.06)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -3.25 rpm (internal: -0.05)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.74 rpm (internal: 0.01)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.00 rpm (internal: 0.02)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.33 rpm (internal: 0.02)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.05 rpm (internal: 0.03)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.33 rpm (internal: 0.04)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -0.56 rpm (internal: -0.01)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -0.39 rpm (internal: -0.01)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: -0.01 rpm (internal: -0.00)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.30 rpm (internal: 0.00)
-[VEL MT] pulse_delta=3, time_us=20002, pos_delta=0.000230, vel=0.011504
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.78 rpm (internal: 0.01)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.08 rpm (internal: 0.02)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.87 rpm (internal: 0.03)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.33 rpm (internal: 0.04)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.04 rpm (internal: 0.00)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.61 rpm (internal: 0.01)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 5409
-Running time: 54.1 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.15 to 23.30 kg
-  Max velocity: 0.200 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.82 rpm (internal: 0.03)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.50 rpm (internal: 0.04)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.90 rpm (internal: 0.06)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.31 rpm (internal: 0.09)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 6.02 rpm (internal: 0.10)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 6.73 rpm (internal: 0.11)
-[DATA] P=20.646kg F0=21.055kg dF=-0.409 PI_int=-35.036 Pos=-0.715m V_raw=0.000 V_filt=0.005 V_motor_linear=0.077 I_clutch=11.7mA V_motor_rpm=7.4 Mode=2
-[CURRENT_DETAIL] base=50.0mA P=-4.1mA I=-35.0mA PI_total=-39.1mA I_total=11.7mA Mode=2(0=双向,1=减,2=增)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 8.02 rpm (internal: 0.13)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 9.25 rpm (internal: 0.15)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 10.34 rpm (internal: 0.17)
-[2026-05-26 10:24:44]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 10.84 rpm (internal: 0.18)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 11.80 rpm (internal: 0.20)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 8.92 rpm (internal: 0.15)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 9.94 rpm (internal: 0.17)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 10.39 rpm (internal: 0.17)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 7.77 rpm (internal: 0.13)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.71 rpm (internal: 0.08)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.14 rpm (internal: 0.09)
-[2026-05-26 10:24:44]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.26 rpm (internal: 0.09)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.97 rpm (internal: 0.03)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.76 rpm (internal: 0.03)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.61 rpm (internal: 0.03)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.42 rpm (internal: 0.02)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.30 rpm (internal: 0.07)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.83 rpm (internal: 0.06)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.43 rpm (internal: 0.06)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.20 rpm (internal: 0.05)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.83 rpm (internal: 0.05)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.68 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.45 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.22 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.08 rpm (internal: 0.03)
-[SHM] Data written, sequence=1100, pressure=20.670, motor=3
-[DATA] P=20.670kg Pos=0.715m I=0.049A V=0.84V Motor=3.00rpm Vline=0.010m/s Algo=RUN
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.25 rpm (internal: 0.09)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.03 rpm (internal: 0.08)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.81 rpm (internal: 0.08)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.42 rpm (internal: 0.02)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.30 rpm (internal: 0.02)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.40 rpm (internal: 0.02)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.52 rpm (internal: 0.03)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.94 rpm (internal: 0.08)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.12 rpm (internal: 0.09)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.91 rpm (internal: 0.03)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.22 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.38 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.51 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.63 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.97 rpm (internal: 0.05)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.07 rpm (internal: 0.05)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.96 rpm (internal: 0.05)
-[VEL MT] pulse_delta=0, time_us=19997, pos_delta=0.000000, vel=0.000000
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.79 rpm (internal: 0.05)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.52 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.33 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.13 rpm (internal: 0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.02 rpm (internal: 0.03)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 5509
-Running time: 55.1 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.15 to 23.30 kg
-  Max velocity: 0.200 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.88 rpm (internal: 0.03)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.66 rpm (internal: 0.03)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.82 rpm (internal: -0.03)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: -2.15 rpm (internal: -0.04)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: -2.27 rpm (internal: -0.04)
-[DATA] P=20.660kg F0=21.055kg dF=-0.395 PI_int=-100.000 Pos=-0.715m V_raw=0.004 V_filt=0.001 V_motor_linear=0.007 I_clutch=0.0mA V_motor_rpm=0.7 Mode=2
-[CURRENT_DETAIL] base=50.0mA P=-4.0mA I=-100.0mA PI_total=-104.0mA I_total=0.0mA Mode=2(0=双向,1=减,2=增)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.70 rpm (internal: 0.01)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.55 rpm (internal: 0.01)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.67 rpm (internal: 0.06)
-[2026-05-26 10:24:45]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.47 rpm (internal: 0.06)
-[MT DEBUG] current=9323, last=9323, delta=0, acc_delta=0, time_us=19998
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.60 rpm (internal: 0.06)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.82 rpm (internal: 0.06)
-[2026-05-26 10:24:45]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.03 rpm (internal: 0.07)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.39 rpm (internal: 0.07)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.27 rpm (internal: 0.02)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.62 rpm (internal: 0.03)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.81 rpm (internal: 0.03)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.20 rpm (internal: 0.04)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.36 rpm (internal: 0.04)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.76 rpm (internal: 0.05)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.94 rpm (internal: 0.05)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.10 rpm (internal: 0.05)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.23 rpm (internal: 0.05)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 6.71 rpm (internal: 0.11)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.36 rpm (internal: 0.06)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.55 rpm (internal: 0.06)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.33 rpm (internal: 0.06)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.15 rpm (internal: 0.05)
-[DATA] P=20.670kg Pos=0.715m I=0.051A V=0.88V Motor=3.00rpm Vline=0.010m/s Algo=RUN
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.74 rpm (internal: 0.05)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.59 rpm (internal: 0.04)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.36 rpm (internal: 0.04)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.21 rpm (internal: 0.04)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.88 rpm (internal: 0.03)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.75 rpm (internal: 0.03)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.39 rpm (internal: 0.02)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.23 rpm (internal: 0.02)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.91 rpm (internal: 0.02)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.70 rpm (internal: 0.01)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.87 rpm (internal: 0.06)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 3.77 rpm (internal: 0.06)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.50 rpm (internal: 0.01)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.64 rpm (internal: 0.01)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.83 rpm (internal: 0.01)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.97 rpm (internal: 0.02)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.18 rpm (internal: 0.02)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.78 rpm (internal: 0.08)
-[VEL MT] pulse_delta=-1, time_us=20013, pos_delta=-0.000077, vel=-0.003833
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.93 rpm (internal: 0.08)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.17 rpm (internal: 0.09)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.32 rpm (internal: 0.09)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.65 rpm (internal: 0.09)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.89 rpm (internal: 0.10)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.65 rpm (internal: 0.04)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 5609
-Running time: 56.1 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.15 to 23.30 kg
-  Max velocity: 0.200 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.76 rpm (internal: 0.05)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.64 rpm (internal: 0.04)
-[DATA] P=20.679kg F0=21.055kg dF=-0.376 PI_int=-100.000 Pos=-0.715m V_raw=0.000 V_filt=-0.001 V_motor_linear=0.027 I_clutch=0.0mA V_motor_rpm=2.6 Mode=2
-[CURRENT_DETAIL] base=50.0mA P=-3.8mA I=-100.0mA PI_total=-103.8mA I_total=0.0mA Mode=2(0=双向,1=减,2=增)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.47 rpm (internal: 0.04)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.26 rpm (internal: 0.04)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.22 rpm (internal: 0.09)
-[2026-05-26 10:24:46]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.97 rpm (internal: 0.08)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.81 rpm (internal: 0.08)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.47 rpm (internal: 0.07)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.00 rpm (internal: 0.02)
-[2026-05-26 10:24:46]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.79 rpm (internal: 0.01)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.91 rpm (internal: 0.02)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.36 rpm (internal: 0.07)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.54 rpm (internal: 0.08)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.73 rpm (internal: 0.08)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.87 rpm (internal: 0.08)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.58 rpm (internal: 0.03)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.69 rpm (internal: 0.03)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.89 rpm (internal: 0.03)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.37 rpm (internal: 0.09)
-[DATA] P=20.680kg Pos=0.715m I=0.049A V=0.88V Motor=2.40rpm Vline=0.008m/s Algo=RUN
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.67 rpm (internal: 0.09)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.79 rpm (internal: 0.10)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.89 rpm (internal: 0.10)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.56 rpm (internal: 0.04)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: -0.83 rpm (internal: -0.01)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.03 rpm (internal: -0.02)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.05 rpm (internal: 0.03)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.90 rpm (internal: 0.03)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.14 rpm (internal: 0.09)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.84 rpm (internal: 0.08)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.70 rpm (internal: 0.08)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.47 rpm (internal: 0.07)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.15 rpm (internal: 0.07)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.67 rpm (internal: 0.01)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.54 rpm (internal: 0.01)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: -2.72 rpm (internal: -0.05)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: -2.43 rpm (internal: -0.04)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.02 rpm (internal: 0.02)
-[VEL MT] pulse_delta=0, time_us=19999, pos_delta=0.000000, vel=0.000000
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.25 rpm (internal: 0.02)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.69 rpm (internal: 0.08)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.80 rpm (internal: 0.08)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 5709
-Running time: 57.1 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.15 to 23.30 kg
-  Max velocity: 0.200 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 8.21 rpm (internal: 0.14)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.07 rpm (internal: 0.08)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.91 rpm (internal: 0.03)
-[DATA] P=20.680kg F0=21.055kg dF=-0.375 PI_int=-100.000 Pos=-0.715m V_raw=0.000 V_filt=-0.000 V_motor_linear=0.021 I_clutch=0.0mA V_motor_rpm=2.0 Mode=2
-[CURRENT_DETAIL] base=50.0mA P=-3.8mA I=-100.0mA PI_total=-103.8mA I_total=0.0mA Mode=2(0=双向,1=减,2=增)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.13 rpm (internal: 0.04)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.06 rpm (internal: -0.02)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: -0.88 rpm (internal: -0.01)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.67 rpm (internal: 0.04)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 6.03 rpm (internal: 0.10)
-[2026-05-26 10:24:47]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.88 rpm (internal: 0.10)
-[MT DEBUG] current=9327, last=9327, delta=0, acc_delta=0, time_us=19991
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.62 rpm (internal: 0.09)
-[2026-05-26 10:24:47]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.52 rpm (internal: 0.09)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.96 rpm (internal: 0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.56 rpm (internal: -0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.70 rpm (internal: -0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.42 rpm (internal: 0.02)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.49 rpm (internal: 0.07)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.33 rpm (internal: 0.07)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.09 rpm (internal: 0.07)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.20 rpm (internal: 0.07)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.06 rpm (internal: 0.02)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.27 rpm (internal: 0.02)
-[DATA] P=20.660kg Pos=0.715m I=0.051A V=0.88V Motor=3.00rpm Vline=0.010m/s Algo=RUN
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.42 rpm (internal: 0.02)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.80 rpm (internal: 0.08)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.93 rpm (internal: 0.08)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.70 rpm (internal: 0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.87 rpm (internal: 0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.99 rpm (internal: 0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.14 rpm (internal: 0.04)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.96 rpm (internal: 0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.85 rpm (internal: 0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.71 rpm (internal: 0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.00 rpm (internal: 0.08)
-[VEL MT] pulse_delta=1, time_us=20001, pos_delta=0.000077, vel=0.003835
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.43 rpm (internal: 0.02)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.99 rpm (internal: -0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -5.53 rpm (internal: -0.09)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -2.25 rpm (internal: -0.04)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -2.35 rpm (internal: -0.04)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 5809
-Running time: 58.1 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.15 to 23.30 kg
-  Max velocity: 0.200 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.09 rpm (internal: 0.02)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.49 rpm (internal: 0.07)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.59 rpm (internal: 0.08)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.70 rpm (internal: 0.08)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 8.06 rpm (internal: 0.13)
-[DATA] P=20.704kg F0=21.055kg dF=-0.351 PI_int=-100.000 Pos=-0.715m V_raw=0.000 V_filt=0.000 V_motor_linear=0.085 I_clutch=0.0mA V_motor_rpm=8.1 Mode=2
-[CURRENT_DETAIL] base=50.0mA P=-3.5mA I=-100.0mA PI_total=-103.5mA I_total=0.0mA Mode=2(0=双向,1=减,2=增)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.82 rpm (internal: 0.08)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.50 rpm (internal: 0.02)
-[2026-05-26 10:24:48]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.67 rpm (internal: -0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.51 rpm (internal: -0.03)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.39 rpm (internal: -0.02)
-[2026-05-26 10:24:48]INFO [MOTOR] [motor_driver.c:478] Set velocity: 2.06 rpm (internal: 0.03)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.42 rpm (internal: 0.09)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.31 rpm (internal: 0.09)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.13 rpm (internal: 0.09)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.02 rpm (internal: 0.08)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.64 rpm (internal: 0.03)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.54 rpm (internal: 0.03)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.86 rpm (internal: 0.08)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.69 rpm (internal: 0.08)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.46 rpm (internal: 0.07)
-[DATA] P=20.680kg Pos=0.715m I=0.051A V=0.88V Motor=2.00rpm Vline=0.007m/s Algo=RUN
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 0.99 rpm (internal: 0.02)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.16 rpm (internal: 0.02)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.62 rpm (internal: 0.08)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.89 rpm (internal: 0.08)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.07 rpm (internal: 0.08)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.87 rpm (internal: 0.03)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: -1.30 rpm (internal: -0.02)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.92 rpm (internal: 0.03)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.80 rpm (internal: 0.03)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 5.04 rpm (internal: 0.08)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.92 rpm (internal: 0.08)
-[VEL MT] pulse_delta=0, time_us=19967, pos_delta=0.000000, vel=0.000000
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.52 rpm (internal: 0.03)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 5909
-Running time: 59.1 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.15 to 23.30 kg
-  Max velocity: 0.200 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.23 rpm (internal: 0.02)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.49 rpm (internal: 0.07)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.32 rpm (internal: 0.07)
-[DATA] P=20.677kg F0=21.055kg dF=-0.378 PI_int=-100.000 Pos=-0.715m V_raw=0.000 V_filt=0.000 V_motor_linear=0.045 I_clutch=0.0mA V_motor_rpm=4.3 Mode=2
-[CURRENT_DETAIL] base=50.0mA P=-3.8mA I=-100.0mA PI_total=-103.8mA I_total=0.0mA Mode=2(0=双向,1=减,2=增)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.12 rpm (internal: 0.02)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 1.24 rpm (internal: 0.02)
-[2026-05-26 10:24:49]INFO [POWER] [power_driver.c:319] Current set to 50 mA (0.05 A)
-[2026-05-26 10:24:49]INFO [MOTOR] [motor_driver.c:478] Set velocity: 4.69 rpm (internal: 0.08)
-[MT DEBUG] current=9325, last=9325, delta=0, acc_delta=0, time_us=20003
-^C
-[INFO] Signal received, shutting down...
-[DATA] Data collection thread stopped
-[ACTUATOR] Actuator control thread stopped
-[SENSOR] Saved: length=715.22mm, encoder=9325
-[SHM] Command handler thread stopped
-[2026-05-26 10:24:50]INFO [SYS] [rs485_bus.c:214] RS485 bus deinitialized
-[2026-05-26 10:24:50]INFO [POWER] [power_driver.c:293] Power driver deinitialized
-
-[SHUTDOWN] Stopping system...
-  -> Stopping algorithm... [GRAVITY_UNLOAD] Thread stopped
-[GRAVITY_UNLOAD] Control thread stopped
-[GRAVITY_UNLOAD] Controller deinitialized
-OK
-[SHM] Data output thread stopped
-[MONITOR] Monitor thread stopped
-  -> Waiting for communication threads... OK
-  -> Stopping sensor manager... OK
-
-
-=== Sensor Manager Status ===
-Cycle count: 3113
-Total errors: 0
-
-Encoder (addr=2):
-  Reads: 3102, Errors: 12, Success: 99.6%
-  Multi-turn: 9325
-  Angle: 99.58 deg
-  Rope: 715.22 mm
-
-Pressure (addr=1):
-  Reads: 3108, Errors: 5, Success: 99.8%
-  Pressure: 20.680 kg (raw=2068, offset=0)
-  -> Closing shared memory... OK
-
-[System shutdown completed]
-destroy mutex faild*** buffer overflow detected ***: terminated
-已放弃
+zterch@zterch-TM1701:~/VS_Project/Nimo_COp_Prj/CANOpNode_Sys$ make clean && make
+Clean completed
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c main.c -o build/main.o
+In file included from algorithms/gravity_unload.h:20,
+                 from main.c:34:
+algorithms/algorithm_config.h:55: warning: "SPEED_FILTER_WINDOW_SIZE" redefined
+   55 | #define SPEED_FILTER_WINDOW_SIZE        10          /* 0.2s滑动平均 = 10个采样点（20ms周期） */
+      | 
+In file included from main.c:27:
+config/system_config.h:126: note: this is the location of the previous definition
+  126 | #define SPEED_FILTER_WINDOW_SIZE        5           /* 速度移动平均滤波窗口大小 */
+      | 
+main.c: In function ‘command_handler_thread’:
+main.c:827:50: warning: unused variable ‘kff’ [-Wunused-variable]
+  827 |                                 uint16_t kp, ki, kff;
+      |                                                  ^~~
+main.c:827:46: warning: unused variable ‘ki’ [-Wunused-variable]
+  827 |                                 uint16_t kp, ki, kff;
+      |                                              ^~
+main.c:827:42: warning: unused variable ‘kp’ [-Wunused-variable]
+  827 |                                 uint16_t kp, ki, kff;
+      |                                          ^~
+main.c:826:45: warning: unused variable ‘ret’ [-Wunused-variable]
+  826 |                                 ErrorCode_t ret = motor_enable(&g_motor);
+      |                                             ^~~
+main.c: In function ‘data_collection_thread’:
+main.c:1012:18: warning: unused variable ‘cycle_start_time’ [-Wunused-variable]
+ 1012 |         uint32_t cycle_start_time = get_timestamp_ms();
+      |                  ^~~~~~~~~~~~~~~~
+At top level:
+main.c:438:16: warning: ‘calculate_encoder_delta’ defined but not used [-Wunused-function]
+  438 | static int32_t calculate_encoder_delta(uint32_t current, uint32_t last) {
+      |                ^~~~~~~~~~~~~~~~~~~~~~~
+CC main.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c utils/logger.c -o build/utils/logger.o
+CC utils/logger.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c utils/thread_manager.c -o build/utils/thread_manager.o
+utils/thread_manager.c: In function ‘thread_wrapper’:
+utils/thread_manager.c:31:22: warning: unused variable ‘mgr’ [-Wunused-variable]
+   31 |     ThreadManager_t *mgr = wrapper->mgr;
+      |                      ^~~
+CC utils/thread_manager.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c utils/shared_memory.c -o build/utils/shared_memory.o
+CC utils/shared_memory.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/sine_wave.c -o build/algorithms/sine_wave.o
+CC algorithms/sine_wave.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/signal_filter.c -o build/algorithms/signal_filter.o
+CC algorithms/signal_filter.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/pid_controller.c -o build/algorithms/pid_controller.o
+CC algorithms/pid_controller.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/safety_monitor.c -o build/algorithms/safety_monitor.o
+CC algorithms/safety_monitor.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/gravity_unload.c -o build/algorithms/gravity_unload.o
+algorithms/gravity_unload.c: In function ‘calculate_control_output’:
+algorithms/gravity_unload.c:704:11: warning: unused variable ‘pid_output’ [-Wunused-variable]
+  704 |     float pid_output = pid_update(&ctrl->pid, target_motor_speed, output->motor_velocity_actual);
+      |           ^~~~~~~~~~
+At top level:
+algorithms/gravity_unload.c:354:14: warning: ‘calculate_motor_speed_by_friction’ defined but not used [-Wunused-function]
+  354 | static float calculate_motor_speed_by_friction(GravityUnloadController_t *ctrl,
+      |              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+algorithms/gravity_unload.c:292:14: warning: ‘pressure_filter_update’ defined but not used [-Wunused-function]
+  292 | static float pressure_filter_update(GravityUnloadController_t *ctrl, float raw_pressure) {
+      |              ^~~~~~~~~~~~~~~~~~~~~~
+CC algorithms/gravity_unload.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c algorithms/system_check.c -o build/algorithms/system_check.o
+CC algorithms/system_check.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c drivers/motor_driver.c -o build/drivers/motor_driver.o
+drivers/motor_driver.c: In function ‘motor_set_velocity’:
+drivers/motor_driver.c:476:20: warning: implicit declaration of function ‘get_timestamp_ms’ [-Wimplicit-function-declaration]
+  476 |     uint32_t now = get_timestamp_ms();
+      |                    ^~~~~~~~~~~~~~~~
+drivers/motor_driver.c: In function ‘motor_init’:
+drivers/motor_driver.c:144:9: warning: ignoring return value of ‘chdir’, declared with attribute warn_unused_result [-Wunused-result]
+  144 |         chdir(current_dir);  /* 恢复原目录 */
+      |         ^~~~~~~~~~~~~~~~~~
+drivers/motor_driver.c:172:9: warning: ignoring return value of ‘chdir’, declared with attribute warn_unused_result [-Wunused-result]
+  172 |         chdir(current_dir);  /* 恢复原目录 */
+      |         ^~~~~~~~~~~~~~~~~~
+CC drivers/motor_driver.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c drivers/power_driver.c -o build/drivers/power_driver.o
+drivers/power_driver.c: In function ‘power_set_current’:
+drivers/power_driver.c:317:24: warning: implicit declaration of function ‘get_timestamp_ms’ [-Wimplicit-function-declaration]
+  317 |         uint32_t now = get_timestamp_ms();
+      |                        ^~~~~~~~~~~~~~~~
+drivers/power_driver.c:318:13: warning: implicit declaration of function ‘abs’ [-Wimplicit-function-declaration]
+  318 |         if (abs((int)current_ma - (int)old_setpoint) > 5 || (now - last_log_time) > 1000) {
+      |             ^~~
+CC drivers/power_driver.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c drivers/sensor_manager.c -o build/drivers/sensor_manager.o
+drivers/sensor_manager.c:1: warning: "_GNU_SOURCE" redefined
+    1 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+drivers/sensor_manager.c: In function ‘sensor_thread’:
+drivers/sensor_manager.c:520:18: warning: unused variable ‘sample_start_us’ [-Wunused-variable]
+  520 |         uint64_t sample_start_us = get_time_us();
+      |                  ^~~~~~~~~~~~~~~
+drivers/sensor_manager.c: In function ‘sensor_mgr_print_status’:
+drivers/sensor_manager.c:850:28: warning: format ‘%lu’ expects argument of type ‘long unsigned int’, but argument 2 has type ‘uint32_t’ {aka ‘unsigned int’} [-Wformat=]
+  850 |         printf("  Reads: %lu, Errors: %lu, Success: %.1f%%\n",
+      |                          ~~^
+      |                            |
+      |                            long unsigned int
+      |                          %u
+  851 |                data->read_count, data->error_count, success_rate);
+      |                ~~~~~~~~~~~~~~~~
+      |                    |
+      |                    uint32_t {aka unsigned int}
+drivers/sensor_manager.c:850:41: warning: format ‘%lu’ expects argument of type ‘long unsigned int’, but argument 3 has type ‘uint32_t’ {aka ‘unsigned int’} [-Wformat=]
+  850 |         printf("  Reads: %lu, Errors: %lu, Success: %.1f%%\n",
+      |                                       ~~^
+      |                                         |
+      |                                         long unsigned int
+      |                                       %u
+  851 |                data->read_count, data->error_count, success_rate);
+      |                                  ~~~~~~~~~~~~~~~~~
+      |                                      |
+      |                                      uint32_t {aka unsigned int}
+At top level:
+drivers/sensor_manager.c:172:12: warning: ‘s_ctrl_mt_initialized’ defined but not used [-Wunused-variable]
+  172 | static int s_ctrl_mt_initialized = 0;
+      |            ^~~~~~~~~~~~~~~~~~~~~
+drivers/sensor_manager.c:171:17: warning: ‘s_ctrl_mt_last_encoder_value’ defined but not used [-Wunused-variable]
+  171 | static uint32_t s_ctrl_mt_last_encoder_value = 0;
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+drivers/sensor_manager.c:170:17: warning: ‘s_ctrl_mt_last_time_us’ defined but not used [-Wunused-variable]
+  170 | static uint32_t s_ctrl_mt_last_time_us = 0;
+      |                 ^~~~~~~~~~~~~~~~~~~~~~
+CC drivers/sensor_manager.c
+gcc -Wall -Wextra -O2 -pthread -I./include -I./config -I./utils -I./drivers -I./algorithms -I../NimServoSDK-MM-bin-linux-x64/inc -D_GNU_SOURCE -DNDEBUG -c drivers/rs485_bus.c -o build/drivers/rs485_bus.o
+CC drivers/rs485_bus.c
+gcc build/main.o build/utils/logger.o build/utils/thread_manager.o build/utils/shared_memory.o build/algorithms/sine_wave.o build/algorithms/signal_filter.o build/algorithms/pid_controller.o build/algorithms/safety_monitor.o build/algorithms/gravity_unload.o build/algorithms/system_check.o build/drivers/motor_driver.o build/drivers/power_driver.o build/drivers/sensor_manager.o build/drivers/rs485_bus.o -o bin/CANOpNode_Sys -pthread -lm -lrt -L./lib -lNimServoSDK -lNiMotionUSBCAN -lCANopenMaster -lAbstractMaster -lAbstractCanDevice -lGlobal -lDataBase -lNiMotionCanDevice -lTcpCanDevice -Wl,-rpath,./lib
+/usr/bin/ld: build/main.o: in function `data_collection_thread':
+main.c:(.text+0x10d5): undefined reference to `weight_get_weight_raw'
+/usr/bin/ld: main.c:(.text+0x10e6): undefined reference to `weight_get_weight'
+/usr/bin/ld: build/main.o: in function `main':
+main.c:(.text.startup+0x2fa): undefined reference to `weight_init'
+/usr/bin/ld: main.c:(.text.startup+0x61d): undefined reference to `weight_deinit'
+/usr/bin/ld: main.c:(.text.startup+0xdd8): undefined reference to `weight_deinit'
+collect2: error: ld returned 1 exit status
+make: *** [Makefile:86：bin/CANOpNode_Sys] 错误 1
+zterch@zterch-TM1701:~/VS_Project/Nimo_COp_Prj/CANOpNode_Sys$ 

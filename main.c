@@ -1053,15 +1053,15 @@ static void* data_collection_thread(void* arg) {
         }
         
         /* ========== 第三步：读取重量采集数据（100Hz同步） ========== */
-        float weight_raw_kg = 0.0f, weight_filtered_kg = 0.0f;
+        /* 优化：只读取一次滤波后的重量数据，减少通信时间 */
+        float weight_filtered_kg = 0.0f;
         if (g_weight.initialized) {
-            weight_get_weight_raw(&g_weight, &weight_raw_kg);
             weight_get_weight(&g_weight, &weight_filtered_kg);
         }
         
         /* 更新重量数据到共享缓冲区 */
         pthread_mutex_lock(&g_shared_state.mutex);
-        g_shared_state.weight_raw_kg = weight_raw_kg;
+        g_shared_state.weight_raw_kg = weight_filtered_kg;  /* 临时使用滤波值作为原始值 */
         g_shared_state.weight_filtered_kg = weight_filtered_kg;
         pthread_mutex_unlock(&g_shared_state.mutex);
         
@@ -1127,13 +1127,20 @@ static void* data_collection_thread(void* arg) {
 
             /* 在手动模式下，记录手动计算的F0 */
             float log_f0_kg = (pressure_f0_kg != 0.0f) ? pressure_f0_kg : g_manual_f0_kg;
+            /* 从共享状态读取重量数据 */
+            float log_weight_raw_kg = 0.0f, log_weight_filtered_kg = 0.0f;
+            pthread_mutex_lock(&g_shared_state.mutex);
+            log_weight_raw_kg = g_shared_state.weight_raw_kg;
+            log_weight_filtered_kg = g_shared_state.weight_filtered_kg;
+            pthread_mutex_unlock(&g_shared_state.mutex);
+            
             fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f,%-14.3f,%-14.3f\n",
                     time_str,
                     current_a, target_current_a, voltage_v, pressure_raw_kg, pressure_kg, log_f0_kg, pressure_deltaf,
                     pi_p_term_mA, pi_i_term_mA, pi_d_term_mA, pi_last_current_mA, feedforward_current_mA, algo_deltaf_kg, algo_pressure_kg, rope_length_m,
                     encoder_value, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,
-                    rope_vel_raw, rope_vel_filtered, weight_raw_kg, weight_filtered_kg);
+                    rope_vel_raw, rope_vel_filtered, log_weight_raw_kg, log_weight_filtered_kg);
             
             g_log_count++;
             

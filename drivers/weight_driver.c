@@ -342,10 +342,10 @@ ErrorCode_t weight_get_weight(WeightDriver_t *weight, float *weight_kg) {
         return ret;
     }
     
-    usleep(10000);  /* 等待10ms，给设备足够时间响应 */
+    usleep(5000);  /* 等待5ms，给设备足够时间响应 */
     
     uint16_t data;
-    ret = weight_receive_response(weight, &data, 100);  /* 增加超时到100ms */
+    ret = weight_receive_response(weight, &data, 50);  /* 超时50ms */
     if (ret != ERR_OK) {
         LOG_WARN(LOG_MODULE_POWER, "weight_get_weight: receive response failed");
         weight->error_count++;

@@ -489,22 +489,18 @@ ErrorCode_t weight_get_data(WeightDriver_t *weight, float *weight_kg, int is_fil
 static void* weight_collection_thread(void* arg) {
     WeightDriver_t *weight = (WeightDriver_t *)arg;
     
-    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread started (50Hz)");
+    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread started (10Hz)");
     
     /* 使用普通调度策略，避免与实时线程竞争 */
     struct sched_param param;
     param.sched_priority = 0;
     pthread_setschedparam(pthread_self(), SCHED_OTHER, &param);
     
-    /* 降低采集频率到50Hz（20ms周期），减少CPU占用和串口竞争 */
-    #define WEIGHT_SAMPLE_PERIOD_US 20000
-    
-    struct timespec next_time;
-    clock_gettime(CLOCK_MONOTONIC, &next_time);
-    uint64_t next_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
+    /* 降低采集频率到10Hz（100ms周期），大幅减少CPU占用 */
+    #define WEIGHT_SAMPLE_PERIOD_US 100000
     
     while (weight->thread_running) {
-        /* 采集重量数据 */
+        /* 采集重量数据 - 使用非阻塞方式 */
         float weight_kg = 0.0f;
         ErrorCode_t ret = weight_get_weight(weight, &weight_kg);
         
@@ -513,20 +509,10 @@ static void* weight_collection_thread(void* arg) {
             weight->weight_filtered = weight_kg;
             weight->sample_count++;
             pthread_mutex_unlock(&weight->mutex);
-        } else {
-            /* 采集失败时短暂延迟，避免连续重试占用CPU */
-            usleep(1000);
         }
         
-        /* 严格周期控制 */
-        next_time_us += WEIGHT_SAMPLE_PERIOD_US;
-        clock_gettime(CLOCK_MONOTONIC, &next_time);
-        uint64_t current_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
-        int64_t sleep_us = (int64_t)(next_time_us - current_time_us);
-        
-        if (sleep_us > 0) {
-            usleep(sleep_us);
-        }
+        /* 简单延迟，不严格周期控制，避免影响主线程 */
+        usleep(WEIGHT_SAMPLE_PERIOD_US);
     }
     
     LOG_INFO(LOG_MODULE_POWER, "Weight collection thread stopped, total samples: %u", weight->sample_count);

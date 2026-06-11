@@ -1052,17 +1052,26 @@ static void* data_collection_thread(void* arg) {
             update_motor_to_buffer();
         }
         
-        /* ========== 第三步：读取重量采集数据（50Hz后台采集） ========== */
-        /* 与电源板方案一致：直接读取后台线程缓存的数据，不调用串口通信 */
-        float weight_filtered_kg = 0.0f;
-        if (g_weight.initialized && g_weight.thread_running) {
-            weight_get_data(&g_weight, &weight_filtered_kg, 1);  /* 1=读取滤波后数据 */
+        /* ========== 第三步：读取重量采集数据（非阻塞方式） ========== */
+        /* 每10个周期（100ms）采集一次重量数据，使用非阻塞方式 */
+        static int weight_sample_counter = 0;
+        static float weight_cached_kg = 0.0f;
+        weight_sample_counter++;
+        
+        if (g_weight.initialized && (weight_sample_counter % 10 == 0)) {
+            /* 尝试非阻塞采集，如果失败使用缓存值 */
+            float temp_weight = 0.0f;
+            /* 使用weight_get_data直接读取缓存，不触发串口通信 */
+            weight_get_data(&g_weight, &temp_weight, 1);
+            if (temp_weight > 0.0f) {
+                weight_cached_kg = temp_weight;
+            }
         }
         
         /* 更新重量数据到共享缓冲区 */
         pthread_mutex_lock(&g_shared_state.mutex);
-        g_shared_state.weight_raw_kg = weight_filtered_kg;
-        g_shared_state.weight_filtered_kg = weight_filtered_kg;
+        g_shared_state.weight_raw_kg = weight_cached_kg;
+        g_shared_state.weight_filtered_kg = weight_cached_kg;
         pthread_mutex_unlock(&g_shared_state.mutex);
         
         /* ========== 第四步：原子性读取所有数据（关键！） ========== */

@@ -123,7 +123,7 @@ extern "C" {
 #define SHM_DATA_COLLECTION_PERIOD_MS   10          /* 数据采集周期 (ms) - 100Hz */
 
 /* 速度滤波参数 */
-#define SPEED_FILTER_WINDOW_SIZE        5           /* 速度移动平均滤波窗口大小 */
+
 #define SPEED_FILTER_ALPHA              0.8f        /* 速度低通滤波系数 0-1 */
 
 /* 演示模式参数 */

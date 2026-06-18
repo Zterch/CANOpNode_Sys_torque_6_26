@@ -155,9 +155,13 @@ ErrorCode_t motor_init(MotorDriver_t *motor, uint8_t node_id, const char *can_if
     
     LOG_INFO(LOG_MODULE_MOTOR, "SDK master created successfully, handle=0x%08X", motor->sdk_master);
     
-    /* 构建连接字符串 - 使用NiMotion USB-CAN设备 */
+    /* 构建连接字符串 - 使用NiMotion USB-CAN设备
+     * PDOIntervalMS: 10ms - 与算法周期100Hz匹配
+     * SyncIntervalMS: 10ms - 与PDO周期同步
+     * Baudrate: 8 (1Mbps) - 确保高速通信
+     */
     char conn_str[256];
-    snprintf(conn_str, sizeof(conn_str), 
+    snprintf(conn_str, sizeof(conn_str),
              "{\"DevType\": \"1001\", \"DevIndex\": 0, \"Baudrate\": 8,"
              " \"PDOIntervalMS\": 10, \"SyncIntervalMS\": 10}");
     
@@ -306,8 +310,20 @@ ErrorCode_t motor_enable(MotorDriver_t *motor) {
     }
     usleep(50000);
     
-    /* 设置CSV模式 */
-    ret = SDK_CALL_WITH_RETRY(Nim_set_workMode, motor->sdk_master, motor->node_id, SERVO_CSV_MODE, 1);
+    /* 根据当前模式设置工作模式 */
+    int sdk_mode;
+    int expected_mode;
+    if (motor->mode == MOTOR_MODE_CST) {
+        sdk_mode = SERVO_CST_MODE;
+        expected_mode = SERVO_CST_MODE;
+        LOG_INFO(LOG_MODULE_MOTOR, "Setting CST mode for torque control");
+    } else {
+        sdk_mode = SERVO_CSV_MODE;
+        expected_mode = SERVO_CSV_MODE;
+        LOG_INFO(LOG_MODULE_MOTOR, "Setting CSV mode for velocity control");
+    }
+    
+    ret = SDK_CALL_WITH_RETRY(Nim_set_workMode, motor->sdk_master, motor->node_id, sdk_mode, 1);
     if (ret != 0) {
         LOG_ERROR(LOG_MODULE_MOTOR, "Nim_set_workMode failed: %s", sdk_error_string(ret));
         pthread_mutex_unlock(&motor->mutex);
@@ -318,19 +334,20 @@ ErrorCode_t motor_enable(MotorDriver_t *motor) {
     /* 验证模式 */
     int mode_display;
     ret = SDK_CALL_WITH_RETRY(Nim_get_workModeDisplay, motor->sdk_master, motor->node_id, &mode_display, 1);
-    if (ret != 0 || mode_display != SERVO_CSV_MODE) {
-        LOG_ERROR(LOG_MODULE_MOTOR, "Mode verification failed: got %d, expected %d", mode_display, SERVO_CSV_MODE);
+    if (ret != 0 || mode_display != expected_mode) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Mode verification failed: got %d, expected %d", mode_display, expected_mode);
         pthread_mutex_unlock(&motor->mutex);
         return ERR_COMM_FAIL;
     }
     
-    motor->mode = MOTOR_MODE_CSV;
-    LOG_INFO(LOG_MODULE_MOTOR, "CSV mode set successfully");
+    LOG_INFO(LOG_MODULE_MOTOR, "%s mode set successfully", motor->mode == MOTOR_MODE_CST ? "CST" : "CSV");
     
-    /* 清零目标位置 */
-    ret = SDK_CALL_WITH_RETRY(Nim_set_ipPosition, motor->sdk_master, motor->node_id, 0.0, 1);
-    if (ret != 0) {
-        LOG_WARN(LOG_MODULE_MOTOR, "Nim_set_ipPosition failed: %s", sdk_error_string(ret));
+    /* 清零目标位置（仅在速度模式下） */
+    if (motor->mode != MOTOR_MODE_CST) {
+        ret = SDK_CALL_WITH_RETRY(Nim_set_ipPosition, motor->sdk_master, motor->node_id, 0.0, 1);
+        if (ret != 0) {
+            LOG_WARN(LOG_MODULE_MOTOR, "Nim_set_ipPosition failed: %s", sdk_error_string(ret));
+        }
     }
     
     /* 使能电机 */
@@ -359,20 +376,29 @@ ErrorCode_t motor_enable(MotorDriver_t *motor) {
         motor->state = MOTOR_STATE_ENABLED;
         motor->enabled = 1;
         LOG_INFO(LOG_MODULE_MOTOR, "SUCCESS: Motor enabled! Status word: 0x%04X", status_word);
+
+        /* 使能成功后立即清零目标扭矩，避免初始扭矩冲击 */
+        motor->target_torque = 0;
+        int ret_torque = Nim_set_targetTorque(motor->sdk_master, motor->node_id, 0, 1);
+        if (ret_torque != 0) {
+            LOG_WARN(LOG_MODULE_MOTOR, "Failed to clear target torque after enable: %s", sdk_error_string(ret_torque));
+        } else {
+            LOG_INFO(LOG_MODULE_MOTOR, "Target torque cleared to 0 after enable");
+        }
     } else {
         /* 读取故障码 */
         unsigned int alarm_code;
         if (Nim_get_newestAlarm(motor->sdk_master, motor->node_id, &alarm_code, 1) == 0) {
             LOG_ERROR(LOG_MODULE_MOTOR, "Alarm code: 0x%08X", alarm_code);
         }
-        
+
         motor->state = MOTOR_STATE_FAULT;
         motor->enabled = 0;
         LOG_ERROR(LOG_MODULE_MOTOR, "Motor enable FAILED! Status word: 0x%04X", status_word);
         pthread_mutex_unlock(&motor->mutex);
         return ERR_GENERAL;
     }
-    
+
     pthread_mutex_unlock(&motor->mutex);
     return ERR_OK;
 }
@@ -617,61 +643,68 @@ float motor_calculate_linear_velocity(MotorDriver_t *motor, float motor_rpm) {
     return linear_velocity;
 }
 
+/* 电机状态更新计数器 - 用于降低SDO读取频率 */
+static int motor_update_counter = 0;
+
 ErrorCode_t motor_update_state(MotorDriver_t *motor) {
     if (motor == NULL || !motor->sdk_initialized) {
         return ERR_NOT_INITIALIZED;
     }
 
-    /* 工业级优化：使用短超时非阻塞读取
-     * 1M波特率CANopen PDO通信理论上<1ms完成
-     * 设置5ms超时确保实时性，同时容忍偶尔通信延迟
+    /* 工业级优化：使用1ms超时非阻塞读取
+     * 避免阻塞算法线程，同时确保能读取到数据
+     * 1M波特率CANopen通信1ms足够完成一个SDO请求
      */
-    const int TIMEOUT_MS = 5;  /* 5ms超时，确保100Hz实时性 */
-
-    /* 读取状态字 */
-    unsigned short status_word;
-    int ret = Nim_get_statusWord(motor->sdk_master, motor->node_id, &status_word, TIMEOUT_MS);
-    if (ret != 0) {
-        return ERR_COMM_FAIL;
-    }
+    const int TIMEOUT_MS = 1;  /* 1ms超时，快速模式 */
 
     pthread_mutex_lock(&motor->data_mutex);
 
-    motor->status_word = status_word;
+    /* 降低SDO读取频率：每10个周期读取一次状态字（100Hz -> 10Hz）
+     * 这样可以减少CAN总线负载，同时保持实时性
+     */
+    motor_update_counter++;
+    if (motor_update_counter % 10 == 0) {
+        /* 读取状态字 - 非阻塞 */
+        unsigned short status_word;
+        int ret = Nim_get_statusWord(motor->sdk_master, motor->node_id, &status_word, TIMEOUT_MS);
+        if (ret == 0) {
+            motor->status_word = status_word;
 
-    /* 更新状态机 */
-    uint16_t state_bits = status_word & 0x000F;
-    switch (state_bits) {
-        case 0x0000: motor->state = MOTOR_STATE_NOT_READY; break;
-        case 0x0001: motor->state = MOTOR_STATE_NOT_READY; break;
-        case 0x0002: motor->state = MOTOR_STATE_READY; break;
-        case 0x0003: motor->state = MOTOR_STATE_READY; break;
-        case 0x0004: motor->state = MOTOR_STATE_ENABLED; break;
-        case 0x0005: motor->state = MOTOR_STATE_ENABLED; break;
-        case 0x0006: motor->state = MOTOR_STATE_FAULT; break;
-        case 0x0007: motor->state = MOTOR_STATE_FAULT; break;
-        default:     motor->state = MOTOR_STATE_UNKNOWN; break;
+            /* 更新状态机 */
+            uint16_t state_bits = status_word & 0x000F;
+            switch (state_bits) {
+                case 0x0000: motor->state = MOTOR_STATE_NOT_READY; break;
+                case 0x0001: motor->state = MOTOR_STATE_NOT_READY; break;
+                case 0x0002: motor->state = MOTOR_STATE_READY; break;
+                case 0x0003: motor->state = MOTOR_STATE_READY; break;
+                case 0x0004: motor->state = MOTOR_STATE_ENABLED; break;
+                case 0x0005: motor->state = MOTOR_STATE_ENABLED; break;
+                case 0x0006: motor->state = MOTOR_STATE_FAULT; break;
+                case 0x0007: motor->state = MOTOR_STATE_FAULT; break;
+                default:     motor->state = MOTOR_STATE_UNKNOWN; break;
+            }
+        }
     }
 
-    /* 读取实际位置 - 短超时 */
+    /* 读取实际位置 - 非阻塞 */
     double pos;
     if (Nim_get_currentPosition(motor->sdk_master, motor->node_id, &pos, TIMEOUT_MS) == 0) {
         motor->actual_position = pos;
     }
 
-    /* 读取实际速度 - 短超时 */
+    /* 读取实际速度 - 非阻塞 */
     double vel;
     if (Nim_get_currentVelocity(motor->sdk_master, motor->node_id, &vel, TIMEOUT_MS) == 0) {
         motor->actual_velocity = vel;
     }
 
-    /* 读取实际转速 - 短超时 */
+    /* 读取实际转速 - 非阻塞 */
     int speed_rpm;
     if (Nim_get_currentMotorSpeed(motor->sdk_master, motor->node_id, &speed_rpm, TIMEOUT_MS) == 0) {
         motor->actual_speed_rpm = speed_rpm;
     }
 
-    /* 读取实际转矩 - 短超时 */
+    /* 读取实际转矩 - 非阻塞 */
     int torque;
     if (Nim_get_currentTorque(motor->sdk_master, motor->node_id, &torque, TIMEOUT_MS) == 0) {
         motor->actual_torque = torque;
@@ -870,5 +903,169 @@ ErrorCode_t motor_get_velocity_pid(MotorDriver_t *motor, uint16_t *kp, uint16_t 
     
     LOG_INFO(LOG_MODULE_MOTOR, "Velocity PID read: Kp=%d(0.1Hz), Ki=%d(0.01ms), Kff=%d(0.001)", 
              *kp, *ki, *kff);
+    return ERR_OK;
+}
+
+/******************************************************************************
+ * 力矩控制函数实现 (新增)
+ ******************************************************************************/
+
+ErrorCode_t motor_set_torque(MotorDriver_t *motor, int torque) {
+    if (motor == NULL || !motor->sdk_initialized || !motor->enabled) {
+        return ERR_NOT_INITIALIZED;
+    }
+
+    /* 限制转矩范围: -1000 ~ 1000 (0.001倍额定转矩) */
+    if (torque > 1000) torque = 1000;
+    if (torque < -1000) torque = -1000;
+
+    /* 使用PDO方式发送目标转矩 (100Hz实时) */
+    const int TIMEOUT_MS = 5;  /* 5ms超时 */
+
+    pthread_mutex_lock(&motor->mutex);
+
+    int ret = Nim_set_targetTorque(motor->sdk_master, motor->node_id, torque, TIMEOUT_MS);
+    if (ret != 0) {
+        LOG_WARN(LOG_MODULE_MOTOR, "Nim_set_targetTorque failed: %s", sdk_error_string(ret));
+        motor->error_count++;
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+
+    motor->target_torque = torque;
+    motor->pdo_tx_count++;
+
+    pthread_mutex_unlock(&motor->mutex);
+    
+    /* 限制日志输出频率 */
+    static uint32_t last_log_time = 0;
+    static int last_torque = 0;
+    uint32_t now = get_timestamp_ms();
+    if (abs(torque - last_torque) > 10 || (now - last_log_time) > 500) {
+        LOG_INFO(LOG_MODULE_MOTOR, "Set torque: %d (%.1f%% rated)", torque, torque / 10.0f);
+        last_torque = torque;
+        last_log_time = now;
+    }
+    
+    return ERR_OK;
+}
+
+ErrorCode_t motor_get_torque(MotorDriver_t *motor, int *torque) {
+    if (motor == NULL || !motor->sdk_initialized || torque == NULL) {
+        return ERR_INVALID_PARAM;
+    }
+
+    const int TIMEOUT_MS = 5;
+
+    pthread_mutex_lock(&motor->data_mutex);
+
+    int t;
+    int ret = Nim_get_currentTorque(motor->sdk_master, motor->node_id, &t, TIMEOUT_MS);
+    if (ret != 0) {
+        pthread_mutex_unlock(&motor->data_mutex);
+        return ERR_COMM_FAIL;
+    }
+
+    motor->actual_torque = t;
+    *torque = t;
+
+    pthread_mutex_unlock(&motor->data_mutex);
+
+    return ERR_OK;
+}
+
+ErrorCode_t motor_get_torque_cached(MotorDriver_t *motor, int *torque) {
+    if (motor == NULL || !motor->sdk_initialized || torque == NULL) {
+        return ERR_INVALID_PARAM;
+    }
+
+    pthread_mutex_lock(&motor->data_mutex);
+    *torque = motor->actual_torque;
+    pthread_mutex_unlock(&motor->data_mutex);
+
+    return ERR_OK;
+}
+
+ErrorCode_t motor_set_torque_cached(MotorDriver_t *motor, int torque) {
+    if (motor == NULL || !motor->sdk_initialized) {
+        return ERR_INVALID_PARAM;
+    }
+
+    /* 限制转矩范围: -1000 ~ 1000 (0.001倍额定转矩) */
+    if (torque > 1000) torque = 1000;
+    if (torque < -1000) torque = -1000;
+
+    pthread_mutex_lock(&motor->data_mutex);
+    motor->target_torque = torque;
+    pthread_mutex_unlock(&motor->data_mutex);
+
+    return ERR_OK;
+}
+
+ErrorCode_t motor_enable_torque_mode(MotorDriver_t *motor) {
+    if (motor == NULL || !motor->sdk_initialized) {
+        return ERR_NOT_INITIALIZED;
+    }
+
+    ErrorCode_t ret;
+
+    /* 1. 设置工作模式为CST (循环同步转矩模式) */
+    ret = motor_set_mode(motor, MOTOR_MODE_CST);
+    if (ret != ERR_OK) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Failed to set CST mode");
+        return ret;
+    }
+
+    /* 2. 使能电机 */
+    ret = motor_enable(motor);
+    if (ret != ERR_OK) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Failed to enable motor in torque mode");
+        return ret;
+    }
+
+    /* 3. 初始化目标转矩为0 */
+    motor->target_torque = 0;
+
+    LOG_INFO(LOG_MODULE_MOTOR, "Motor enabled in torque mode (CST)");
+    return ERR_OK;
+}
+
+ErrorCode_t motor_set_torque_ramp(MotorDriver_t *motor, uint32_t torque_ramp) {
+    if (motor == NULL || !motor->sdk_initialized) {
+        return ERR_NOT_INITIALIZED;
+    }
+
+    pthread_mutex_lock(&motor->mutex);
+
+    int ret = Nim_set_PT_TorqueRamp(motor->sdk_master, motor->node_id, torque_ramp);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Nim_set_PT_TorqueRamp failed: %s", sdk_error_string(ret));
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+
+    pthread_mutex_unlock(&motor->mutex);
+
+    LOG_INFO(LOG_MODULE_MOTOR, "Torque ramp set to %u (0.001 rated/s)", torque_ramp);
+    return ERR_OK;
+}
+
+ErrorCode_t motor_set_torque_speed_limit(MotorDriver_t *motor, uint16_t fwd_limit, uint16_t bwd_limit) {
+    if (motor == NULL || !motor->sdk_initialized) {
+        return ERR_NOT_INITIALIZED;
+    }
+
+    pthread_mutex_lock(&motor->mutex);
+
+    int ret = Nim_set_PT_SpeedLimit(motor->sdk_master, motor->node_id, fwd_limit, bwd_limit);
+    if (ret != 0) {
+        LOG_ERROR(LOG_MODULE_MOTOR, "Nim_set_PT_SpeedLimit failed: %s", sdk_error_string(ret));
+        pthread_mutex_unlock(&motor->mutex);
+        return ERR_COMM_FAIL;
+    }
+
+    pthread_mutex_unlock(&motor->mutex);
+
+    LOG_INFO(LOG_MODULE_MOTOR, "Torque mode speed limit: Fwd=%u rpm, Bwd=%u rpm", fwd_limit, bwd_limit);
     return ERR_OK;
 }

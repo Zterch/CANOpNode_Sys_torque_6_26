@@ -1,19 +1,19 @@
 /******************************************************************************
- * @file    power_driver.h
- * @brief   电源板驱动 - UART/TTL串口控制电流输出
+ * @file    power_driver_v2.h
+ * @brief   电源板驱动V2 - 适配固定帧长协议（支持100Hz通信）
  * @author  System Architect
- * @date    2026-04-20
- * @version 1.0.0
+ * @date    2026-06-12
+ * @version 2.0.0
  * 
- * 协议说明：
- * - 自定义协议，类似Modbus RTU
- * - 帧头：0xAA（设备地址）
- * - 功能码：0x01（读取），0x06（写入）
- * - CRC16校验，高字节在前
+ * @description
+ * 工业级100Hz双向通信驱动
+ * - 固定8字节帧长，无字符超时等待
+ * - 单次通信约1.5ms，支持100Hz控制周期
+ * - 新增批量读写功能（0x10），单次完成设置+读取
  ******************************************************************************/
 
-#ifndef __POWER_DRIVER_H__
-#define __POWER_DRIVER_H__
+#ifndef __POWER_DRIVER_V2_H__
+#define __POWER_DRIVER_V2_H__
 
 #include <stdint.h>
 #include <pthread.h>
@@ -24,7 +24,19 @@ extern "C" {
 #endif
 
 /******************************************************************************
- * 寄存器地址定义
+ * 协议定义
+ ******************************************************************************/
+#define POWER_V2_FRAME_LENGTH   8       /* 固定帧长8字节 */
+#define POWER_V2_ADDR           0xAA    /* 设备地址 */
+
+/* 功能码定义 */
+#define POWER_FUNC_READ_IOUT    0x01    /* 读取电流 */
+#define POWER_FUNC_READ_VOUT    0x02    /* 读取电压 */
+#define POWER_FUNC_SET_CURRENT  0x06    /* 设置电流 */
+#define POWER_FUNC_BATCH_RW     0x10    /* 批量读写（设置+读取） */
+
+/******************************************************************************
+ * 寄存器地址定义（兼容旧协议）
  ******************************************************************************/
 #define POWER_REG_VOUT          0x09A0  /* 读取输出电压 */
 #define POWER_REG_IOUT          0xA1A2  /* 读取输出电流 */
@@ -75,7 +87,7 @@ typedef struct {
  ******************************************************************************/
 
 /**
- * @brief 初始化电源板驱动
+ * @brief 初始化电源板驱动V2
  * @param power 电源驱动结构指针
  * @param device 串口设备
  * @param baudrate 波特率
@@ -84,7 +96,7 @@ typedef struct {
 ErrorCode_t power_init(PowerDriver_t *power, const char *device, int baudrate);
 
 /**
- * @brief 反初始化电源板驱动
+ * @brief 反初始化电源板驱动V2
  * @param power 电源驱动结构指针
  */
 void power_deinit(PowerDriver_t *power);
@@ -114,13 +126,36 @@ ErrorCode_t power_get_current(PowerDriver_t *power, uint16_t *current_ma);
 ErrorCode_t power_get_voltage(PowerDriver_t *power, uint16_t *voltage_mv);
 
 /**
- * @brief 同时读取电流和电压
+ * @brief 同时读取电流和电压（实际通信）
  * @param power 电源驱动结构指针
  * @param current_ma 电流输出指针 (mA)
  * @param voltage_mv 电压输出指针 (mV)
  * @return ErrorCode_t
  */
 ErrorCode_t power_get_status(PowerDriver_t *power, uint16_t *current_ma, uint16_t *voltage_mv);
+
+/**
+ * @brief 从缓存读取电流和电压（非阻塞）
+ * @param power 电源驱动结构指针
+ * @param current_ma 电流输出指针 (mA), 可为NULL
+ * @param voltage_mv 电压输出指针 (mV), 可为NULL
+ * @return ErrorCode_t
+ * @note 此函数只读取缓存值，不执行实际通信，适用于实时控制循环
+ */
+ErrorCode_t power_get_status_cached(PowerDriver_t *power, uint16_t *current_ma, uint16_t *voltage_mv);
+
+/**
+ * @brief 【V2新增】批量控制 - 单次通信完成设置电流+读取电流电压
+ * @param power 电源驱动结构指针
+ * @param target_current_ma 目标电流 (mA), 范围 50-4000
+ * @param actual_current_ma 实际电流输出指针 (mA), 可为NULL
+ * @param voltage_mv 实际电压输出指针 (mV), 可为NULL
+ * @return ErrorCode_t
+ * 
+ * @note 这是100Hz控制周期推荐使用的接口，单次通信约1.5ms
+ */
+ErrorCode_t power_batch_control(PowerDriver_t *power, uint16_t target_current_ma,
+                                 uint16_t *actual_current_ma, uint16_t *voltage_mv);
 
 /**
  * @brief 开启电源输出
@@ -137,10 +172,10 @@ ErrorCode_t power_on(PowerDriver_t *power);
 ErrorCode_t power_off(PowerDriver_t *power);
 
 /**
- * @brief CRC16计算（电源板协议）
+ * @brief CRC16计算（电源板协议 - 高字节在前）
  * @param data 数据缓冲区
  * @param len 数据长度
- * @return CRC16值（需要交换高低字节后发送）
+ * @return CRC16值
  */
 uint16_t power_crc16(const uint8_t *data, uint8_t len);
 
@@ -148,4 +183,4 @@ uint16_t power_crc16(const uint8_t *data, uint8_t len);
 }
 #endif
 
-#endif /* __POWER_DRIVER_H__ */
+#endif /* __POWER_DRIVER_V2_H__ */

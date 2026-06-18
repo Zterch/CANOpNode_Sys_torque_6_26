@@ -114,6 +114,14 @@ ErrorCode_t pressure_init(PressureDriver_t *pressure, const char *device,
     pressure->lpf_initialized = 0;
     pressure->pressure_filtered = 0.0f;
     
+    /* 初始化50点移动平均滤波器 */
+    for (int i = 0; i < 50; i++) {
+        pressure->ma_buffer[i] = 0.0f;
+    }
+    pressure->ma_index = 0;
+    pressure->ma_count = 0;
+    pressure->ma_initialized = 0;
+    
     if (pthread_mutex_init(&pressure->mutex, NULL) != 0) {
         return ERR_GENERAL;
     }
@@ -316,7 +324,35 @@ ErrorCode_t pressure_read_filtered(PressureDriver_t *pressure, float *value)
                                       (1.0f - pressure->lpf_alpha) * pressure->pressure_filtered;
     }
     
-    *value = pressure->pressure_filtered;
+    /* 应用50点移动平均滤波器 */
+    float ma_filtered;
+    if (!pressure->ma_initialized) {
+        /* 第一次读取，初始化缓冲区 */
+        for (int i = 0; i < 50; i++) {
+            pressure->ma_buffer[i] = raw_value;
+        }
+        pressure->ma_index = 0;
+        pressure->ma_count = 1;
+        pressure->ma_initialized = 1;
+        ma_filtered = raw_value;
+    } else {
+        /* 更新缓冲区 */
+        pressure->ma_buffer[pressure->ma_index] = raw_value;
+        pressure->ma_index = (pressure->ma_index + 1) % 50;
+        if (pressure->ma_count < 50) {
+            pressure->ma_count++;
+        }
+        
+        /* 计算移动平均值 */
+        float sum = 0.0f;
+        for (int i = 0; i < pressure->ma_count; i++) {
+            sum += pressure->ma_buffer[i];
+        }
+        ma_filtered = sum / pressure->ma_count;
+    }
+    
+    /* 组合两种滤波器的结果（可选：这里使用移动平均滤波器的输出） */
+    *value = ma_filtered;
     
     pthread_mutex_unlock(&pressure->mutex);
     
@@ -332,7 +368,16 @@ void pressure_filter_reset(PressureDriver_t *pressure)
     pthread_mutex_lock(&pressure->mutex);
     pressure->lpf_initialized = 0;
     pressure->pressure_filtered = 0.0f;
+    
+    /* 重置50点移动平均滤波器 */
+    for (int i = 0; i < 50; i++) {
+        pressure->ma_buffer[i] = 0.0f;
+    }
+    pressure->ma_index = 0;
+    pressure->ma_count = 0;
+    pressure->ma_initialized = 0;
+    
     pthread_mutex_unlock(&pressure->mutex);
     
-    LOG_INFO(LOG_MODULE_PRESSURE, "Pressure filter reset");
+    LOG_INFO(LOG_MODULE_PRESSURE, "Pressure filter reset (including 10-point MA)");
 }

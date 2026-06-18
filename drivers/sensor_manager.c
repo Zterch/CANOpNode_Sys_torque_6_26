@@ -27,6 +27,12 @@ static int s_encoder_consecutive_errors = 0;
 /* 压力传感器参数 */
 static int16_t s_pressure_zero_offset = 0;
 
+/* 压力传感器11Hz陷波滤波器开关全局变量
+ * 0: 关闭陷波滤波器（默认）
+ * 1: 开启陷波滤波器
+ */
+int g_pressure_notch_filter_enabled = 0;  /* 默认开启陷波滤波器 */
+
 /* 压力传感器陷波滤波器参数 - 中心频率11Hz，品质因数Q=1.70
  * 二阶IIR陷波滤波器，使用标准陷波滤波器公式设计
  * 采样频率: 100Hz，中心频率: 11Hz，品质因数Q=1.7
@@ -58,6 +64,15 @@ static float s_pressure_x2 = 0.0f;  /* x[n-2] */
 static float s_pressure_y1 = 0.0f;  /* y[n-1] */
 static float s_pressure_y2 = 0.0f;  /* y[n-2] */
 static int s_pressure_notch_initialized = 0;
+
+/* 50点移动平均滤波器 - 用于进一步平滑压力数据
+ * 采样频率100Hz，50点 = 500ms窗口
+ * 等效截止频率约1Hz
+ */
+static float s_pressure_ma_buffer[50];
+static uint8_t s_pressure_ma_index = 0;
+static uint8_t s_pressure_ma_count = 0;
+static int s_pressure_ma_initialized = 0;
 
 /* Modbus功能码 */
 #define MODBUS_READ_HOLDING 0x03
@@ -184,6 +199,7 @@ static ErrorCode_t read_encoder(SensorManager_t *manager, SensorData_t *data) {
     int32_t pulse_delta = 0;
     uint32_t time_delta_us = 0;
     
+    /* 使用5ms超时读取，确保能读取到数据 */
     ErrorCode_t ret = modbus_read_registers(manager,
                                              manager->configs[SENSOR_TYPE_ENCODER].slave_addr,
                                              manager->configs[SENSOR_TYPE_ENCODER].func_code,
@@ -416,6 +432,7 @@ static ErrorCode_t read_pressure(SensorManager_t *manager, SensorData_t *data) {
     uint8_t rx_buf[16];
     int rx_len;
     
+    /* 使用5ms超时读取，确保能读取到数据 */
     ErrorCode_t ret = modbus_read_registers(manager,
                                              manager->configs[SENSOR_TYPE_PRESSURE].slave_addr,
                                              manager->configs[SENSOR_TYPE_PRESSURE].func_code,
@@ -450,34 +467,73 @@ static ErrorCode_t read_pressure(SensorManager_t *manager, SensorData_t *data) {
      *   - 5Hz幅值变化 < 5%
      *   - 11Hz中心频率衰减 > 95%
      * y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
+     *
+     * 可通过全局变量 g_pressure_notch_filter_enabled 控制开关
      */
-    if (!s_pressure_notch_initialized) {
-        /* 首次读取，初始化滤波器状态 */
-        s_pressure_filtered = pressure_kg;
-        s_pressure_x1 = pressure_kg;
-        s_pressure_x2 = pressure_kg;
-        s_pressure_y1 = pressure_kg;
-        s_pressure_y2 = pressure_kg;
-        s_pressure_notch_initialized = 1;
-    } else {
-        /* 二阶IIR陷波滤波 */
-        float x0 = pressure_kg;
-        s_pressure_filtered = PRESSURE_NOTCH_B0 * x0 +
-                              PRESSURE_NOTCH_B1 * s_pressure_x1 +
-                              PRESSURE_NOTCH_B2 * s_pressure_x2 -
-                              PRESSURE_NOTCH_A1 * s_pressure_y1 -
-                              PRESSURE_NOTCH_A2 * s_pressure_y2;
+    float pressure_notch_input = pressure_kg;  /* 默认使用原始值 */
+    if (g_pressure_notch_filter_enabled) {
+        if (!s_pressure_notch_initialized) {
+            /* 首次读取，初始化滤波器状态 */
+            s_pressure_filtered = pressure_kg;
+            s_pressure_x1 = pressure_kg;
+            s_pressure_x2 = pressure_kg;
+            s_pressure_y1 = pressure_kg;
+            s_pressure_y2 = pressure_kg;
+            s_pressure_notch_initialized = 1;
+        } else {
+            /* 二阶IIR陷波滤波 */
+            float x0 = pressure_kg;
+            s_pressure_filtered = PRESSURE_NOTCH_B0 * x0 +
+                                  PRESSURE_NOTCH_B1 * s_pressure_x1 +
+                                  PRESSURE_NOTCH_B2 * s_pressure_x2 -
+                                  PRESSURE_NOTCH_A1 * s_pressure_y1 -
+                                  PRESSURE_NOTCH_A2 * s_pressure_y2;
 
-        /* 更新状态 */
-        s_pressure_x2 = s_pressure_x1;
-        s_pressure_x1 = x0;
-        s_pressure_y2 = s_pressure_y1;
-        s_pressure_y1 = s_pressure_filtered;
+            /* 更新状态 */
+            s_pressure_x2 = s_pressure_x1;
+            s_pressure_x1 = x0;
+            s_pressure_y2 = s_pressure_y1;
+            s_pressure_y1 = s_pressure_filtered;
+        }
+        pressure_notch_input = s_pressure_filtered;
+    } else {
+        /* 滤波器关闭时重置初始化标志，下次开启时重新初始化 */
+        s_pressure_notch_initialized = 0;
+        pressure_notch_input = pressure_kg;
+    }
+    
+    /* 应用50点移动平均滤波器 - 进一步平滑压力数据
+     * 采样频率100Hz，50点 = 500ms窗口，等效截止频率约1Hz
+     */
+    float pressure_ma_filtered;
+    if (!s_pressure_ma_initialized) {
+        /* 首次读取，初始化缓冲区 */
+        for (int i = 0; i < PRESSURE_MA_WINDOW_SIZE; i++) {
+            s_pressure_ma_buffer[i] = pressure_notch_input;
+        }
+        s_pressure_ma_index = 0;
+        s_pressure_ma_count = 1;
+        s_pressure_ma_initialized = 1;
+        pressure_ma_filtered = pressure_notch_input;
+    } else {
+        /* 更新缓冲区 */
+        s_pressure_ma_buffer[s_pressure_ma_index] = pressure_notch_input;
+        s_pressure_ma_index = (s_pressure_ma_index + 1) % PRESSURE_MA_WINDOW_SIZE;
+        if (s_pressure_ma_count < PRESSURE_MA_WINDOW_SIZE) {
+            s_pressure_ma_count++;
+        }
+
+        /* 计算移动平均值 */
+        float sum = 0.0f;
+        for (int i = 0; i < s_pressure_ma_count; i++) {
+            sum += s_pressure_ma_buffer[i];
+        }
+        pressure_ma_filtered = sum / s_pressure_ma_count;
     }
     
     data->data.pressure.raw_value = raw_value;
     data->data.pressure.pressure_kg = pressure_kg;           /* 原始值 */
-    data->data.pressure.pressure_filtered_kg = s_pressure_filtered;  /* 滤波后 */
+    data->data.pressure.pressure_filtered_kg = pressure_ma_filtered;  /* 陷波+50点MA滤波后 */
     data->data_valid = 1;
     data->last_read_us = get_time_us();
     
@@ -515,9 +571,18 @@ static void* sensor_thread(void* arg) {
     
     printf("[SENSOR] Thread started with strict 10ms cycle (100Hz for both sensors)\n");
     
+    /* 首次运行标志 - 用于时间戳初始化 */
+    static int first_run = 1;
+    
     while (manager->running) {
         /* 记录本次采集开始时间 */
         uint64_t sample_start_us = get_time_us();
+        
+        /* 首次运行时初始化时间基准 */
+        if (first_run) {
+            next_time_us = sample_start_us + SENSOR_SAMPLE_PERIOD_US;
+            first_run = 0;
+        }
         
         /* 采集编码器（100Hz） */
         ErrorCode_t ret = read_encoder(manager, &manager->datas[SENSOR_TYPE_ENCODER]);

@@ -38,9 +38,9 @@ extern "C" {
 #define CLUTCH_RATED_POWER_W            21.12f      /* 额定功率 21.12W */
 
 /* 离合器电流-转矩转换系数 (mA per Nm) */
-/* 假设线性关系：转矩 = 电流 / (额定电流/额定转矩) */
-/* 注意：实际负载可能超过额定转矩，需要调整此系数以匹配实际电流限制 */
-#define CLUTCH_CURRENT_PER_TORQUE_MA_NM 88.0f       /* 调整为 88 mA/Nm，使 21kg 负载对应约 0.9A 电流 */
+/* 理论值：额定电流880mA / 额定转矩5Nm = 176 mA/Nm */
+/* 实际调整值：根据系统负载特性调整 */
+#define CLUTCH_CURRENT_PER_TORQUE_MA_NM     176.08f      /* 理论系数 160 mA/Nm (880mA/5Nm) */
 
 /******************************************************************************
  * 控制算法参数
@@ -64,17 +64,38 @@ extern "C" {
 #define FRICTION_ANGLE_COS              0.861f      /* cos(30.5°) ≈ 0.861 */
 #define FRICTION_SPEED_OFFSET_C         15.0f       /* 速度偏移常量 C (rpm) - 减小值降低振荡幅度 */
 #define FRICTION_DEADZONE_KG            0.01f        /* 摩擦力死区 (kg) - 设置0.5kg死区，避免微小波动触发频繁换向 */
-#define PRESSURE_DEADZONE_KG            0.01f        /* 压力死区 (kg) - 设置0.05kg死区，避免微小波动导致积分累积 */
+#define PRESSURE_DEADZONE_KG            0.001f        /* 压力死区 (kg) - 减小到0.001kg，让微小的压力变化也能触发PID响应 */
 #define PRESSURE_F0_DEFAULT_KG          0.0f        /* 静止时压力默认值，运行时会自动校准 */
 #define PRESSURE_F0_CALIBRATION_SAMPLES 500         /* F0校准采样点数 (500点 = 5秒) - 增加校准时间提高稳定性 */
 #define PRESSURE_F0_STABILIZE_SAMPLES   300         /* F0校准前稳定延迟 (300点 = 3秒) - 算法启动后先稳定一段时间再校准 */
 #define MOTOR_SPEED_COMPENSATION_C      0.0f        /* 电机速度补偿系数 - 新算法中不再使用，保留兼容性 */
 
+/* 离合器电流PID控制参数 - 非增量式PID */
+// #define CLUTCH_PI_KP                    0.5f       /* 电流PID比例系数 - 增量式PID需要较小值 */
+// #define CLUTCH_PI_KI                    1000.00f       /* 电流PID积分系数 - 增量式PID需要较小值 */
+// #define CLUTCH_PI_KD                    110.00f       /* 电流PID微分系数 - 增量式PID需要较小值，建议从0开始调试 */
+
 /* 离合器电流PID控制参数 - 增量式PID */
-#define CLUTCH_PI_KP                    0.5f       /* 电流PID比例系数 - 增量式PID需要较小值 */
-#define CLUTCH_PI_KI                    1000.00f       /* 电流PID积分系数 - 增量式PID需要较小值 */
-#define CLUTCH_PI_KD                    450.00f       /* 电流PID微分系数 - 增量式PID需要较小值，建议从0开始调试 */
+#define CLUTCH_PI_KP                    5.0f       /* 电流PID比例系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_KI                    0.00f       /* 电流PID积分系数 - 增量式PID需要较小值 */
+#define CLUTCH_PI_KD                    20.00f       /* 电流PID微分系数 - 增量式PID需要较小值，建议从0开始调试 */
 #define CLUTCH_PI_INTEGRAL_LIMIT        100.0f      /* 电流PID积分限幅 */
+#define MinCurrent_mA                 20.0f       /* 最小电流指令 */
+
+/*电机扭矩PID参数 - 工业级稳定配置 */
+/* 关键调整：
+ * 1. 大幅降低Kp以减少超调和振荡
+ * 2. 大幅降低Ki以防止积分饱和和 windup
+ * 3. 增加Kd以提高阻尼，抑制振荡
+ * 4. 减小积分限幅，防止积分饱和
+ */
+#define MOTOR_PI_KP                    1.0f      /* 电机扭矩PID比例系数 - 大幅降低以减小超调 */
+#define MOTOR_PI_KI                    5.0f       /* 电机扭矩PID积分系数 - 大幅降低以防止积分饱和 */
+#define MOTOR_PI_KD                    0.0f      /* 电机扭矩PID微分系数 - 增加以提高阻尼 */
+#define MOTOR_PI_INTEGRAL_LIMIT        3.0f       /* 电机扭矩PID积分限幅 - 减小以防止积分饱和 */
+#define MinCurrent_NM                 0.04f       /* 00最小扭矩指令 (Nm) - 降低以提高灵敏度 */
+
+
 
 /* 摩擦力方向控制 - 用于测试
  * 0: 双向控制（正常模式）
@@ -82,6 +103,21 @@ extern "C" {
  * 2: 只响应顺时针方向（deltaf < 0，摩擦力增大，重物变重）
  */
 extern int g_friction_direction_mode;  /* 全局变量，在 gravity_unload.c 中定义 */
+
+/* P项低通滤波器开关 - 用于抑制P值高频振荡
+ * 0: 关闭滤波器（默认）
+ * 1: 开启滤波器
+ * 
+ * 滤波器参数设计目标（采样频率100Hz）：
+ * - 对5Hz信号衰减60%以上
+ * - 相位延迟小于40度
+ * 
+ * 一阶低通滤波器系数 α = 0.3 满足要求：
+ * - @5Hz: 幅度≈0.38 (衰减62%)
+ * - @5Hz: 相位≈-35度
+ */
+extern int g_p_term_filter_enabled;    /* P项滤波器开关全局变量 */
+#define P_TERM_FILTER_ALPHA           0.3f        /* P项低通滤波器系数 */
 
 /* 编码器到距离的转换系数 (米/脉冲) */
 /* 距离 = 脉冲数 / 分辨率 * 2π * R2 */
@@ -190,6 +226,12 @@ typedef struct {
     uint32_t timestamp_ms;
 } SensorDataFiltered_t;
 
+/* 控制模式 */
+typedef enum {
+    CONTROL_MODE_VELOCITY = 0,  /* 速度控制模式 */
+    CONTROL_MODE_TORQUE = 1     /* 力矩控制模式 */
+} ControlMode_t;
+
 /* 控制输出 */
 typedef struct {
     float clutch_current_mA;    /* 离合器目标电流 mA */
@@ -197,6 +239,9 @@ typedef struct {
     float motor_velocity_cmd;   /* 电机速度指令（PID输出） */
     float motor_velocity_target;/* 电机目标速度（新算法计算值，用于数据记录） */
     float motor_velocity_actual;/* 电机实际速度 */
+    int motor_torque_cmd;       /* 电机力矩指令 (0.001倍额定转矩) */
+    float motor_torque_nm;      /* 电机目标转矩 Nm (实际计算值，用于显示) */
+    ControlMode_t control_mode; /* 当前控制模式 */
     uint32_t timestamp_ms;
 } ControlOutput_t;
 

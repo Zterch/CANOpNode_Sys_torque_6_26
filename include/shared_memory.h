@@ -52,8 +52,13 @@ typedef struct {
     float clutch_current_ma; // 离合器电流
     float motor_cmd_rpm;     // 电机指令速度
     
+    // 力矩控制数据（新增）
+    float motor_torque_percent; // 电机目标力矩 (Nm)
+    float actual_torque_nm;     // 电机实际力矩 (Nm)
+    int32_t control_mode;       // 控制模式: 0=速度模式, 1=力矩模式
+    
     // 保留字段（扩展用）
-    float reserved[4];
+    float reserved[1];
     
 } SharedData_t;
 
@@ -73,6 +78,19 @@ typedef struct {
     
     bool data_log_start;     // 开始数据记录标志
     bool data_log_stop;      // 停止数据记录标志
+    
+    // 力矩控制字段（新增）
+    int32_t control_mode;       // 0=速度模式, 1=力矩模式
+    float target_torque_nm;     // 目标力矩 (Nm)
+    bool enable_torque_mode;    // 使能力矩模式标志
+    bool control_mode_changed;  // 控制模式改变标志（新增）
+    
+    // 正弦测试字段（新增）
+    bool sine_test_start;       // 开始正弦测试
+    bool sine_test_stop;        // 停止正弦测试
+    float sine_amplitude;       // 正弦振幅 (Nm)
+    float sine_frequency;       // 正弦频率 (Hz)
+    float sine_offset;          // 正弦偏置 (Nm)
     
 } SharedCommand_t;
 

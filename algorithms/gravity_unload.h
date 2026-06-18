@@ -72,6 +72,7 @@ typedef struct {
     float pressure_f0_sum;          /* F0校准期间压力累加和 */
     int pressure_f0_sample_count;   /* F0校准期间采样计数 */
     int pressure_stabilize_count;   /* 压力稳定延迟计数（算法启动后先稳定一段时间再校准） */
+    int f0_calibration_cycles;      /* F0校准后的周期计数，用于限制初始扭矩 */
     
     /* 离合器电流PID控制 - 增量式PID */
     float clutch_pi_integral;       /* PID积分项 */
@@ -168,6 +169,30 @@ void gravity_unload_get_status(const GravityUnloadController_t *ctrl, AlgoStatus
  * @param ctrl 控制器实例
  */
 void gravity_unload_print_status(const GravityUnloadController_t *ctrl);
+
+/**
+ * @brief 设置电机控制模式
+ * @param mode 控制模式 (CONTROL_MODE_VELOCITY 或 CONTROL_MODE_TORQUE)
+ */
+void gravity_unload_set_control_mode(ControlMode_t mode);
+
+/**
+ * @brief 设置目标力矩（力矩控制模式下使用）
+ * @param torque_nm 目标力矩 (Nm)，范围: -5.0 ~ 5.0
+ */
+void gravity_unload_set_target_torque(float torque_nm);
+
+/**
+ * @brief 获取目标力矩（力矩控制模式下使用）
+ * @return 目标力矩 (Nm)
+ */
+float gravity_unload_get_target_torque(void);
+
+/**
+ * @brief 获取当前控制模式
+ * @return 当前控制模式
+ */
+ControlMode_t gravity_unload_get_control_mode(void);
 
 #ifdef __cplusplus
 }

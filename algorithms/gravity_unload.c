@@ -12,20 +12,28 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdlib.h>
+#include "power_driver.h"  /* 电源驱动头文件 */
 
 /* 外部依赖声明 - 需要在主程序中提供 */
 extern int get_sensor_data(SensorDataRaw_t *data);
 extern int set_motor_velocity(float velocity);
+extern int set_motor_torque(int torque);  /* 电机扭矩设置 (0.001倍额定转矩) */
 extern int set_clutch_current(float current_mA);
 extern int get_motor_actual_velocity(float *velocity);
 extern uint32_t get_timestamp_ms(void);
 extern void update_rope_velocity(float raw_velocity, float filtered_velocity);
 extern void update_motor_theory_velocity(float theory_velocity);
 extern void update_pressure_f0_deltaf(float f0_kg, float deltaf);
-extern void update_pi_terms(float p_term_mA, float i_term_mA, float d_term_mA);
+extern void update_pi_terms(float p_term_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA);
 extern void update_feedforward_current(float feedforward_mA);
 extern void update_feedforward_and_target(float feedforward_mA, float target_mA, float deltaf_kg, float pressure_kg);
+extern void update_feedforward_torque(float feedforward_torque_Nm);  /* 更新扭矩前馈 */
 extern void update_pi_last_current(float last_current_mA);
+extern void update_power_feedback(float current_a, float voltage_v, float target_a);  /* 更新电源反馈数据 */
+extern void update_motor_target_torque(float torque_cmd);  /* 更新电机目标扭矩 */
+
+/* 电源驱动外部声明 */
+extern PowerDriver_t g_power;  /* 电源驱动全局变量 */
 
 /* 摩擦力方向控制全局变量
  * 0: 双向控制（正常模式）
@@ -33,6 +41,16 @@ extern void update_pi_last_current(float last_current_mA);
  * 2: 只响应顺时针方向（deltaf < 0，摩擦力增大，重物变重）
  */
 int g_friction_direction_mode = 2;  /* 默认只响应逆时针方向 */
+
+/* P项低通滤波器开关全局变量
+ * 0: 关闭滤波器（默认）
+ * 1: 开启滤波器
+ */
+int g_p_term_filter_enabled = 1;    /* 默认关闭P项滤波器 */
+
+/* P项滤波器状态变量 - 静态变量保持状态 */
+static float g_p_term_filtered = 0.0f;   /* 滤波后的P项值 */
+static int g_p_term_filter_initialized = 0;  /* 滤波器初始化标志 */
 
 /* 内部辅助函数 - 获取微秒时间戳 */
 static uint64_t get_time_us(void) {
@@ -321,14 +339,13 @@ static void calibrate_pressure_f0(GravityUnloadController_t *ctrl, float pressur
         /* F0校准期间，强制pressure_f0_kg为0，避免显示未校准的F0值 */
         ctrl->pressure_f0_kg = 0.0f;
 
-        /* 先进行稳定延迟，让系统稳定后再开始校准 */
-        if (ctrl->pressure_stabilize_count < PRESSURE_F0_STABILIZE_SAMPLES) {
-            ctrl->pressure_stabilize_count++;
-            if (ctrl->pressure_stabilize_count == PRESSURE_F0_STABILIZE_SAMPLES) {
-                printf("[GRAVITY_UNLOAD] Pressure stabilization complete, starting F0 calibration...\n");
-            }
-            return;  /* 稳定期间不进行校准 */
+        /* 立即开始F0校准，不进行稳定延迟
+         * 避免在稳定延迟期间PID不输出扭矩导致重物下坠
+         */
+        if (ctrl->pressure_stabilize_count == 0) {
+            printf("[GRAVITY_UNLOAD] Starting F0 calibration immediately...\n");
         }
+        ctrl->pressure_stabilize_count++;
 
         /* 累加压力值 */
         ctrl->pressure_f0_sum += pressure_kg;
@@ -338,10 +355,13 @@ static void calibrate_pressure_f0(GravityUnloadController_t *ctrl, float pressur
         if (ctrl->pressure_f0_sample_count >= PRESSURE_F0_CALIBRATION_SAMPLES) {
             ctrl->pressure_f0_kg = ctrl->pressure_f0_sum / ctrl->pressure_f0_sample_count;
             ctrl->pressure_f0_calibrated = 1;
-            /* F0校准完成后，清零积分累积和与last_current_mA，确保从0开始 */
+            ctrl->f0_calibration_cycles = 0;  /* 重置F0校准后的周期计数 */
+            /* F0校准完成后，清零所有PID历史值，确保从0开始 */
             integral_sum = 0.0f;
             ctrl->last_current_mA = 0.0f;
-            printf("[GRAVITY_UNLOAD] F0 calibrated: %.3f kg (avg of %d samples), integral_sum and last_current reset to 0\n",
+            ctrl->last_deltaf = 0.0f;        /* 重置last_deltaf */
+            ctrl->last_last_deltaf = 0.0f;   /* 重置last_last_deltaf */
+            printf("[GRAVITY_UNLOAD] F0 calibrated: %.3f kg (avg of %d samples), all PID history reset to 0\n",
                    ctrl->pressure_f0_kg, ctrl->pressure_f0_sample_count);
         }
     }
@@ -458,252 +478,227 @@ static void process_sensor_data(GravityUnloadController_t *ctrl,
 }
 
 /******************************************************************************
- * 控制输出计算
+ * 控制输出计算 - 重力卸载扭矩控制算法
+ * 
+ * 机械结构：
+ * 电机 --(3:1减速比)--> 磁粉离合器 --(同轴)--> R1滑轮 --(绳子)--> R2滑轮 --(绳子)--> 重物
+ *                                      ↑
+ *                                夹角30.5°，压力传感器在夹角中线
+ * 
+ * 控制原理：
+ * 1. 离合器保持抱死状态（提供固定阻转矩），作为刚性传动环节
+ * 2. 当重物重量变化时，压力传感器检测DeltaF
+ * 3. 电机主动提供扭矩，通过抱死的离合器传递给绳子
+ * 4. 电机扭矩 × 3（减速比）= 输出到绳子的扭矩
+ * 5. 通过控制电机扭矩来抵消重量变化，保持压力恒定
+ * 
+ * 扭矩计算：
+ * - 绳张力 = DeltaF * 9.8 / (2 * cos(30.5°))
+ * - R1滑轮所需扭矩 = 绳张力 * R1半径
+ * - 电机所需扭矩 = R1滑轮所需扭矩 / 3（减速比）
  ******************************************************************************/
 
 static void calculate_control_output(GravityUnloadController_t *ctrl,
                                      const SensorDataFiltered_t *filtered,
                                      ControlOutput_t *output) {
-
-    
     if (ctrl == NULL || filtered == NULL || output == NULL) return;
 
     /* 计算DeltaF（压力变化量）
      * DeltaF = Fnow - F0 （当前压力 - 初始稳定压力）
-     * 这是压力传感器值相对于初始稳定值的变化量
+     * DeltaF > 0: 重物变重，需要电机提供正扭矩提升
+     * DeltaF < 0: 重物变轻，需要电机提供负扭矩释放
+     */
+    /* 计算DeltaF（压力变化量）
+     * F0校准期间，使用当前压力作为F0的临时值，实现平滑过渡
+     * F0校准完成后，使用校准后的F0值
      */
     float delta_f_kg = 0.0f;
     if (ctrl->pressure_f0_calibrated) {
         delta_f_kg = filtered->pressure_kg - ctrl->pressure_f0_kg;
+    } else {
+        /* F0校准期间，使用当前压力作为F0的临时值
+         * 这样可以在F0校准期间就开始控制，避免重物下坠
+         * 当前压力作为目标压力，DeltaF = 当前 - 当前 = 0
+         * PID输出为0，但会记录积分，为F0校准完成后的控制做准备
+         */
+        delta_f_kg = 0.0f;
+        /* 使用当前压力作为临时的F0，用于积分累积 */
+        /* 这样积分项会逐渐累积到支撑当前重物所需的值 */
+        if (fabs(filtered->pressure_kg) > 0.1f) {
+            /* 累积积分，为F0校准完成后的控制做准备 */
+            integral_sum += filtered->pressure_kg * ALGO_CONTROL_PERIOD_S * 0.1f;  /* 缓慢累积 */
+            if (integral_sum > MOTOR_PI_INTEGRAL_LIMIT * 0.5f) {
+                integral_sum = MOTOR_PI_INTEGRAL_LIMIT * 0.5f;  /* 限制最大50% */
+            }
+            if (integral_sum < -MOTOR_PI_INTEGRAL_LIMIT * 0.5f) {
+                integral_sum = -MOTOR_PI_INTEGRAL_LIMIT * 0.5f;
+            }
+        }
     }
 
-    /* 步骤1: 基于力偏差反馈计算离合器目标电流 */
-    /* 增量式前馈+PI控制逻辑：
-     * I_total = I_feedforward + I_pi
-     * 
-     * 前馈电流（基于DeltaF线性插值）：
-     *   - 0g  -> 50mA
-     *   - 220g -> 110mA
-     *   I_feedforward = 50 + (DeltaF / 0.2) * (110 - 50)
-     * 
-     * PI控制电流（增量式）：
-     *   I_pi(k) = I_pi(k-1) + Kp * DeltaF + Ki * DeltaF * dt
-     * 
-     * 总电流：
-     *   I_total = I_feedforward + I_pi
+    /* ========== 步骤1: 基于物理模型计算R1滑轮所需扭矩（作为扭矩前馈） ========== */
+    /* 绳张力计算（考虑30.5°夹角）
+     * 压力传感器测量值 = 2 × 绳张力 × cos(30.5°)
+     * 绳张力 = DeltaF × 9.8 / (2 × cos(30.5°))
      */
+    float rope_tension_N = 0.0f;
+    float feedforward_torque_Nm = 0.0f;
+    // if (ctrl->pressure_f0_calibrated) {
+    //     rope_tension_N = delta_f_kg * 9.8f / (2.0f * FRICTION_ANGLE_COS);
+    //     /* R1滑轮所需扭矩 = 绳张力 × R1半径，除以减速比3转换为电机扭矩前馈 */
+    //     feedforward_torque_Nm = (rope_tension_N * ctrl->pulley_r1_m) / 3.0f;
+    // }
     
-    /* 计算前馈电流 - 基于DeltaF的线性插值
-     * 0-220g (0-0.2kg) 对应 50-110mA
-     * 斜率 = (110 - 50) / 0.22 = 273 mA/kg
-     */
-    float feedforward_current_mA = 50.0f + (delta_f_kg * 273.0f);  /* 50 + DeltaF * 273 */
+    /* ========== 步骤2: 仅使用PID计算电机扭矩（去掉前馈） ========== */
+    float motor_rated_torque = 1.27f;
     
-    /* 限制前馈电流范围 */
-    if (feedforward_current_mA < 50.0f) {
-        feedforward_current_mA = 50.0f;
-    } else if (feedforward_current_mA > 900.0f) {
-        feedforward_current_mA = 900.0f;
-    }
-    
-    /* 增量式PID计算 - 用于微调 */
-    
-    /* 死区判断：只有当|DeltaF|超过死区阈值时才进行PID计算 */
+    /* 使用增量式PID根据DeltaF计算电机扭矩 */
     float deadzone_deltaf = fabs(delta_f_kg) > PRESSURE_DEADZONE_KG ? delta_f_kg : 0.0f;
 
-    /* 比例项增量：Kp * DeltaF（带死区） */
-    float proportional_increment = CLUTCH_PI_KP * deadzone_deltaf;
+    /* 比例项 - 直接计算扭矩（Nm），Kp单位：Nm/kg */
+    /* 减小Kp以防止振荡：0.3 / 3 = 0.1 Nm/kg */
+    float p_term_raw_Nm = MOTOR_PI_KP * deadzone_deltaf / 3.0f;
+    
+    /* P项低通滤波器 - 用于抑制高频振荡
+     * 滤波器系数 α = 0.3，在5Hz处衰减62%，相位延迟35度
+     * 满足：衰减>60%，相位<40度的要求
+     */
+    float p_term_Nm = p_term_raw_Nm;  /* 默认使用原始值 */
+    if (g_p_term_filter_enabled) {
+        if (!g_p_term_filter_initialized) {
+            /* 首次初始化滤波器 */
+            g_p_term_filtered = p_term_raw_Nm;
+            g_p_term_filter_initialized = 1;
+        }
+        /* 一阶低通滤波: y[n] = α * x[n] + (1-α) * y[n-1] */
+        g_p_term_filtered = P_TERM_FILTER_ALPHA * p_term_raw_Nm + 
+                           (1.0f - P_TERM_FILTER_ALPHA) * g_p_term_filtered;
+        p_term_Nm = g_p_term_filtered;
+    } else {
+        /* 滤波器关闭时重置初始化标志，下次开启时重新初始化 */
+        g_p_term_filter_initialized = 0;
+    }
 
-    /* 积分项增量：Ki * DeltaF * dt（带死区） */
-    //integral_sum = 0.0;
+    /* 积分项 - 带衰减 */
     if (fabs(delta_f_kg) > PRESSURE_DEADZONE_KG) {
         integral_sum += delta_f_kg * ALGO_CONTROL_PERIOD_S;
-    }
-    float integral_increment = CLUTCH_PI_KI * integral_sum;
-
-    /* 微分项增量：Kd * (DeltaF(k) - 2*DeltaF(k-1) + DeltaF(k-2))（带死区） */
-    /* 增量式PID的微分项：Kd * (e(k) - 2*e(k-1) + e(k-2)) */
-    float derivative_increment = CLUTCH_PI_KD * (deadzone_deltaf - 2.0f * ctrl->last_deltaf + ctrl->last_last_deltaf);
-
-    /* 检测DeltaF变号，重置PID累积 - 必须在计算pi_current_mA之前！ */
-
-    /* 总增量 = 比例增量 + 积分增量 + 微分增量 */
-    float total_increment = proportional_increment + integral_increment + derivative_increment;
-
-    /* 计算PID部分电流：I_pid(k) = I_pid(k-1) + 总增量 */
-    float pi_current_mA = ctrl->last_current_mA*0.0 + total_increment;
-
-    /* 限制PID电流累积范围，防止过度偏离零点（针对小DeltaF波动的累积保护） */
-    /* 当死区生效且last_current_mA累积过大时，逐步衰减回零 */
-    if (deadzone_deltaf == 0.0f && fabs(ctrl->last_current_mA) > 5.0f) {
-        /* 死区范围内，对累积的电流进行衰减 */
-        pi_current_mA = ctrl->last_current_mA * 0.95f;  /* 5%衰减系数 */
+    } else {
+        /* 死区内积分衰减 */
+        integral_sum *= 0.95f;
     }
     
-    /* 积分分离：当输出达到限幅时，停止积分累积，防止积分饱和 */
-    /* 条件1：电流在下限且DeltaF为负（需要减小电流但已到下限）→ 停止积分 */
-    /* 条件2：电流在上限且DeltaF为正（需要增加电流但已到上限）→ 停止积分 */
-    /* 条件3：电流在下限且DeltaF为正（需要增加电流但在下限）→ 说明积分过负，需要重置 */
-    /* 条件4：电流在上限且DeltaF为负（需要减小电流但在上限）→ 说明积分过正，需要重置 */
-    // if ((pi_current_mA <= 0.0f && delta_f_kg < 0.0f) ||       /* 条件1 */
-    //     (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg > 0.0f)) {  /* 条件2 */
-    //     /* 达到限幅且方向一致，不更新积分（积分分离） */
-    // } else if ((pi_current_mA <= 0.0f && delta_f_kg > 0.0f) ||  /* 条件3：在下限但需要增加 */
-    //            (pi_current_mA >= SAFETY_CLUTCH_CURRENT_MAX_MA && delta_f_kg < 0.0f)) {  /* 条件4：在上限但需要减小 */
-    //     /* 达到限幅但方向相反，说明积分饱和，重置积分 */
-    //     integral_sum = 0.0f;
-    //     ctrl->clutch_pi_integral = 0.0f;
-    //     printf("[PID] Integral reset due to saturation: current=%.2f, delta_f=%.3f\n", 
-    //            pi_current_mA, delta_f_kg);
-    // } else {
-        /* 正常情况，更新积分项 */
-        ctrl->clutch_pi_integral = integral_increment;
-    // }
+    /* 积分限幅 - 使用配置值防止积分饱和 */
+    if (integral_sum > MOTOR_PI_INTEGRAL_LIMIT) integral_sum = MOTOR_PI_INTEGRAL_LIMIT;
+    if (integral_sum < -MOTOR_PI_INTEGRAL_LIMIT) integral_sum = -MOTOR_PI_INTEGRAL_LIMIT;
+    
+    /* 减小Ki以防止振荡：0.1 / 3 = 0.033 Nm/(kg·s) */
+    float i_term_Nm = MOTOR_PI_KI * integral_sum / 3.0f;
 
+    /* 微分项 - 减小Kd以防止高频噪声放大：0.05 / 3 = 0.017 Nm·s/kg */
+    float d_term_Nm = MOTOR_PI_KD* (deadzone_deltaf - 2.0f * ctrl->last_deltaf + ctrl->last_last_deltaf) / 3.0f;
+
+    /* PID总输出 - 已经是电机侧扭矩 */
+    float pid_output_Nm = p_term_Nm + i_term_Nm + d_term_Nm;
+
+    /* 死区衰减 */
+    if (deadzone_deltaf == 0.0f && fabs(ctrl->last_current_mA) > 0.01f) {
+        pid_output_Nm = ctrl->last_current_mA * 0.95f;
+    }
+    
     /* 积分限幅 */
+    ctrl->clutch_pi_integral = i_term_Nm;
     if (ctrl->clutch_pi_integral > CLUTCH_PI_INTEGRAL_LIMIT) {
         ctrl->clutch_pi_integral = CLUTCH_PI_INTEGRAL_LIMIT;
     } else if (ctrl->clutch_pi_integral < -CLUTCH_PI_INTEGRAL_LIMIT) {
         ctrl->clutch_pi_integral = -CLUTCH_PI_INTEGRAL_LIMIT;
     }
 
-    /* 更新微分项（用于显示和数据记录） */
-    /* 显示增量式微分增量：Kd*(e(k)-2*e(k-1)+e(k-2))，与计算一致 */
-    ctrl->clutch_pi_derivative = derivative_increment;
+    ctrl->clutch_pi_derivative = d_term_Nm;
 
-    /* 计算PID输出（用于显示和数据记录） */
-    float pi_p_term_mA = CLUTCH_PI_KP * delta_f_kg;                    /* P项（比例项） */
-    float pi_i_term_mA = ctrl->clutch_pi_integral;                     /* I项（积分项） */
-    float pi_d_term_mA = ctrl->clutch_pi_derivative;                   /* D项（微分项） */
+    /* 最终电机扭矩 = PID输出（无前馈） */
+    float motor_final_torque_Nm = pid_output_Nm;
 
-    /* 计算总电流：前馈 + PID */
-    float current_mA =  pi_current_mA + feedforward_current_mA;//feedforward_current_mA
-    
-    /* 保存计算后的电流值（限制前）用于数据记录 */
-    float current_mA_raw = current_mA;
-    
-    /* 限制总电流范围 */
-    int current_limited = 0;  /* 标记电流是否被限制 */
-    if (current_mA < 0.0f) {
-        current_mA = 0.0f;
-        current_limited = -1;  /* 被限制到下限 */
-    } else if (current_mA > SAFETY_CLUTCH_CURRENT_MAX_MA) {
-        current_mA = SAFETY_CLUTCH_CURRENT_MAX_MA;
-        current_limited = 1;   /* 被限制到上限 */
-    }
-    
-    /* 保存PID历史值用于下一时刻计算 */
-    /* 只有F0校准完成后才更新历史值，避免校准期间累积误差 */
-    if (ctrl->pressure_f0_calibrated) {
-        ctrl->last_last_deltaf = ctrl->last_deltaf;  /* 保存上上一次的DeltaF */
-        ctrl->last_deltaf = delta_f_kg;              /* 保存上一次的DeltaF */
-        /* 如果电流被限制，同步限制last_current_mA，避免累积误差 */
-        if (current_limited == -1 && pi_current_mA < 0.0f) {
-            ctrl->last_current_mA = 0.0f;  /* 被限制到下限，重置为0 */
-        } else if (current_limited == 1 && pi_current_mA > SAFETY_CLUTCH_CURRENT_MAX_MA) {
-            ctrl->last_current_mA = SAFETY_CLUTCH_CURRENT_MAX_MA;  /* 被限制到上限 */
-        } else {
-            ctrl->last_current_mA = pi_current_mA;  /* 正常情况，保存计算值 */
+    /* F0校准后的保护期：前50个周期（0.5秒）内，限制扭矩输出 */
+    if (ctrl->pressure_f0_calibrated && ctrl->f0_calibration_cycles < 50) {
+        /* 保护期内，扭矩输出从0逐渐增加到正常值 */
+        float ramp_factor = (float)ctrl->f0_calibration_cycles / 50.0f;
+        motor_final_torque_Nm *= ramp_factor;
+        ctrl->f0_calibration_cycles++;
+        if (ctrl->f0_calibration_cycles == 1) {
+            printf("[GRAVITY_UNLOAD] F0 calibration protection period started (50 cycles)\n");
         }
-    } else {
-        ctrl->last_last_deltaf = 0.0f;  /* F0校准期间保持为0 */
-        ctrl->last_deltaf = 0.0f;       /* F0校准期间保持为0 */
-        ctrl->last_current_mA = 0.0f;   /* F0校准期间保持为0 */
+        if (ctrl->f0_calibration_cycles == 50) {
+            printf("[GRAVITY_UNLOAD] F0 calibration protection period ended\n");
+        }
     }
 
-    /* 输出最终电流 */
-    output->clutch_current_mA = current_mA;
-
-    /* 更新PID项到共享状态（用于数据采集） */
-    update_pi_terms(pi_p_term_mA, pi_i_term_mA, pi_d_term_mA);
-
-    /* 更新PI累积电流到共享状态（用于调试增量式PID） */
-    update_pi_last_current(ctrl->last_current_mA);
+    /* 限制电机扭矩在额定范围内 */
+    if (motor_final_torque_Nm > motor_rated_torque) {
+        motor_final_torque_Nm = motor_rated_torque;
+    } else if (motor_final_torque_Nm < -motor_rated_torque) {
+        motor_final_torque_Nm = -motor_rated_torque;
+    }
     
-    /* 同时更新前馈电流、目标电流和算法DeltaF到共享状态（确保数据一致性） */
-    /* 传入限制前的电流值，便于调试分析 */
-    update_feedforward_and_target(feedforward_current_mA, current_mA_raw, delta_f_kg, filtered->pressure_kg);
-
-    /* 限制电流范围 */
-    if (output->clutch_current_mA < 0.0f) {
-        output->clutch_current_mA = 0.0f;
-    } else if (output->clutch_current_mA > SAFETY_CLUTCH_CURRENT_MAX_MA) {
-        output->clutch_current_mA = SAFETY_CLUTCH_CURRENT_MAX_MA;
+    /* 输出变化率限制（斜坡限制）- 防止扭矩突变导致振荡 */
+    /* 每周期最大变化量：0.01 Nm/10ms = 1 Nm/s - 大幅降低变化率以提高稳定性 */
+    const float max_torque_change_per_cycle = 0.01f;
+    float torque_change = motor_final_torque_Nm - ctrl->last_current_mA;
+    if (torque_change > max_torque_change_per_cycle) {
+        motor_final_torque_Nm = ctrl->last_current_mA + max_torque_change_per_cycle;
+    } else if (torque_change < -max_torque_change_per_cycle) {
+        motor_final_torque_Nm = ctrl->last_current_mA - max_torque_change_per_cycle;
     }
+    
+    /* 保存PID历史值 */
+    if (ctrl->pressure_f0_calibrated) {
+        ctrl->last_last_deltaf = ctrl->last_deltaf;
+        ctrl->last_deltaf = delta_f_kg;
+        /* 保存经过变化率限制后的实际输出扭矩，确保下一周期的变化率限制正确 */
+        ctrl->last_current_mA = motor_final_torque_Nm;
+    } else {
+        ctrl->last_last_deltaf = 0.0f;
+        ctrl->last_deltaf = 0.0f;
+        ctrl->last_current_mA = 0.0f;
+    }
+
+    /* ========== 步骤4: 设置离合器电流（保持抱死） ========== */
+    /* 离合器保持额定电流，提供最大阻转矩，作为刚性传动 */
+    float clutch_current_mA = CLUTCH_RATED_CURRENT_MA;  /* 880mA = 0.88A */
+    output->clutch_current_mA = clutch_current_mA;
+    output->clutch_torque_nm = CLUTCH_RATED_TORQUE_NM;  /* 5Nm */
+
+    /* ========== 步骤5: 设置电机扭矩指令 ========== */
+    /* 转换电机扭矩为指令值（0.001倍额定转矩） */
+    /* 指令值 = (扭矩 / 额定扭矩) * 1000 */
+    int motor_torque_cmd = (int)((motor_final_torque_Nm / motor_rated_torque) * 1000.0f);
+    
+    /* 限制电机扭矩指令范围 */
+    if (motor_torque_cmd > 1000) {
+        motor_torque_cmd = 1000;
+    } else if (motor_torque_cmd < -1000) {
+        motor_torque_cmd = -1000;
+    }
+    
+    output->motor_torque_cmd = motor_torque_cmd;
+    output->motor_torque_nm = motor_final_torque_Nm;  /* 保存实际扭矩值用于显示 */
+    output->control_mode = CONTROL_MODE_TORQUE;
+
+    /* 更新PID项到共享状态（用于显示）- 已经是Nm单位
+     * 同时传递P项滤波前后的值，用于分析滤波效果
+     */
+    update_pi_terms(p_term_Nm, p_term_raw_Nm, i_term_Nm, d_term_Nm);
+    /* 更新last_current为电机扭矩值（Nm），用于CSV记录 */
+    update_pi_last_current(motor_final_torque_Nm);
+    update_feedforward_and_target(clutch_current_mA, clutch_current_mA, delta_f_kg, filtered->pressure_kg);
+    update_feedforward_torque(feedforward_torque_Nm);  /* 更新扭矩前馈 */
 
     /* 保存DeltaF用于调试 */
     ctrl->last_deltaf = delta_f_kg;
 
-    /* 步骤2: 计算电机目标速度 - 基于摩擦力的控制算法 */
-    /* 首先计算大滑轮（顶部）的转速（rpm）
-     * 线速度(m/s) -> 转速(rpm): W = V * 60 / (2 * π * R)
-     * 简化: W = V * 30 / (π * R)
-     */
+    /* 计算电机目标速度（用于数据记录） */
     float pulley_velocity_rpm = (filtered->velocity_m_s / ctrl->pulley_r1_m) * (30.0f / 3.14159f);
-
-    /* 使用基于摩擦力的控制算法计算电机目标速度
-     * 根据DeltaF的正负，在滑轮转速基础上加减常量C
-     * DeltaF > 0: 压力增大（重物变重），电机加速正转提升
-     * DeltaF < 0: 压力减小（重物变轻），电机加速反转释放
-     * 
-     * 全局变量 g_friction_direction_mode 控制方向：
-     * 0: 双向控制（正常模式）
-     * 1: 只响应压力减小方向（DeltaF < 0）
-     * 2: 只响应压力增大方向（DeltaF > 0）
-     * 
-     * 死区控制：当 |DeltaF| < FRICTION_DEADZONE_KG 时，不响应，避免频繁换向
-     */
-    float target_motor_speed;
-    
-    /* 死区判断：如果压力变化量在死区内，保持当前速度 */
-    if (fabsf(delta_f_kg) < FRICTION_DEADZONE_KG) {
-        target_motor_speed = -pulley_velocity_rpm;  /* 只跟随滑轮速度，不主动调整 */
-    } else {
-        switch (g_friction_direction_mode) {
-            case 1:  /* 只响应压力减小方向（DeltaF < 0，重物变轻） */
-                if (delta_f_kg < 0.0f) {
-                    target_motor_speed = -60.0f;//-(pulley_velocity_rpm + FRICTION_SPEED_OFFSET_C);
-                } else {
-                    /* DeltaF >= 0 时，保持当前速度，不响应 */
-                    target_motor_speed = -60.0f;//-pulley_velocity_rpm;
-                }
-                break;
-                
-            case 2:  /* 只响应压力增大方向（DeltaF > 0，重物变重） */
-                if (delta_f_kg > 0.0f) {
-                    target_motor_speed = 60.0f;//-(pulley_velocity_rpm - FRICTION_SPEED_OFFSET_C);
-                } else {
-                    /* DeltaF <= 0 时，保持当前速度，不响应 */
-                    target_motor_speed = -60.0f;//-pulley_velocity_rpm;
-                }
-                break;
-                
-            default: /* 0: 双向控制（正常模式） */
-                if (delta_f_kg > 0.0f) {
-                    target_motor_speed = 60.0f;//-(pulley_velocity_rpm - FRICTION_SPEED_OFFSET_C);
-                } else if (delta_f_kg < 0.0f) {
-                    target_motor_speed = -60.0f;//-(pulley_velocity_rpm + FRICTION_SPEED_OFFSET_C);
-                } else {
-                    target_motor_speed = -60.0f;//-pulley_velocity_rpm;
-                }
-                break;
-        }
-    }
-
-    /* 限制电机速度范围 */
-    if (target_motor_speed > SAFETY_MOTOR_SPEED_MAX) {
-        target_motor_speed = SAFETY_MOTOR_SPEED_MAX;
-    } else if (target_motor_speed < -SAFETY_MOTOR_SPEED_MAX) {
-        target_motor_speed = -SAFETY_MOTOR_SPEED_MAX;
-    }
-
-    /* 保存新算法计算的目标速度（用于数据记录） */
-    output->motor_velocity_target = target_motor_speed;
-
-    /* 使用PID控制器跟踪目标速度 */
-    float pid_output = pid_update(&ctrl->pid, target_motor_speed, output->motor_velocity_actual);
-
-    output->motor_velocity_cmd = 300.0f;//-pid_output;
+    output->motor_velocity_target = pulley_velocity_rpm * 3.0f;
+    output->motor_velocity_cmd = 0;
     output->timestamp_ms = filtered->timestamp_ms;
 }
 
@@ -796,13 +791,14 @@ AlgoError_t gravity_unload_control_cycle(GravityUnloadController_t *ctrl,
 
 static void* gravity_unload_thread(void *arg) {
     GravityUnloadController_t *ctrl = (GravityUnloadController_t *)arg;
-    
+
     printf("[GRAVITY_UNLOAD] Thread started - Industrial Grade Strict 10ms Cycle\n");
-    
+
     SensorDataRaw_t raw_data;
     SensorDataFiltered_t filtered_data;
     ControlOutput_t control_output;
-    
+    memset(&control_output, 0, sizeof(control_output));  /* 初始化控制输出，避免随机值 */
+
     uint32_t last_print_time = 0;
     
     /* 工业级严格周期控制 - 使用绝对时间戳 */
@@ -841,14 +837,35 @@ static void* gravity_unload_thread(void *arg) {
         if (err == ALGO_ERR_SAFETY_VIOLATION) {
             printf("[GRAVITY_UNLOAD] Safety violation detected!\n");
             /* 紧急停止：输出清零 */
-            set_motor_velocity(0);
+            set_motor_torque(0);
             set_clutch_current(0);
             break;
         }
         
-        /* 输出到执行器 */
-        set_motor_velocity(control_output.motor_velocity_cmd);  /* 负号反转电机方向 */
-        set_clutch_current(control_output.clutch_current_mA);
+        /* 输出到执行器 - 协调控制：离合器电流 + 电机扭矩 */
+        set_motor_torque(control_output.motor_torque_cmd);  /* 电机扭矩主控制 */
+        set_clutch_current(control_output.clutch_current_mA);  /* 离合器额定电流抱死 */
+        
+        /* 更新电机目标扭矩到共享状态（用于数据采集） */
+        /* 直接传递Nm值，让数据收集代码处理转换 */
+        update_motor_target_torque(control_output.motor_torque_nm);
+        
+        /* 通知数据收集线程 - 确保数据采集同步 */
+        extern void notify_data_collection_cycle(uint64_t timestamp_us, uint32_t cycle_count);
+        notify_data_collection_cycle(get_time_us(), ctrl->cycle_count);
+        
+        /* 通知PDO线程 - 确保PDO发送与算法周期同步 */
+        extern void notify_pdo_cycle(uint32_t cycle_count);
+        notify_pdo_cycle(ctrl->cycle_count);
+        
+        /* 读取电源实际输出电流和电压（使用缓存，避免阻塞），并更新到共享状态 */
+        uint16_t actual_current_ma = 0;
+        uint16_t actual_voltage_mv = 0;
+        if (g_power.initialized) {
+            power_get_status_cached(&g_power, &actual_current_ma, &actual_voltage_mv);
+            update_power_feedback(actual_current_ma / 1000.0f, actual_voltage_mv / 1000.0f,
+                                  control_output.clutch_current_mA / 1000.0f);
+        }
         
         /* 更新绳子速度到共享状态缓冲区 */
         update_rope_velocity(filtered_data.velocity_raw_m_s, filtered_data.velocity_m_s);
@@ -873,38 +890,35 @@ static void* gravity_unload_thread(void *arg) {
         if (current_time - last_print_time >= 1000) {  /* 1Hz输出 */
             last_print_time = current_time;
 
-            /* 计算电机线速度 (电机转一圈对应的绳子移动距离考虑减速比) */
-            /* 电机速度(rpm) -> 滑轮速度(rpm) -> 线速度(m/s) */
-            //换算到滑轮线速度，不考虑减速比
-            float pulley_speed_rpm = control_output.motor_velocity_cmd;
-            float motor_linear_vel = (pulley_speed_rpm * 2.0f * 3.14159f * ctrl->pulley_r1_m) / 60.0f;
-
             /* 计算压力变化量用于显示 */
             float delta_f_display = 0.0f;
             if (ctrl->pressure_f0_calibrated) {
                 delta_f_display = filtered_data.pressure_kg - ctrl->pressure_f0_kg;
             }
 
-            /* 控制台输出 - 仅输出到控制台，避免文件I/O阻塞 */
-            /* 计算PI输出分解 */
+            /* 计算绳张力和扭矩 */
+            float rope_tension_N = delta_f_display * 9.8f / (2.0f * FRICTION_ANGLE_COS);
+            float pulley_torque_Nm = rope_tension_N * ctrl->pulley_r1_m;
+            /* 使用 motor_torque_nm (Nm单位)，而不是 motor_torque_cmd (0.001倍额定) */
+            float motor_torque_Nm = control_output.motor_torque_nm;
+
+            /* 控制台输出 - 重力卸载扭矩控制信息 */
             float pi_p_term = CLUTCH_PI_KP * delta_f_display;
             float pi_i_term = ctrl->clutch_pi_integral;
-            float pi_total = pi_p_term + pi_i_term;
             
-            printf("[DATA] P=%.3fkg F0=%.3fkg dF=%.3f PI_int=%.3f Pos=%.3fm V_raw=%.3f V_filt=%.3f V_motor_linear=%.3f I_clutch=%.1fmA V_motor_rpm=%.1f Mode=%d\n",
+            printf("[DATA] P=%.3fkg F0=%.3fkg dF=%.3f Pos=%.3fm V_filt=%.3f I_clutch=%.1fmA T_pulley=%.2fNm T_motor=%.3fNm Mode=%d\n",
                    filtered_data.pressure_kg,
                    ctrl->pressure_f0_kg,
                    delta_f_display,
-                   ctrl->clutch_pi_integral,
                    filtered_data.position_m,
-                   filtered_data.velocity_raw_m_s,
                    filtered_data.velocity_m_s,
-                   motor_linear_vel,
                    control_output.clutch_current_mA,
-                   control_output.motor_velocity_cmd,
+                   pulley_torque_Nm,
+                   motor_torque_Nm,
                    g_friction_direction_mode);
-             printf("[CURRENT_DETAIL] base=50.0mA P=%.1fmA I=%.1fmA PI_total=%.1fmA I_total=%.1fmA Mode=%d(0=双向,1=减,2=增)\n",
-                    pi_p_term, pi_i_term, pi_total, control_output.clutch_current_mA, g_friction_direction_mode);
+             printf("[TORQUE_DETAIL] T_pulley_req=%.2fNm T_motor_target=%.3fNm T_motor_cmd=%d I_clutch=%.1fmA P=%.3fNm I=%.3fNm\n",
+                    pulley_torque_Nm, motor_torque_Nm, control_output.motor_torque_cmd,
+                    control_output.clutch_current_mA, pi_p_term/3.0f, pi_i_term/3.0f);
         }
         
         /* 工业级严格周期控制 - 使用绝对时间戳 */
@@ -921,7 +935,7 @@ static void* gravity_unload_thread(void *arg) {
             nanosleep(&sleep_ts, NULL);
         } else if (sleep_us < -5000) {
             /* 严重超时（超过5ms）：打印警告并重新同步 */
-            printf("[GRAVITY_UNLOAD] WARNING: Cycle deadline missed by %ld us, resynchronizing...\n", 
+            printf("[GRAVITY_UNLOAD] WARNING: Cycle deadline missed by %ld us, resynchronizing...\n",
                    (long)(-sleep_us));
             /* 重新同步到下一个周期 */
             next_time_us = current_time_us + ALGO_CONTROL_PERIOD_MS * 1000;
@@ -943,6 +957,38 @@ void gravity_unload_get_status(const GravityUnloadController_t *ctrl, AlgoStatus
     pthread_mutex_lock((pthread_mutex_t *)&ctrl->mutex);
     memcpy(status, &ctrl->status, sizeof(AlgoStatus_t));
     pthread_mutex_unlock((pthread_mutex_t *)&ctrl->mutex);
+}
+
+/******************************************************************************
+ * 控制模式与目标力矩设置
+ ******************************************************************************/
+
+/* 静态变量用于存储控制模式和目标力矩 */
+static ControlMode_t s_control_mode = CONTROL_MODE_TORQUE;
+static float s_target_torque_nm = 0.0f;
+
+void gravity_unload_set_control_mode(ControlMode_t mode) {
+    s_control_mode = mode;
+    printf("[GRAVITY_UNLOAD] Control mode set to: %s\n", 
+           mode == CONTROL_MODE_TORQUE ? "TORQUE" : "VELOCITY");
+}
+
+ControlMode_t gravity_unload_get_control_mode(void) {
+    return s_control_mode;
+}
+
+void gravity_unload_set_target_torque(float torque_nm) {
+    /* 限制力矩范围在电机额定范围内 */
+    if (torque_nm > 1.27f) {
+        torque_nm = 1.27f;
+    } else if (torque_nm < -1.27f) {
+        torque_nm = -1.27f;
+    }
+    s_target_torque_nm = torque_nm;
+}
+
+float gravity_unload_get_target_torque(void) {
+    return s_target_torque_nm;
 }
 
 void gravity_unload_print_status(const GravityUnloadController_t *ctrl) {

@@ -38,9 +38,15 @@ typedef struct {
     float pressure_filtered;    /* 滤波后的压力值 (kg) */
     float zero_offset;          /* 零点偏移 */
     
-    /* 低通滤波器 - 截止频率9Hz，采样率50Hz */
+    /* 低通滤波器 - 截止频率9Hz，采样率100Hz */
     float lpf_alpha;            /* 滤波系数 */
     int lpf_initialized;        /* 滤波器是否已初始化 */
+    
+    /* 10点移动平均滤波器 */
+    float ma_buffer[50];        /* 移动平均缓冲区 */
+    uint8_t ma_index;           /* 当前索引 */
+    uint8_t ma_count;           /* 有效数据点数 */
+    int ma_initialized;         /* 移动平均滤波器是否已初始化 */
     
     /* 统计 */
     uint32_t read_count;        /* 读取次数 */
@@ -96,10 +102,11 @@ ErrorCode_t pressure_read(PressureDriver_t *pressure, float *value);
 ErrorCode_t pressure_zero_calibration(PressureDriver_t *pressure);
 
 /**
- * @brief 读取滤波后的压力值（低通滤波，截止频率9Hz）
+ * @brief 读取滤波后的压力值（低通滤波 + 10点移动平均滤波）
  * @param pressure 压力计驱动结构指针
  * @param value 压力输出指针 (kg)
  * @return ErrorCode_t
+ * @note 依次应用：1) 一阶IIR低通滤波(9Hz截止频率) 2) 10点移动平均滤波
  */
 ErrorCode_t pressure_read_filtered(PressureDriver_t *pressure, float *value);
 

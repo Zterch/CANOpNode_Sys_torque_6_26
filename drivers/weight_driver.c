@@ -163,8 +163,8 @@ static ErrorCode_t weight_send_read_cmd(WeightDriver_t *weight, uint16_t reg_add
     /* 清空接收缓冲区 - 避免读取到旧数据 */
     while (read(weight->fd, temp_buf, sizeof(temp_buf)) > 0);
     
-    LOG_DEBUG(LOG_MODULE_POWER, "Weight TX: %02X %02X %02X %02X %02X %02X %02X %02X (reg=0x%04X)",
-              tx_buf[0], tx_buf[1], tx_buf[2], tx_buf[3], tx_buf[4], tx_buf[5], tx_buf[6], tx_buf[7], reg_addr);
+    //LOG_DEBUG(LOG_MODULE_POWER, "Weight TX: %02X %02X %02X %02X %02X %02X %02X %02X (reg=0x%04X)",
+    //          tx_buf[0], tx_buf[1], tx_buf[2], tx_buf[3], tx_buf[4], tx_buf[5], tx_buf[6], tx_buf[7], reg_addr);
     
     int ret = serial_send(weight->fd, tx_buf, 8);
     pthread_mutex_unlock(&weight->mutex);
@@ -188,30 +188,22 @@ static ErrorCode_t weight_receive_response(WeightDriver_t *weight, uint16_t *dat
     pthread_mutex_unlock(&weight->mutex);
     
     if (rx_len <= 0) {
-        /* 超时或错误，添加更多调试信息 */
+        /* 超时或错误，仅在初始阶段记录 */
         static int error_count = 0;
         if (++error_count <= 3) {
-            LOG_WARN(LOG_MODULE_POWER, "Weight receive timeout or error: ret=%d (error_count=%d)", rx_len, error_count);
+            LOG_DEBUG(LOG_MODULE_POWER, "Weight receive timeout (error_count=%d)", error_count);
         }
         return ERR_COMM_FAIL;
     }
     
     if (rx_len < 8) {
-        LOG_WARN(LOG_MODULE_POWER, "Weight response too short: %d bytes (expected >= 8)", rx_len);
-        /* 打印接收到的数据以便调试 */
-        LOG_WARN(LOG_MODULE_POWER, "Weight RX data: %02X %02X %02X %02X ...", 
-                 rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
+        LOG_DEBUG(LOG_MODULE_POWER, "Weight response too short: %d bytes", rx_len);
         return ERR_COMM_FAIL;
     }
     
-    /* 打印接收到的完整数据 */
-    LOG_DEBUG(LOG_MODULE_POWER, "Weight RX: %02X %02X %02X %02X %02X %02X %02X %02X (len=%d)",
-              rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3], rx_buf[4], rx_buf[5], rx_buf[6], rx_buf[7], rx_len);
-    
     /* 验证帧头 */
     if (rx_buf[0] != 0xAA || rx_buf[1] != 0x01) {
-        LOG_WARN(LOG_MODULE_POWER, "Weight response header mismatch: 0x%02X 0x%02X (expected 0xAA 0x01)", 
-                 rx_buf[0], rx_buf[1]);
+        LOG_DEBUG(LOG_MODULE_POWER, "Weight response header mismatch");
         return ERR_COMM_FAIL;
     }
     
@@ -220,15 +212,12 @@ static ErrorCode_t weight_receive_response(WeightDriver_t *weight, uint16_t *dat
     uint16_t calc_crc = weight_crc16(rx_buf, rx_len - 2);
     
     if (rx_crc != calc_crc) {
-        LOG_WARN(LOG_MODULE_POWER, "Weight response CRC mismatch: RX=0x%04X, CALC=0x%04X", 
-                 rx_crc, calc_crc);
-        /* 继续处理数据，即使CRC不匹配 */
+        /* CRC不匹配，但继续处理数据 */
     }
     
     /* 提取数据 - 压力采集板格式：字节2-3是寄存器地址，字节4-5是数据 */
     if (data != NULL) {
         *data = (rx_buf[4] << 8) | rx_buf[5];
-        LOG_DEBUG(LOG_MODULE_POWER, "Weight data received: 0x%04X (%u)", *data, *data);
     }
     
     return ERR_OK;
@@ -269,36 +258,28 @@ ErrorCode_t weight_init(WeightDriver_t *weight, const char *device, int baudrate
     while (retry_count < WEIGHT_INIT_RETRY_COUNT) {
         ret = weight_get_weight(weight, &test_weight);
         if (ret == ERR_OK) {
-            LOG_INFO(LOG_MODULE_POWER, "Weight device communication test passed (attempt %d/%d), weight=%.3f kg",
-                     retry_count + 1, WEIGHT_INIT_RETRY_COUNT, test_weight);
+            LOG_INFO(LOG_MODULE_POWER, "Weight device initialized: %s, weight=%.3f kg", device, test_weight);
             break;
         }
         
         retry_count++;
         if (retry_count < WEIGHT_INIT_RETRY_COUNT) {
-            LOG_WARN(LOG_MODULE_POWER, "Weight device communication test failed (attempt %d/%d), retrying in %d ms...",
-                     retry_count, WEIGHT_INIT_RETRY_COUNT, WEIGHT_INIT_RETRY_DELAY_MS);
             usleep(WEIGHT_INIT_RETRY_DELAY_MS * 1000);  /* 等待后重试 */
         }
     }
     
     if (ret != ERR_OK) {
-        LOG_ERROR(LOG_MODULE_POWER, "Weight device communication test failed after %d attempts", WEIGHT_INIT_RETRY_COUNT);
-        LOG_ERROR(LOG_MODULE_POWER, "Possible causes:");
-        LOG_ERROR(LOG_MODULE_POWER, "  1. Device not powered on or not connected to %s", device);
-        LOG_ERROR(LOG_MODULE_POWER, "  2. Wrong baudrate (expected: %d)", baudrate);
-        LOG_ERROR(LOG_MODULE_POWER, "  3. Device address mismatch (expected: 0xAA)");
-        LOG_ERROR(LOG_MODULE_POWER, "  4. Communication protocol mismatch");
+        LOG_WARN(LOG_MODULE_POWER, "Weight device not available: %s (optional)", device);
         serial_close(weight->fd);
         weight->fd = -1;
-        return ERR_COMM_FAIL;
+        /* 标记为未初始化但允许系统继续运行 */
+        weight->initialized = 0;
+        return ERR_OK;  /* 返回成功，让系统继续运行 */
     }
     
     weight->state = WEIGHT_STATE_READY;
     weight->initialized = 1;
     weight->weight_filtered = test_weight;
-    
-    LOG_INFO(LOG_MODULE_POWER, "Weight driver initialized: %s @ %d baud", device, baudrate);
     
     return ERR_OK;
 }
@@ -343,7 +324,6 @@ ErrorCode_t weight_get_weight(WeightDriver_t *weight, float *weight_kg) {
     
     ErrorCode_t ret = weight_send_read_cmd(weight, WEIGHT_REG_WEIGHT_FILTERED);
     if (ret != ERR_OK) {
-        LOG_WARN(LOG_MODULE_POWER, "weight_get_weight: send command failed");
         weight->error_count++;
         return ret;
     }
@@ -359,7 +339,6 @@ ErrorCode_t weight_get_weight(WeightDriver_t *weight, float *weight_kg) {
     ret = weight_receive_response(weight, &data, 5);  /* 超时5ms，快速响应 */
     if (ret != ERR_OK) {
         /* 采集失败，使用上一次的值 */
-        LOG_DEBUG(LOG_MODULE_POWER, "weight_get_weight: receive timeout, using cached value");
         *weight_kg = weight->weight_filtered;  /* 使用缓存值 */
         return ERR_OK;  /* 返回成功，但使用旧值 */
     }
@@ -369,8 +348,6 @@ ErrorCode_t weight_get_weight(WeightDriver_t *weight, float *weight_kg) {
     weight->read_count++;
     
     *weight_kg = weight->weight_filtered;
-    
-    LOG_DEBUG(LOG_MODULE_POWER, "weight_get_weight: success, raw=%u, weight=%.3f kg", data, *weight_kg);
     
     return ERR_OK;
 }
@@ -545,16 +522,12 @@ static void* weight_collection_thread(void* arg) {
             sleep_ts.tv_nsec = (sleep_us % 1000000) * 1000;
             nanosleep(&sleep_ts, NULL);
         } else if (sleep_us < -5000) {
-            /* 严重超时（超过5ms）：打印警告并重新同步 */
-            LOG_WARN(LOG_MODULE_POWER, "Weight sample deadline missed by %ld us, resynchronizing...", 
-                     (long)(-sleep_us));
-            /* 重新同步到下一个周期 */
+            /* 严重超时（超过5ms）：重新同步 */
             next_time_us = current_time_us + WEIGHT_SAMPLE_PERIOD_US;
         }
         /* 如果sleep_us在[-5000, 0]之间，说明轻微超时，继续执行不等待 */
     }
     
-    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread stopped, total samples: %u", weight->sample_count);
     return NULL;
 }
 
@@ -579,7 +552,6 @@ ErrorCode_t weight_start_collection(WeightDriver_t *weight) {
         return ERR_THREAD_CREATE;
     }
     
-    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread created (100Hz)");
     return ERR_OK;
 }
 
@@ -594,5 +566,4 @@ void weight_stop_collection(WeightDriver_t *weight) {
     weight->thread_running = 0;
     pthread_join(weight->collect_thread, NULL);
     
-    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread stopped, total samples: %u", weight->sample_count);
 }

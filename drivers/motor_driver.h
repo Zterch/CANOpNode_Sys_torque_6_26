@@ -74,6 +74,7 @@ typedef struct {
     volatile int actual_torque;         /* 实际转矩 (0.001倍额定) */
     volatile double target_velocity;    /* 目标速度 */
     volatile double target_position;    /* 目标位置 */
+    volatile int target_torque;         /* 目标转矩 (0.001倍额定) */
     
     /* 控制参数 */
     double max_velocity;        /* 最大速度 */
@@ -247,6 +248,66 @@ const char* motor_get_mode_string(MotorMode_t mode);
  */
 void motor_get_statistics(MotorDriver_t *motor, uint64_t *tx_count, 
                           uint64_t *rx_count, uint64_t *err_count);
+
+/**
+ * @brief 设置目标转矩 (CST模式, PDO方式, 100Hz实时)
+ * @param motor 电机驱动结构指针
+ * @param torque 目标转矩 (0.001倍额定转矩), 范围: -1000 ~ 1000
+ * @return ErrorCode_t
+ * @note 电机需在CST模式下使能
+ */
+ErrorCode_t motor_set_torque(MotorDriver_t *motor, int torque);
+
+/**
+ * @brief 读取实际转矩
+ * @param motor 电机驱动结构指针
+ * @param torque 转矩输出指针 (0.001倍额定转矩)
+ * @return ErrorCode_t
+ */
+ErrorCode_t motor_get_torque(MotorDriver_t *motor, int *torque);
+
+/**
+ * @brief 从缓存读取实际转矩（非阻塞，工业级实时控制使用）
+ * @param motor 电机驱动结构指针
+ * @param torque 转矩输出指针 (0.001倍额定转矩)
+ * @return ErrorCode_t
+ * @note 此函数直接从缓存读取，不执行CANopen通信，适用于100Hz实时控制循环
+ */
+ErrorCode_t motor_get_torque_cached(MotorDriver_t *motor, int *torque);
+
+/**
+ * @brief 设置目标转矩缓存（非阻塞，仅更新缓存值）
+ * @param motor 电机驱动结构指针
+ * @param torque 目标转矩 (0.001倍额定转矩), 范围: -1000 ~ 1000
+ * @return ErrorCode_t
+ * @note 此函数仅更新缓存值，不执行CANopen通信，适用于100Hz实时控制循环
+ *       实际的PDO发送由专门的PDO线程处理
+ */
+ErrorCode_t motor_set_torque_cached(MotorDriver_t *motor, int torque);
+
+/**
+ * @brief 使能电机转矩控制模式 (CST模式)
+ * @param motor 电机驱动结构指针
+ * @return ErrorCode_t
+ */
+ErrorCode_t motor_enable_torque_mode(MotorDriver_t *motor);
+
+/**
+ * @brief 设置转矩斜坡
+ * @param motor 电机驱动结构指针
+ * @param torque_ramp 转矩斜坡: 0 无斜坡; >0 每秒钟增加的转矩值 (0.001倍额定转矩)
+ * @return ErrorCode_t
+ */
+ErrorCode_t motor_set_torque_ramp(MotorDriver_t *motor, uint32_t torque_ramp);
+
+/**
+ * @brief 设置轮廓转矩模式下速度限制
+ * @param motor 电机驱动结构指针
+ * @param fwd_limit 正向速度限制 (rpm)
+ * @param bwd_limit 反向速度限制 (rpm)
+ * @return ErrorCode_t
+ */
+ErrorCode_t motor_set_torque_speed_limit(MotorDriver_t *motor, uint16_t fwd_limit, uint16_t bwd_limit);
 
 /**
  * @brief 设置电机速度环PID参数

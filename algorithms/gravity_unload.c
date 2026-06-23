@@ -24,7 +24,7 @@ extern uint32_t get_timestamp_ms(void);
 extern void update_rope_velocity(float raw_velocity, float filtered_velocity);
 extern void update_motor_theory_velocity(float theory_velocity);
 extern void update_pressure_f0_deltaf(float f0_kg, float deltaf);
-extern void update_pi_terms(float p_term_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA);
+extern void update_pi_terms(float p_term_mA, float p_term_filtered_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA);
 extern void update_feedforward_current(float feedforward_mA);
 extern void update_feedforward_and_target(float feedforward_mA, float target_mA, float deltaf_kg, float pressure_kg);
 extern void update_feedforward_torque(float feedforward_torque_Nm);  /* 更新扭矩前馈 */
@@ -43,14 +43,22 @@ extern PowerDriver_t g_power;  /* 电源驱动全局变量 */
 int g_friction_direction_mode = 2;  /* 默认只响应逆时针方向 */
 
 /* P项低通滤波器开关全局变量
- * 0: 关闭滤波器（默认）
- * 1: 开启滤波器
+ * 0: 关闭滤波器
+ * 1: 开启滤波器（默认）
  */
-int g_p_term_filter_enabled = 1;    /* 默认关闭P项滤波器 */
+int g_p_term_filter_enabled = 1;    /* 默认开启P项滤波器 */
+
+/* PD增益动态调整全局变量 */
+float g_deltaf_threshold_kg = 0.15f;   /* DeltaF第一级阈值 (kg)，默认0.2kg */
+float g_deltaf_threshold_kg_2 = 0.3f; /* DeltaF第二级阈值 (kg)，默认0.3kg */
 
 /* P项滤波器状态变量 - 静态变量保持状态 */
 static float g_p_term_filtered = 0.0f;   /* 滤波后的P项值 */
 static int g_p_term_filter_initialized = 0;  /* 滤波器初始化标志 */
+
+/* PD增益动态调整状态变量 */
+static float g_last_deltaf_for_pd_boost = 0.0f;  /* 用于检测DeltaF变化趋势 */
+static float g_current_pd_gain_multiplier = 1.0f; /* 当前增益倍数，用于实现两级下降 */
 
 /* 内部辅助函数 - 获取微秒时间戳 */
 static uint64_t get_time_us(void) {
@@ -558,12 +566,12 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     /* 比例项 - 直接计算扭矩（Nm），Kp单位：Nm/kg */
     /* 减小Kp以防止振荡：0.3 / 3 = 0.1 Nm/kg */
     float p_term_raw_Nm = MOTOR_PI_KP * deadzone_deltaf / 3.0f;
-    
-    /* P项低通滤波器 - 用于抑制高频振荡
+
+    /* P项低通滤波器 - 用于抑制高频振荡（先滤波）
      * 滤波器系数 α = 0.3，在5Hz处衰减62%，相位延迟35度
      * 满足：衰减>60%，相位<40度的要求
      */
-    float p_term_Nm = p_term_raw_Nm;  /* 默认使用原始值 */
+    float p_term_filtered_Nm = p_term_raw_Nm;  /* 默认使用原始值 */
     if (g_p_term_filter_enabled) {
         if (!g_p_term_filter_initialized) {
             /* 首次初始化滤波器 */
@@ -571,31 +579,81 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
             g_p_term_filter_initialized = 1;
         }
         /* 一阶低通滤波: y[n] = α * x[n] + (1-α) * y[n-1] */
-        g_p_term_filtered = P_TERM_FILTER_ALPHA * p_term_raw_Nm + 
+        g_p_term_filtered = P_TERM_FILTER_ALPHA * p_term_raw_Nm +
                            (1.0f - P_TERM_FILTER_ALPHA) * g_p_term_filtered;
-        p_term_Nm = g_p_term_filtered;
+        p_term_filtered_Nm = g_p_term_filtered;
     } else {
         /* 滤波器关闭时重置初始化标志，下次开启时重新初始化 */
         g_p_term_filter_initialized = 0;
     }
 
-    /* 积分项 - 带衰减 */
+    /* PD增益动态调整逻辑（后调整）
+     * 两级增益控制：
+     * 上升时（DeltaF绝对值增大）：
+     * - 第一级：|DeltaF| > 0.2kg → PD增益 × 2
+     * - 第二级：|DeltaF| > 0.3kg → PD增益 × 4
+     * 下降时（DeltaF绝对值减小）：
+     * - 第一级：|DeltaF| > 0.3kg → PD增益 × 2（从4倍降到2倍）
+     * - 第二级：|DeltaF| > 0.2kg → PD增益 × 1（从2倍降到1倍）
+     */
+    float pd_gain_multiplier = g_current_pd_gain_multiplier;  /* 默认保持当前增益 */
+    float abs_deltaf = fabs(delta_f_kg);
+    float abs_last_deltaf = fabs(g_last_deltaf_for_pd_boost);
+
+    /* 判断趋势：增大、减小或不变 */
+    int is_increasing = (abs_deltaf > abs_last_deltaf + 0.0001f);  /* 增大趋势 */
+    int is_decreasing = (abs_deltaf < abs_last_deltaf - 0.0001f);  /* 减小趋势 */
+
+    /* 检测条件：DeltaF超过阈值且正在增大 */
+    if (is_increasing) {
+        if (abs_deltaf > g_deltaf_threshold_kg_2) {
+            pd_gain_multiplier = DELTAF_PD_GAIN_BOOST_2;  /* 第二级：PD增益增大到4倍 */
+        } else if (abs_deltaf > g_deltaf_threshold_kg) {
+            pd_gain_multiplier = DELTAF_PD_GAIN_BOOST;  /* 第一级：PD增益增大到2倍 */
+        } else {
+            pd_gain_multiplier = 1.0f;  /* 低于阈值，恢复正常增益 */
+        }
+    }
+    /* 检测条件：DeltaF正在减小（两级下降） */
+    else if (is_decreasing) {
+        /* 根据当前增益倍数和当前DeltaF值决定下降后的增益 */
+        if (abs_deltaf > g_deltaf_threshold_kg_2) {
+            /* |DeltaF| > 0.3kg 且下降 → 保持×2（从4倍降到2倍） */
+            pd_gain_multiplier = DELTAF_PD_GAIN_BOOST;
+        } else if (abs_deltaf > g_deltaf_threshold_kg) {
+            /* 0.2kg < |DeltaF| ≤ 0.3kg 且下降 → 降到×1（从2倍降到1倍） */
+            pd_gain_multiplier = 1.0f;
+        } else {
+            pd_gain_multiplier = 1.0f;  /* 低于阈值，保持正常增益 */
+        }
+    }
+    /* 不变时保持当前增益 */
+
+    /* 更新状态变量 */
+    g_current_pd_gain_multiplier = pd_gain_multiplier;  /* 更新当前增益倍数 */
+    g_last_deltaf_for_pd_boost = delta_f_kg;  /* 更新上次DeltaF值用于下次比较 */
+
+    /* 应用PD增益动态调整到滤波后的P项 */
+    float p_term_Nm = p_term_filtered_Nm * pd_gain_multiplier;
+
+    /* 积分项 - 带衰减（I项不随PD增益调整） */
     if (fabs(delta_f_kg) > PRESSURE_DEADZONE_KG) {
         integral_sum += delta_f_kg * ALGO_CONTROL_PERIOD_S;
     } else {
         /* 死区内积分衰减 */
         integral_sum *= 0.95f;
     }
-    
+
     /* 积分限幅 - 使用配置值防止积分饱和 */
     if (integral_sum > MOTOR_PI_INTEGRAL_LIMIT) integral_sum = MOTOR_PI_INTEGRAL_LIMIT;
     if (integral_sum < -MOTOR_PI_INTEGRAL_LIMIT) integral_sum = -MOTOR_PI_INTEGRAL_LIMIT;
-    
+
     /* 减小Ki以防止振荡：0.1 / 3 = 0.033 Nm/(kg·s) */
     float i_term_Nm = MOTOR_PI_KI * integral_sum / 3.0f;
 
     /* 微分项 - 减小Kd以防止高频噪声放大：0.05 / 3 = 0.017 Nm·s/kg */
-    float d_term_Nm = MOTOR_PI_KD* (deadzone_deltaf - 2.0f * ctrl->last_deltaf + ctrl->last_last_deltaf) / 3.0f;
+    /* 应用PD增益动态调整 */
+    float d_term_Nm = MOTOR_PI_KD * pd_gain_multiplier * (deadzone_deltaf - 2.0f * ctrl->last_deltaf + ctrl->last_last_deltaf) / 3.0f;
 
     /* PID总输出 - 已经是电机侧扭矩 */
     float pid_output_Nm = p_term_Nm + i_term_Nm + d_term_Nm;
@@ -684,9 +742,9 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     output->control_mode = CONTROL_MODE_TORQUE;
 
     /* 更新PID项到共享状态（用于显示）- 已经是Nm单位
-     * 同时传递P项滤波前后的值，用于分析滤波效果
+     * 传递三条P值曲线：最终值、滤波后值、原始值
      */
-    update_pi_terms(p_term_Nm, p_term_raw_Nm, i_term_Nm, d_term_Nm);
+    update_pi_terms(p_term_Nm, p_term_filtered_Nm, p_term_raw_Nm, i_term_Nm, d_term_Nm);
     /* 更新last_current为电机扭矩值（Nm），用于CSV记录 */
     update_pi_last_current(motor_final_torque_Nm);
     update_feedforward_and_target(clutch_current_mA, clutch_current_mA, delta_f_kg, filtered->pressure_kg);

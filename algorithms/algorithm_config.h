@@ -90,7 +90,7 @@ extern "C" {
  * 4. 减小积分限幅，防止积分饱和
  */
 #define MOTOR_PI_KP                    1.0f      /* 电机扭矩PID比例系数 - 大幅降低以减小超调 */
-#define MOTOR_PI_KI                    5.0f       /* 电机扭矩PID积分系数 - 大幅降低以防止积分饱和 */
+#define MOTOR_PI_KI                    8.0f       /* 电机扭矩PID积分系数 - 大幅降低以防止积分饱和 */
 #define MOTOR_PI_KD                    0.0f      /* 电机扭矩PID微分系数 - 增加以提高阻尼 */
 #define MOTOR_PI_INTEGRAL_LIMIT        3.0f       /* 电机扭矩PID积分限幅 - 减小以防止积分饱和 */
 #define MinCurrent_NM                 0.04f       /* 00最小扭矩指令 (Nm) - 降低以提高灵敏度 */
@@ -107,17 +107,28 @@ extern int g_friction_direction_mode;  /* 全局变量，在 gravity_unload.c �
 /* P项低通滤波器开关 - 用于抑制P值高频振荡
  * 0: 关闭滤波器（默认）
  * 1: 开启滤波器
- * 
+ *
  * 滤波器参数设计目标（采样频率100Hz）：
  * - 对5Hz信号衰减60%以上
  * - 相位延迟小于40度
- * 
+ *
  * 一阶低通滤波器系数 α = 0.3 满足要求：
  * - @5Hz: 幅度≈0.38 (衰减62%)
  * - @5Hz: 相位≈-35度
  */
 extern int g_p_term_filter_enabled;    /* P项滤波器开关全局变量 */
 #define P_TERM_FILTER_ALPHA           0.3f        /* P项低通滤波器系数 */
+
+/* PD增益动态调整参数
+ * 当DeltaF超过阈值且正在增大时，自动增大PD增益以提高响应速度
+ * 两级增益控制：
+ * - 第一级：|DeltaF| > 0.2kg 且增大时，增益 × 2
+ * - 第二级：|DeltaF| > 0.3kg 且增大时，增益 × 4
+ */
+extern float g_deltaf_threshold_kg;    /* DeltaF第一级阈值 (kg)，默认0.2kg */
+extern float g_deltaf_threshold_kg_2;  /* DeltaF第二级阈值 (kg)，默认0.3kg */
+#define DELTAF_PD_GAIN_BOOST          2.0f        /* PD增益第一级放大倍数 */
+#define DELTAF_PD_GAIN_BOOST_2        4.0f        /* PD增益第二级放大倍数 */
 
 /* 编码器到距离的转换系数 (米/脉冲) */
 /* 距离 = 脉冲数 / 分辨率 * 2π * R2 */

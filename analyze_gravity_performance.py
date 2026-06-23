@@ -10,6 +10,14 @@ import matplotlib.pyplot as plt
 import sys
 from matplotlib.gridspec import GridSpec
 
+# ==================== 全局配置参数 ====================
+# DeltaF动态增益两级阈值配置
+# 第一级：超过此阈值且增大时，PD增益 × 2
+# 第二级：超过此阈值且增大时，PD增益 × 4
+DELTAF_THRESHOLD_KG_1 = 0.15  # 第一级阈值 (kg)
+DELTAF_THRESHOLD_KG_2 = 0.3  # 第二级阈值 (kg)
+# ====================================================
+
 def analyze_gravity_performance(csv_file, sample_period_ms=10):
     # 读取CSV数据
     df = pd.read_csv(csv_file, skipinitialspace=True)
@@ -277,8 +285,8 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     print("\n正在生成分析图表...")
     
     # 创建第一个图表 - 总览图
-    fig = plt.figure(figsize=(18, 24))
-    gs = GridSpec(10, 2, figure=fig, hspace=0.35, wspace=0.3)
+    fig = plt.figure(figsize=(18, 26))
+    gs = GridSpec(11, 2, figure=fig, hspace=0.35, wspace=0.3)
     
     # 图1: 压力控制效果（带关键时间点标记）
     ax1 = fig.add_subplot(gs[0, :])
@@ -349,22 +357,76 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax2.legend(loc='upper left')
     ax2.grid(True, alpha=0.3)
     
-    # 图3: 扭矩PID控制项分解 (Nm单位) - 包含P值滤波前后对比
-    ax3 = fig.add_subplot(gs[2, 1])
+    # 图2b: DeltaF与P值对比图（分析动态P效果）- 三条P曲线
+    ax2b = fig.add_subplot(gs[3, :])
+    
+    # 左Y轴：DeltaF（力）
+    ax2b.plot(df['Time_sec'], delta_f, label='DeltaF (Force)', color='purple', linewidth=2)
+    # 标出两级阈值（使用全局配置参数）
+    # 第一级阈值：|DeltaF| > 0.2kg 触发2倍增益
+    ax2b.axhline(y=DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2, 
+                 label=f'Threshold 1 (+{DELTAF_THRESHOLD_KG_1}kg, ×2)')
+    ax2b.axhline(y=-DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2, 
+                 label=f'Threshold 1 (-{DELTAF_THRESHOLD_KG_1}kg, ×2)')
+    # 第二级阈值：|DeltaF| > 0.3kg 触发4倍增益
+    ax2b.axhline(y=DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2, 
+                 label=f'Threshold 2 (+{DELTAF_THRESHOLD_KG_2}kg, ×4)')
+    ax2b.axhline(y=-DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2, 
+                 label=f'Threshold 2 (-{DELTAF_THRESHOLD_KG_2}kg, ×4)')
+    # 死区填充（0.2kg范围内）
+    ax2b.fill_between(df['Time_sec'], -DELTAF_THRESHOLD_KG_1, DELTAF_THRESHOLD_KG_1, 
+                     alpha=0.1, color='yellow', label=f'Deadband (±{DELTAF_THRESHOLD_KG_1}kg)')
+    ax2b.set_ylabel('DeltaF (kg)', color='purple')
+    ax2b.tick_params(axis='y', labelcolor='purple')
+    
+    # 右Y轴：P项（扭矩）- 三条曲线
+    if 'PI_P(Nm)' in df.columns:
+        ax2b_twin = ax2b.twinx()
+        # 三条P值曲线
+        # 1. 原始值（未滤波、未调整）
+        if 'PI_P_Raw(Nm)' in df.columns:
+            ax2b_twin.plot(df['Time_sec'], df['PI_P_Raw(Nm)'], label='P Raw (No Filter, No Boost)', 
+                         color='red', linewidth=1.5, linestyle='--', alpha=0.8)
+        # 2. 滤波后值（已滤波、未调整）
+        if 'PI_P_Filtered(Nm)' in df.columns:
+            ax2b_twin.plot(df['Time_sec'], df['PI_P_Filtered(Nm)'], label='P Filtered (No Boost)', 
+                         color='orange', linewidth=1.5, linestyle='-.', alpha=0.9)
+        # 3. 最终值（滤波+动态调整后）
+        ax2b_twin.plot(df['Time_sec'], df['PI_P(Nm)'], label='P Final (Filtered + Boost)', 
+                     color='green', linewidth=2)
+        ax2b_twin.set_ylabel('P Term (Nm)', color='green')
+        ax2b_twin.tick_params(axis='y', labelcolor='green')
+        ax2b_twin.legend(loc='upper right', fontsize=9)
+    
+    # 标记关键时间点
+    if weight_add_time is not None:
+        ax2b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+    if stable_time is not None:
+        ax2b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+    
+    ax2b.set_title('DeltaF vs P-Term (Dynamic P Gain Analysis)')
+    ax2b.legend(loc='upper left')
+    ax2b.grid(True, alpha=0.3)
+    
+    # 图3: 扭矩PID控制项分解 (Nm单位) - 包含三条P值曲线
+    ax3 = fig.add_subplot(gs[4, 1])
     
     # 检查是否有扭矩PID数据
     if 'PI_P(Nm)' in df.columns and 'PI_I(Nm)' in df.columns:
         torque_p_term = df['PI_P(Nm)']
         torque_i_term = df['PI_I(Nm)']
         
-        # P项 - 滤波后（实线）
-        ax3.plot(df['Time_sec'], torque_p_term, label='P Term (Filtered)', color='orange', linewidth=2)
-        
-        # P项 - 滤波前（虚线）- 如果存在
+        # 三条P值曲线
+        # 1. 原始值（未滤波、未调整）
         if 'PI_P_Raw(Nm)' in df.columns:
-            torque_p_term_raw = df['PI_P_Raw(Nm)']
-            ax3.plot(df['Time_sec'], torque_p_term_raw, label='P Term (Raw)', color='darkorange', 
-                     linewidth=1.5, linestyle='--', alpha=0.7)
+            ax3.plot(df['Time_sec'], df['PI_P_Raw(Nm)'], label='P Raw', color='red', 
+                     linewidth=1.5, linestyle='--', alpha=0.8)
+        # 2. 滤波后值（已滤波、未调整）
+        if 'PI_P_Filtered(Nm)' in df.columns:
+            ax3.plot(df['Time_sec'], df['PI_P_Filtered(Nm)'], label='P Filtered', color='orange', 
+                     linewidth=1.5, linestyle='-.', alpha=0.9)
+        # 3. 最终值（滤波+动态调整后）
+        ax3.plot(df['Time_sec'], torque_p_term, label='P Final (w/ Boost)', color='green', linewidth=2)
         
         # I项
         ax3.plot(df['Time_sec'], torque_i_term, label='I Term', color='cyan', linewidth=1.5)
@@ -378,7 +440,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
             torque_pi_output = torque_p_term + torque_i_term
             
         # PID总输出
-        ax3.plot(df['Time_sec'], torque_pi_output, label='PID Total', color='red', linewidth=2, linestyle='--')
+        ax3.plot(df['Time_sec'], torque_pi_output, label='PID Total', color='darkred', linewidth=2, linestyle='--')
     else:
         # 回退到电流PID显示
         if using_real_data:
@@ -403,7 +465,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax3.grid(True, alpha=0.3)
     
     # 图4: 目标力矩和实际力矩对比
-    ax4 = fig.add_subplot(gs[3, 0])
+    ax4 = fig.add_subplot(gs[5, 0])
     if 'TargetTorque(Nm)' in df.columns and 'ActualTorque(Nm)' in df.columns:
         ax4.plot(df['Time_sec'], df['TargetTorque(Nm)'], label='Target Torque', color='red', linewidth=2, linestyle='--')
         ax4.plot(df['Time_sec'], df['ActualTorque(Nm)'], label='Actual Torque', color='blue', linewidth=1.5)
@@ -437,7 +499,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         ax4.grid(True, alpha=0.3)
     
     # 图5: PI输出与实际扭矩关系
-    ax5 = fig.add_subplot(gs[3, 1])
+    ax5 = fig.add_subplot(gs[5, 1])
     
     # 检查是否有扭矩数据
     if 'ActualTorque(Nm)' in df.columns:
@@ -464,7 +526,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax5.grid(True, alpha=0.3)
     
     # 图6: 电机速度
-    ax6 = fig.add_subplot(gs[4, 0])
+    ax6 = fig.add_subplot(gs[6, 0])
     ax6.plot(df['Time_sec'], motor_speed, label='Motor Speed', color='green', linewidth=1.5)
     
     # 标记关键时间点
@@ -479,7 +541,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax6.grid(True, alpha=0.3)
     
     # 图7: 位置变化
-    ax7 = fig.add_subplot(gs[4, 1])
+    ax7 = fig.add_subplot(gs[6, 1])
     ax7.plot(df['Time_sec'], position, label='Rope Length', color='brown', linewidth=1.5)
     
     # 标记关键时间点
@@ -494,7 +556,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax7.grid(True, alpha=0.3)
     
     # 图8: 绳子速度
-    ax8 = fig.add_subplot(gs[5, 0])
+    ax8 = fig.add_subplot(gs[7, 0])
     ax8.plot(df['Time_sec'], df['RopeVelocityRaw(m/s)'], label='Raw', alpha=0.5, linewidth=0.8)
     ax8.plot(df['Time_sec'], df['RopeVelocityFiltered(m/s)'], label='Filtered', linewidth=1.5)
     
@@ -511,7 +573,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax8.grid(True, alpha=0.3)
     
     # 图8b: 力传感器（压力）和实际扭矩的关系 - 扭矩变化段局部放大
-    ax8b = fig.add_subplot(gs[5, 1])
+    ax8b = fig.add_subplot(gs[7, 1])
     
     # 检查是否有扭矩数据
     if 'ActualTorque(Nm)' in df.columns:
@@ -628,7 +690,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax8b.grid(True, alpha=0.3)
     
     # 图9: 压力误差分析
-    ax9 = fig.add_subplot(gs[6, 0])
+    ax9 = fig.add_subplot(gs[8, 0])
     pressure_error = pressure - f0
     ax9.plot(df['Time_sec'], pressure_error, label='Pressure Error', color='red', linewidth=1.5)
     ax9.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
@@ -649,7 +711,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax9.grid(True, alpha=0.3)
     
     # 图9b: 扭矩误差分析
-    ax9b = fig.add_subplot(gs[6, 1])
+    ax9b = fig.add_subplot(gs[8, 1])
     
     # 检查是否有扭矩数据
     if 'TargetTorque(Nm)' in df.columns and 'ActualTorque(Nm)' in df.columns:
@@ -681,7 +743,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         ax9b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
 
     # 图10: 实际扭矩 - 放大纵坐标以显示细微变化
-    ax10 = fig.add_subplot(gs[7, :])
+    ax10 = fig.add_subplot(gs[9, :])
     
     # 检查是否有扭矩数据
     if 'ActualTorque(Nm)' in df.columns and 'TargetTorque(Nm)' in df.columns:
@@ -735,7 +797,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax10.grid(True, alpha=0.3)
     
     # 图11: 压力与绳长关系（新增）
-    ax11 = fig.add_subplot(gs[8, :])
+    ax11 = fig.add_subplot(gs[10, :])
     
     # 左Y轴：压力
     ax11.plot(df['Time_sec'], pressure, label='Pressure', 

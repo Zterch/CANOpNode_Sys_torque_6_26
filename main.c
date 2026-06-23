@@ -99,7 +99,7 @@ static pthread_cond_t g_data_sync_cond = PTHREAD_COND_INITIALIZER;
 /* 函数前置声明 */
 void start_logging(void);
 void stop_logging(void);
-void update_pi_terms(float p_term_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA);
+void update_pi_terms(float p_term_mA, float p_term_filtered_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA);
 
 /******************************************************************************
  * 共享状态缓冲区 - 用于线程间数据共享
@@ -134,8 +134,9 @@ typedef struct {
     float pressure_f0_kg;
     float pressure_deltaf;
     /* PID控制数据 */
-    float pi_p_term_mA;             /* P项滤波后值 (Nm) */
-    float pi_p_term_raw_mA;         /* P项滤波前值 (Nm) */
+    float pi_p_term_mA;             /* P项最终值（滤波+动态调整后）(Nm) */
+    float pi_p_term_filtered_mA;    /* P项滤波后值（未进行动态调整）(Nm) */
+    float pi_p_term_raw_mA;         /* P项原始值（未滤波、未调整）(Nm) */
     float pi_i_term_mA;
     float pi_d_term_mA;
     /* 前馈控制数据 */
@@ -370,10 +371,11 @@ void update_pressure_f0_deltaf(float f0_kg, float deltaf) {
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
-void update_pi_terms(float p_term_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA) {
+void update_pi_terms(float p_term_mA, float p_term_filtered_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA) {
     pthread_mutex_lock(&g_shared_state.mutex);
-    g_shared_state.pi_p_term_mA = p_term_mA;
-    g_shared_state.pi_p_term_raw_mA = p_term_raw_mA;
+    g_shared_state.pi_p_term_mA = p_term_mA;              /* 最终值：滤波+动态调整 */
+    g_shared_state.pi_p_term_filtered_mA = p_term_filtered_mA;  /* 滤波后值：未动态调整 */
+    g_shared_state.pi_p_term_raw_mA = p_term_raw_mA;      /* 原始值：未滤波、未调整 */
     g_shared_state.pi_i_term_mA = i_term_mA;
     g_shared_state.pi_d_term_mA = d_term_mA;
     pthread_mutex_unlock(&g_shared_state.mutex);
@@ -779,9 +781,9 @@ void start_logging(void) {
     mkdir("/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys_torque_6_15/logdata", 0755);
     g_log_file = fopen(g_log_filename, "w");
     if (g_log_file) {
-        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s,%-14s,%-14s,%-14s,%-14s,%-14s\n",
+        fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-15s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s,%-14s,%-14s,%-14s,%-14s,%-14s,%-14s\n",
                 "Time","Current(A)","TargetCurrent(A)","Voltage(V)","PressureRaw(kg)","PressureFiltered(kg)","F0(kg)","DeltaF",
-                "PI_P(Nm)","PI_P_Raw(Nm)","PI_I(Nm)","PI_D(Nm)","PI_LastTorque(Nm)","Feedforward(mA)","FeedforwardTorque(Nm)","AlgoDeltaF(kg)","AlgoPressure(kg)",
+                "PI_P(Nm)","PI_P_Filtered(Nm)","PI_P_Raw(Nm)","PI_I(Nm)","PI_D(Nm)","PI_LastTorque(Nm)","Feedforward(mA)","FeedforwardTorque(Nm)","AlgoDeltaF(kg)","AlgoPressure(kg)",
                 "RopeLength(m)","EncoderValue","EncoderAngle(deg)","MotorSpeed(rpm)",
                 "MotorLinearVel(m/s)","MotorTheoryVel(m/s)","MotorPosition(m)",
                 "RopeVelocityRaw(m/s)","RopeVelocityFiltered(m/s)","WeightRaw(kg)","WeightFiltered(kg)","TargetTorque(Nm)","ActualTorque(Nm)");
@@ -905,7 +907,7 @@ static void* data_collection_thread(void* arg) {
         float current_a = 0.0f, voltage_v = 0.0f, motor_speed_rpm = 0.0f, motor_pos_m = 0.0f, motor_linear_vel = 0.0f;
         float motor_theory_vel = 0.0f, rope_vel_raw = 0.0f, rope_vel_filtered = 0.0f;
         float pressure_f0_kg = 0.0f, pressure_deltaf = 0.0f;
-        float pi_p_term_mA = 0.0f, pi_p_term_raw_mA = 0.0f, pi_i_term_mA = 0.0f, pi_d_term_mA = 0.0f, pi_last_current_mA = 0.0f;
+        float pi_p_term_mA = 0.0f, pi_p_term_filtered_mA = 0.0f, pi_p_term_raw_mA = 0.0f, pi_i_term_mA = 0.0f, pi_d_term_mA = 0.0f, pi_last_current_mA = 0.0f;
         float target_current_a = 0.0f, feedforward_current_mA = 0.0f, feedforward_torque_Nm = 0.0f, algo_deltaf_kg = 0.0f, algo_pressure_kg = 0.0f;
         pthread_mutex_lock(&g_shared_state.mutex);
         current_a = g_shared_state.current_a;
@@ -918,6 +920,7 @@ static void* data_collection_thread(void* arg) {
         rope_vel_filtered = g_shared_state.rope_velocity_filtered_m_s;
         pressure_f0_kg = g_shared_state.pressure_f0_kg;
         pi_p_term_mA = g_shared_state.pi_p_term_mA;
+        pi_p_term_filtered_mA = g_shared_state.pi_p_term_filtered_mA;
         pi_p_term_raw_mA = g_shared_state.pi_p_term_raw_mA;
         pi_i_term_mA = g_shared_state.pi_i_term_mA;
         pi_d_term_mA = g_shared_state.pi_d_term_mA;
@@ -992,9 +995,9 @@ static void* data_collection_thread(void* arg) {
             int actual_torque_cmd = 0;
             motor_get_torque_cached(&g_motor, &actual_torque_cmd);
             float actual_torque_nm = (actual_torque_cmd / 1000.0f) * 1.27f;  // 转换为Nm
-            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f,%-14.3f,%-14.3f,%-14.3f,%-14.3f\n",
+            fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-15.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f,%-14.3f,%-14.3f,%-14.3f,%-14.3f,%-14.3f\n",
                     time_str, current_a, target_current_a, voltage_v, pressure_raw_kg, pressure_kg, log_f0_kg, pressure_deltaf,
-                    pi_p_term_mA, pi_p_term_raw_mA, pi_i_term_mA, pi_d_term_mA, pi_last_current_mA, feedforward_current_mA, feedforward_torque_Nm, algo_deltaf_kg, algo_pressure_kg,
+                    pi_p_term_mA, pi_p_term_filtered_mA, pi_p_term_raw_mA, pi_i_term_mA, pi_d_term_mA, pi_last_current_mA, feedforward_current_mA, feedforward_torque_Nm, algo_deltaf_kg, algo_pressure_kg,
                     rope_length_m, encoder_value, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,
                     rope_vel_raw, rope_vel_filtered, log_weight_raw, log_weight_filtered, target_torque_nm, actual_torque_nm);

@@ -19,7 +19,7 @@
 #include <pthread.h>
 #include "algorithm_config.h"
 #include "signal_filter.h"
-#include "pid_controller.h"
+#include "adrc_controller.h"
 #include "safety_monitor.h"
 
 #ifdef __cplusplus
@@ -43,8 +43,8 @@ typedef struct {
     Differentiator_t pressure_diff;         /* 压力微分 */
     Differentiator_t position_diff;         /* 位置微分（速度计算） */
     
-    /* PID控制器 */
-    PID_Controller_t pid;
+    /* ADRC控制器 */
+    ADRC_Controller_t adrc;
     
     /* 安全监控 */
     SafetyMonitor_t safety;
@@ -74,12 +74,9 @@ typedef struct {
     int pressure_stabilize_count;   /* 压力稳定延迟计数（算法启动后先稳定一段时间再校准） */
     int f0_calibration_cycles;      /* F0校准后的周期计数，用于限制初始扭矩 */
     
-    /* 离合器电流PID控制 - 增量式PID */
-    float clutch_pi_integral;       /* PID积分项 */
-    float clutch_pi_derivative;     /* PID微分项 */
-    float last_deltaf;              /* 上一次的deltaf值（用于计算微分） */
-    float last_last_deltaf;         /* 上上一次的deltaf值（用于增量式微分计算） */
-    float last_current_mA;          /* 上一时刻的电流值（增量式PID需要） */
+    /* 前馈扭矩平滑 */
+    float feedforward_torque_filtered;
+    float last_output_Nm;           /* 上一周期输出扭矩，用于变化率限制 */
     
     /* 线程控制 */
     pthread_t thread_id;

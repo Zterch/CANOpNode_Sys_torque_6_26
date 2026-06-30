@@ -776,9 +776,9 @@ void start_logging(void) {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
     snprintf(g_log_filename, sizeof(g_log_filename),
-             "/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys_torque_6_15/logdata/gravity_data_%04d%02d%02d_%02d%02d%02d.csv",
+             "/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys_torque_6_26/logdata/gravity_data_%04d%02d%02d_%02d%02d%02d.csv",
              t->tm_year+1900, t->tm_mon+1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-    mkdir("/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys_torque_6_15/logdata", 0755);
+    mkdir("/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys_torque_6_26/logdata", 0755);
     g_log_file = fopen(g_log_filename, "w");
     if (g_log_file) {
         fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-15s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s,%-14s,%-14s,%-14s,%-14s,%-14s,%-14s\n",

@@ -48,7 +48,7 @@ SOURCES = main.c \
           utils/shared_memory.c \
           algorithms/sine_wave.c \
           algorithms/signal_filter.c \
-          algorithms/pid_controller.c \
+          algorithms/adrc_controller.c \
           algorithms/safety_monitor.c \
           algorithms/gravity_unload.c \
           algorithms/system_check.c \

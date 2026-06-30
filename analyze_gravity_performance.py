@@ -8,14 +8,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import os
+import re
 from matplotlib.gridspec import GridSpec
 
 # ==================== 全局配置参数 ====================
-# DeltaF动态增益两级阈值配置
-# 第一级：超过此阈值且增大时，PD增益 × 2
-# 第二级：超过此阈值且增大时，PD增益 × 4
-DELTAF_THRESHOLD_KG_1 = 0.15  # 第一级阈值 (kg)
-DELTAF_THRESHOLD_KG_2 = 0.3  # 第二级阈值 (kg)
+DELTAF_THRESHOLD_KG_1 = 0.15
+DELTAF_THRESHOLD_KG_2 = 0.3
 # ====================================================
 
 def analyze_gravity_performance(csv_file, sample_period_ms=10):
@@ -23,30 +22,45 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     df = pd.read_csv(csv_file, skipinitialspace=True)
     df.columns = df.columns.str.strip()
     
-    # 创建时间序列（秒）
-    # 默认使用10ms周期（100Hz），可通过参数调整
     sample_period_s = sample_period_ms / 1000.0
+    # 保留原时间序列（用于绘图，固定周期）
     df['Time_sec'] = np.arange(len(df)) * sample_period_s
+    
+    # ------- 新增：解析真实时间戳 -------
+    if 'Time' in df.columns:
+        try:
+            # 尝试解析时间格式，支持多种分隔符
+            df['Datetime'] = pd.to_datetime(df['Time'], format='%H:%M:%S.%f')
+            start_time = df['Datetime'].iloc[0]
+            df['Time_real'] = (df['Datetime'] - start_time).dt.total_seconds()
+            using_real_time = True
+        except:
+            # 如果解析失败，使用固定周期
+            df['Time_real'] = df['Time_sec'].copy()
+            using_real_time = False
+    else:
+        df['Time_real'] = df['Time_sec'].copy()
+        using_real_time = False
     
     print("=" * 80)
     print("重力卸载算法性能分析报告")
     print("=" * 80)
     
-    # 1. 基本统计信息
+    # 1. 基本统计
     print("\n【1. 基本统计信息】")
     print(f"数据点数: {len(df)}")
-    print(f"时间跨度: {df['Time_sec'].iloc[-1]:.1f} 秒")
+    print(f"时间跨度 (固定周期): {df['Time_sec'].iloc[-1]:.1f} 秒")
+    if using_real_time:
+        print(f"时间跨度 (实际): {df['Time_real'].iloc[-1] - df['Time_real'].iloc[0]:.3f} 秒")
     print(f"采样频率: {int(1/sample_period_s)} Hz")
     print(f"采样周期: {sample_period_ms} ms")
     
-    # 2. 压力控制性能分析
+    # 2. 压力控制性能
     print("\n【2. 压力控制性能分析】")
-    
-    # 检查是否有原始和滤波后的压力数据（新格式）
     if 'PressureRaw(kg)' in df.columns and 'PressureFiltered(kg)' in df.columns:
         pressure_raw = df['PressureRaw(kg)']
         pressure_filtered = df['PressureFiltered(kg)']
-        pressure = pressure_filtered  # 使用滤波后的值作为主要压力数据
+        pressure = pressure_filtered
         has_raw_filtered = True
         print("  使用新的CSV格式（包含原始和滤波后压力值）")
     else:
@@ -56,7 +70,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         has_raw_filtered = False
         print("  使用旧的CSV格式（仅压力值）")
     
-    # 检查是否有新的重量采集数据列（新增UART/TTL重量采集模块）
+    # 重量数据
     if 'WeightRaw(kg)' in df.columns and 'WeightFiltered(kg)' in df.columns:
         weight_raw = df['WeightRaw(kg)']
         weight_filtered = df['WeightFiltered(kg)']
@@ -67,66 +81,39 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         weight_filtered = None
         has_weight_data = False
     
-    f0 = df['F0(kg)'].iloc[0]  # 目标压力
+    f0 = df['F0(kg)'].iloc[0]
     delta_f = df['DeltaF']
-    
     print(f"目标压力 (F0): {f0:.3f} kg")
     
     if has_raw_filtered:
-        print(f"\n原始压力值:")
-        print(f"  最小值: {pressure_raw.min():.3f} kg, 最大值: {pressure_raw.max():.3f} kg")
-        print(f"  平均值: {pressure_raw.mean():.3f} kg, 标准差: {pressure_raw.std():.3f} kg")
-        print(f"  变化范围: {pressure_raw.max() - pressure_raw.min():.3f} kg")
-        
-        print(f"\n滤波后压力值:")
-        print(f"  最小值: {pressure_filtered.min():.3f} kg, 最大值: {pressure_filtered.max():.3f} kg")
-        print(f"  平均值: {pressure_filtered.mean():.3f} kg, 标准差: {pressure_filtered.std():.3f} kg")
-        print(f"  变化范围: {pressure_filtered.max() - pressure_filtered.min():.3f} kg")
-        
-        # 计算滤波效果
-        filter_diff = pressure_raw - pressure_filtered
-        print(f"\n滤波效果:")
-        print(f"  标准差降低: {(1 - pressure_filtered.std()/pressure_raw.std())*100:.1f}%")
-        print(f"  峰峰值降低: {(1 - (pressure_filtered.max()-pressure_filtered.min())/(pressure_raw.max()-pressure_raw.min()))*100:.1f}%")
+        print(f"\n原始压力值: min={pressure_raw.min():.3f}, max={pressure_raw.max():.3f}, mean={pressure_raw.mean():.3f}, std={pressure_raw.std():.3f}")
+        print(f"滤波后压力值: min={pressure_filtered.min():.3f}, max={pressure_filtered.max():.3f}, mean={pressure_filtered.mean():.3f}, std={pressure_filtered.std():.3f}")
+        print(f"滤波效果: 标准差降低 {(1 - pressure_filtered.std()/pressure_raw.std())*100:.1f}%")
     else:
-        print(f"实际压力 - 最小值: {pressure.min():.3f} kg, 最大值: {pressure.max():.3f} kg")
-        print(f"实际压力 - 平均值: {pressure.mean():.3f} kg, 标准差: {pressure.std():.3f} kg")
-        print(f"压力变化范围: {pressure.max() - pressure.min():.3f} kg")
+        print(f"实际压力 - min={pressure.min():.3f}, max={pressure.max():.3f}, mean={pressure.mean():.3f}, std={pressure.std():.3f}")
     
-    # 显示重量采集数据统计（新增）
     if has_weight_data:
-        print(f"\n【2.1 重量采集模块数据（UART/TTL, 100Hz）】")
-        print(f"原始重量值:")
-        print(f"  最小值: {weight_raw.min():.3f} kg, 最大值: {weight_raw.max():.3f} kg")
-        print(f"  平均值: {weight_raw.mean():.3f} kg, 标准差: {weight_raw.std():.3f} kg")
-        print(f"  变化范围: {weight_raw.max() - weight_raw.min():.3f} kg")
-        
-        print(f"\n滤波后重量值:")
-        print(f"  最小值: {weight_filtered.min():.3f} kg, 最大值: {weight_filtered.max():.3f} kg")
-        print(f"  平均值: {weight_filtered.mean():.3f} kg, 标准差: {weight_filtered.std():.3f} kg")
-        print(f"  变化范围: {weight_filtered.max() - weight_filtered.min():.3f} kg")
+        print(f"\n【2.1 重量采集模块数据】")
+        print(f"原始重量: min={weight_raw.min():.3f}, max={weight_raw.max():.3f}, mean={weight_raw.mean():.3f}, std={weight_raw.std():.3f}")
+        print(f"滤波重量: min={weight_filtered.min():.3f}, max={weight_filtered.max():.3f}, mean={weight_filtered.mean():.3f}, std={weight_filtered.std():.3f}")
     
-    # 计算稳态误差
-    steady_state_start = int(len(df) * 0.3)  # 后70%作为稳态
-    steady_pressure = pressure.iloc[steady_state_start:]
+    # 稳态误差
+    steady_start = int(len(df) * 0.3)
+    steady_pressure = pressure.iloc[steady_start:]
     steady_error = steady_pressure - f0
-    print(f"\n稳态压力偏差:")
-    print(f"  平均值: {steady_error.mean():.3f} kg")
-    print(f"  标准差: {steady_error.std():.3f} kg")
-    print(f"  最大偏差: {steady_error.abs().max():.3f} kg")
+    print(f"\n稳态压力偏差: 平均 {steady_error.mean():.3f} kg, 标准差 {steady_error.std():.3f} kg, 最大偏差 {steady_error.abs().max():.3f} kg")
     
-    # 从CSV读取真实的PID控制项数据
-    # 如果CSV中有PI_P(mA)和PI_I(mA)列，使用真实数据
-    has_d_term = False  # 初始化标志变量
-    has_last_current = False  # 初始化标志变量
+    # ---------- PID控制项处理 ----------
+    has_d_term = False
+    has_last_current = False
     d_term = None
     pi_last_current = None
+    using_real_data = False
     
     if 'PI_P(mA)' in df.columns and 'PI_I(mA)' in df.columns:
-        # 使用采集的真实数据
+        # 真实数据分支
         p_term = df['PI_P(mA)']
         i_term = df['PI_I(mA)']
-        # 读取D项（如果存在）
         if 'PI_D(mA)' in df.columns:
             d_term = df['PI_D(mA)']
             has_d_term = True
@@ -137,7 +124,6 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
             pi_output = p_term + i_term
         using_real_data = True
 
-        # 读取PI累积电流（last_current_mA）
         if 'PI_LastCurrent(mA)' in df.columns:
             pi_last_current = df['PI_LastCurrent(mA)']
             has_last_current = True
@@ -154,12 +140,10 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         if has_last_current:
             print(f"PID累积电流(LastCurrent)范围: {pi_last_current.min():.2f} ~ {pi_last_current.max():.2f} mA")
     else:
-        # 从配置文件中读取参数并计算
-        import re
+        # 计算分支（若无法读取配置则使用默认值）
         config_file = '/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/algorithms/algorithm_config.h'
         
         def read_config_value(filename, pattern):
-            """从配置文件读取宏定义值"""
             try:
                 with open(filename, 'r') as f:
                     content = f.read()
@@ -170,32 +154,24 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
                 print(f"Warning: Could not read config: {e}")
             return None
         
-        # 读取配置值
         KP = read_config_value(config_file, r'CLUTCH_PI_KP\s+(\d+\.?\d*)f?')
         KI = read_config_value(config_file, r'CLUTCH_PI_KI\s+(\d+\.?\d*)f?')
-        DT = sample_period_s   # 使用实际采样周期（默认10ms = 0.01s）
+        DT = sample_period_s
         
-        # 如果读取失败，使用默认值
         if KP is None:
-            KP = 40.0
+            KP = 0.5
             print(f"Warning: Could not read KP from config, using default: {KP}")
         if KI is None:
-            KI = 10.0
+            KI = 1000.0
             print(f"Warning: Could not read KI from config, using default: {KI}")
         
-        # 计算P项（比例项）
         p_term = KP * delta_f
-        
-        # 计算I项（积分项）- 通过累加得到
         i_term = np.zeros(len(df))
         integral = 0.0
         for i in range(len(df)):
             integral += KI * delta_f.iloc[i] * DT
-            # 积分限幅
             integral = np.clip(integral, -100.0, 100.0)
             i_term[i] = integral
-        
-        # PI总输出
         pi_output = p_term + i_term
         using_real_data = False
         
@@ -205,675 +181,554 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
         print(f"I项范围: {i_term.min():.2f} ~ {i_term.max():.2f} mA")
         print(f"PI输出范围: {pi_output.min():.2f} ~ {pi_output.max():.2f} mA")
     
-    # 3. 电流控制性能分析
+    # 电流控制
     print("\n【3. 电流控制性能分析】")
-    current = df['Current(A)'] * 1000  # 转换为mA
+    current = df['Current(A)'] * 1000
     target_current = df['TargetCurrent(A)'] * 1000
-    
-    print(f"实际电流 - 最小值: {current.min():.1f} mA, 最大值: {current.max():.1f} mA")
-    print(f"实际电流 - 平均值: {current.mean():.1f} mA, 标准差: {current.std():.1f} mA")
-    print(f"目标电流 - 最小值: {target_current.min():.1f} mA, 最大值: {target_current.max():.1f} mA")
-    
-    # 电流跟踪误差
+    print(f"实际电流 - min={current.min():.1f} mA, max={current.max():.1f} mA, mean={current.mean():.1f} mA, std={current.std():.1f} mA")
+    print(f"目标电流 - min={target_current.min():.1f} mA, max={target_current.max():.1f} mA")
     current_error = (current - target_current).abs()
-    print(f"\n电流跟踪误差:")
-    print(f"  平均值: {current_error.mean():.2f} mA")
-    print(f"  最大值: {current_error.max():.2f} mA")
+    print(f"电流跟踪误差: 平均 {current_error.mean():.2f} mA, 最大 {current_error.max():.2f} mA")
     
-    # 4. 电机速度分析
+    # 电机速度
     print("\n【4. 电机速度分析】")
     motor_speed = df['MotorSpeed(rpm)']
-    print(f"电机速度 - 最小值: {motor_speed.min():.1f} rpm, 最大值: {motor_speed.max():.1f} rpm")
-    print(f"电机速度 - 平均值: {motor_speed.mean():.1f} rpm, 标准差: {motor_speed.std():.1f} rpm")
-    print(f"电机速度变化范围: {motor_speed.max() - motor_speed.min():.1f} rpm")
+    print(f"电机速度 - min={motor_speed.min():.1f} rpm, max={motor_speed.max():.1f} rpm, mean={motor_speed.mean():.1f} rpm, std={motor_speed.std():.1f} rpm")
     
-    # 5. 位置变化分析
+    # 位置变化
     print("\n【5. 位置变化分析】")
-    position = df['RopeLength(m)'] * 1000  # 转换为mm
-    print(f"绳子长度变化: {position.min():.2f} mm -> {position.max():.2f} mm")
-    print(f"总位移: {position.max() - position.min():.2f} mm")
+    position = df['RopeLength(m)'] * 1000
+    print(f"绳子长度变化: {position.min():.2f} mm -> {position.max():.2f} mm, 总位移: {position.max() - position.min():.2f} mm")
     
-    # 6. 关键时间点检测
-    print("\n【6. 关键时间点检测】")
-    
-    # 找到重量添加时间点（压力显著增加）
+    # 关键时间点检测（使用真实时间或固定时间）
+    time_axis = df['Time_real'] if using_real_time else df['Time_sec']
     pressure_diff = pressure.diff()
-    significant_change_threshold = 0.05  # 压力变化阈值 kg
-    significant_change_idx = np.where(pressure_diff > significant_change_threshold)[0]
-    
+    sig_idx = np.where(pressure_diff > 0.05)[0]
     weight_add_time = None
     stable_time = None
     settling_time = None
-    
-    if len(significant_change_idx) > 0:
-        weight_add_idx = significant_change_idx[0]
-        weight_add_time = df['Time_sec'].iloc[weight_add_idx]
+    if len(sig_idx) > 0:
+        weight_add_time = time_axis.iloc[sig_idx[0]]
         print(f"重量添加时间点: {weight_add_time:.2f} 秒 (压力突增)")
-        
-        # 找到稳定时间点（DeltaF首次回零）
-        # 从重量添加后开始寻找DeltaF首次接近零的点
-        for i in range(weight_add_idx + 10, len(df)):  # 至少0.2秒后
-            if abs(delta_f.iloc[i]) < 0.02:  # DeltaF接近零（±20g）
-                stable_idx = i
-                stable_time = df['Time_sec'].iloc[stable_idx]
+        for i in range(sig_idx[0] + 10, len(df)):
+            if abs(delta_f.iloc[i]) < 0.02:
+                stable_time = time_axis.iloc[i]
                 settling_time = stable_time - weight_add_time
                 print(f"控制稳定时间点: {stable_time:.2f} 秒 (DeltaF首次回零)")
                 print(f"调节时间: {settling_time:.2f} 秒")
                 break
-        
         if stable_time is None:
             print("未检测到稳定点（DeltaF未回零）")
     else:
         print("未检测到重量添加事件")
     
-    # 7. 恒力控制效果评估
+    # 恒力控制评估
     print("\n【7. 恒力控制效果评估】")
-    
-    # 计算压力超调量
     pressure_overshoot = (pressure.max() - f0) / f0 * 100 if f0 > 0 else 0
     print(f"压力超调量: {pressure_overshoot:.2f}%")
-    
-    # 计算调节时间（压力进入±5%范围的时间）
-    tolerance = 0.5  # kg
+    tolerance = 0.5
     within_tolerance = np.abs(pressure - f0) < tolerance
     if np.any(within_tolerance):
         settling_idx = np.where(within_tolerance)[0][0]
-        settling_time = df['Time_sec'].iloc[settling_idx]
-        print(f"调节时间 (±{tolerance}kg): {settling_time:.2f} 秒")
+        settling_time2 = time_axis.iloc[settling_idx]
+        print(f"调节时间 (±{tolerance}kg): {settling_time2:.2f} 秒")
     
-    # 绘制图表
-    print("\n正在生成分析图表...")
+    # ========== AlgoDeltaF 绝对值统计（使用真实时间戳精确统计） ==========
+    print("\n【8. AlgoDeltaF 绝对值统计分析（精确时间）】")
+    algo_delta_f = df['AlgoDeltaF(kg)'] if 'AlgoDeltaF(kg)' in df.columns else df['DeltaF']
+    abs_algo_df = algo_delta_f.abs()
     
-    # 创建第一个图表 - 总览图
-    fig = plt.figure(figsize=(18, 26))
-    gs = GridSpec(11, 2, figure=fig, hspace=0.35, wspace=0.3)
+    # 使用真实时间计算间隔
+    time_real = df['Time_real'].values
+    time_diffs = np.zeros(len(df))
+    time_diffs[1:] = np.diff(time_real)  # 每个点与前一点的实际间隔
     
-    # 图1: 压力控制效果（带关键时间点标记）
-    ax1 = fig.add_subplot(gs[0, :])
-    ax1.plot(df['Time_sec'], pressure, label='Filtered Pressure', color='blue', linewidth=2)
-    ax1.axhline(y=f0, color='r', linestyle='--', linewidth=2, label=f'Target (F0={f0:.2f}kg)')
-    ax1.fill_between(df['Time_sec'], f0 - 0.5, f0 + 0.5, alpha=0.2, color='green', label='Tolerance (±0.5kg)')
+    THRESHOLD_1 = 0.2
+    THRESHOLD_2 = 0.3
     
-    # 标记关键时间点
+    over_02_mask = abs_algo_df > THRESHOLD_1
+    over_03_mask = abs_algo_df > THRESHOLD_2
+    
+    # 累加超过阈值的间隔
+    duration_over_02 = time_diffs[over_02_mask].sum()
+    duration_over_03 = time_diffs[over_03_mask].sum()
+    
+    total_duration = time_real[-1] - time_real[0]
+    pct_over_02 = (duration_over_02 / total_duration) * 100 if total_duration > 0 else 0
+    pct_over_03 = (duration_over_03 / total_duration) * 100 if total_duration > 0 else 0
+    
+    max_abs_df = abs_algo_df.max()
+    max_abs_df_time = time_real[abs_algo_df.idxmax()]
+    
+    print(f"  总持续时间: {total_duration:.3f} 秒")
+    print(f"  超过 ±{THRESHOLD_1}kg 的采样点数: {over_02_mask.sum()} / {len(df)} ({over_02_mask.sum()/len(df)*100:.1f}%)")
+    print(f"  超过 ±{THRESHOLD_1}kg 的总持续时间: {duration_over_02:.3f} 秒 (占比 {pct_over_02:.1f}%)")
+    print(f"  超过 ±{THRESHOLD_2}kg 的采样点数: {over_03_mask.sum()} / {len(df)} ({over_03_mask.sum()/len(df)*100:.1f}%)")
+    print(f"  超过 ±{THRESHOLD_2}kg 的总持续时间: {duration_over_03:.3f} 秒 (占比 {pct_over_03:.1f}%)")
+    print(f"  AlgoDeltaF 最大绝对值: {max_abs_df:.3f} kg (发生在 {max_abs_df_time:.3f} 秒)")
+    
+    # 重量添加后的时间统计
     if weight_add_time is not None:
-        ax1.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added ({weight_add_time:.2f}s)')
-    if stable_time is not None and settling_time is not None:
-        ax1.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable dF=0 ({stable_time:.2f}s, dt={settling_time:.2f}s)')
+        # 找到重量添加时刻的索引
+        add_idx = np.argmin(np.abs(time_real - weight_add_time))
+        # 对重量添加后的数据进行统计
+        over_02_after = over_02_mask.iloc[add_idx:]
+        over_03_after = over_03_mask.iloc[add_idx:]
+        duration_02_after = time_diffs[add_idx:][over_02_after].sum()
+        duration_03_after = time_diffs[add_idx:][over_03_after].sum()
+        total_after = time_real[-1] - time_real[add_idx]
+        pct_02_after = (duration_02_after / total_after) * 100 if total_after > 0 else 0
+        pct_03_after = (duration_03_after / total_after) * 100 if total_after > 0 else 0
+        print(f"\n  重量添加后 (>={weight_add_time:.2f}s):")
+        print(f"    超过 ±{THRESHOLD_1}kg 持续时间: {duration_02_after:.3f} 秒 (占比 {pct_02_after:.1f}%)")
+        print(f"    超过 ±{THRESHOLD_2}kg 持续时间: {duration_03_after:.3f} 秒 (占比 {pct_03_after:.1f}%)")
     
+    # 稳态阶段（后70%数据）统计
+    steady_start_idx = int(len(df) * 0.3)
+    steady_abs_df = abs_algo_df.iloc[steady_start_idx:]
+    steady_mean_df = steady_abs_df.mean()
+    steady_std_df = steady_abs_df.std()
+    steady_max_df = steady_abs_df.max()
+    print(f"\n  稳态阶段 (后70%数据):")
+    print(f"    AlgoDeltaF 平均绝对值: {steady_mean_df:.3f} kg")
+    print(f"    AlgoDeltaF 标准差: {steady_std_df:.3f} kg")
+    print(f"    AlgoDeltaF 最大绝对值: {steady_max_df:.3f} kg")
+    
+    # ==================== 绘图（使用固定时间轴） ====================
+    print("\n正在生成分析图表...")
+    # 使用固定周期时间绘制，保证图像一致性
+    plot_time = df['Time_sec']
+    
+    fig = plt.figure(figsize=(18, 26))
+    gs = GridSpec(13, 2, figure=fig, hspace=0.35, wspace=0.3)
+    
+    # ---------- 图1: 压力控制效果 ----------
+    ax1 = fig.add_subplot(gs[0, :])
+    ax1.plot(plot_time, pressure, label='Filtered Pressure', color='blue', linewidth=2)
+    ax1.axhline(y=f0, color='r', linestyle='--', linewidth=2, label=f'Target F0={f0:.2f}kg')
+    ax1.fill_between(plot_time, f0 - 0.5, f0 + 0.5, alpha=0.2, color='green', label='±0.5kg')
+    if weight_add_time is not None:
+        ax1.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added {weight_add_time:.2f}s')
+    if stable_time is not None:
+        ax1.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable {stable_time:.2f}s')
     ax1.set_ylabel('Pressure (kg)')
-    ax1.set_title('Pressure Control Performance - Gravity Unload Algorithm', fontsize=14, fontweight='bold')
+    ax1.set_title('Pressure Control Performance', fontsize=14, fontweight='bold')
     ax1.legend(loc='upper right')
     ax1.grid(True, alpha=0.3)
     ax1.set_ylim([f0 - 1, pressure.max() + 0.5])
     
-    # 图1b: 原始压力vs滤波后压力对比（新增）
+    # ---------- 图1b: 原始vs滤波 ----------
     if has_raw_filtered:
         ax1b = fig.add_subplot(gs[1, :])
-        ax1b.plot(df['Time_sec'], pressure_raw, label='Raw Pressure', color='red', 
-                 linewidth=1.5, alpha=0.7, linestyle='--')
-        ax1b.plot(df['Time_sec'], pressure_filtered, label='Filtered Pressure (Notch 11Hz)', 
-                 color='blue', linewidth=2)
-        ax1b.axhline(y=f0, color='green', linestyle=':', linewidth=2, label=f'F0 = {f0:.2f} kg')
-        
-        # 标记关键时间点
+        ax1b.plot(plot_time, pressure_raw, label='Raw Pressure', color='red', linewidth=1.5, linestyle='--', alpha=0.7)
+        ax1b.plot(plot_time, pressure_filtered, label='Filtered Pressure', color='blue', linewidth=2)
+        ax1b.axhline(y=f0, color='green', linestyle=':', linewidth=2)
         if weight_add_time is not None:
             ax1b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
         if stable_time is not None:
             ax1b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-        
         ax1b.set_ylabel('Pressure (kg)')
-        ax1b.set_title('Raw vs Filtered Pressure Comparison', fontsize=13, fontweight='bold')
-        ax1b.legend(loc='best', fontsize=10)
+        ax1b.set_title('Raw vs Filtered Pressure')
+        ax1b.legend()
         ax1b.grid(True, alpha=0.3)
     
-    # 图2: DeltaF + 目标扭矩 + AlgoDeltaF对比（双Y轴）
+    # ---------- 图2: DeltaF + 目标扭矩 + AlgoDeltaF统计标注 ----------
     ax2 = fig.add_subplot(gs[2, 0])
-    
-    # 左Y轴：DeltaF（数据采集计算）和 AlgoDeltaF（算法实际使用）
-    ax2.plot(df['Time_sec'], delta_f, label='DeltaF (Data Collection)', color='purple', linewidth=1.5)
+    ax2.plot(plot_time, delta_f, label='DeltaF (Data)', color='purple', linewidth=1.5)
     if 'AlgoDeltaF(kg)' in df.columns:
-        ax2.plot(df['Time_sec'], df['AlgoDeltaF(kg)'], label='AlgoDeltaF (Algorithm Used)', 
-                color='red', linewidth=1.5, linestyle='--', alpha=0.7)
-    ax2.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+        ax2.plot(plot_time, df['AlgoDeltaF(kg)'], label='AlgoDeltaF', color='red', linewidth=1.5, linestyle='--', alpha=0.7)
+    ax2.axhline(y=0, color='k', linewidth=0.5)
+    
+    # 添加阈值线和统计标注
+    ax2.axhline(y=0.2, color='blue', linestyle=':', linewidth=1.5, alpha=0.7, label='±0.2kg')
+    ax2.axhline(y=-0.2, color='blue', linestyle=':', linewidth=1.5, alpha=0.7)
+    ax2.axhline(y=0.3, color='darkred', linestyle=':', linewidth=1.5, alpha=0.7, label='±0.3kg')
+    ax2.axhline(y=-0.3, color='darkred', linestyle=':', linewidth=1.5, alpha=0.7)
+    
+    # 在图中标注统计信息
+    stats_text = f"|AlgoDeltaF| > 0.2kg: {duration_over_02:.3f}s ({pct_over_02:.1f}%)\n"
+    stats_text += f"|AlgoDeltaF| > 0.3kg: {duration_over_03:.3f}s ({pct_over_03:.1f}%)\n"
+    stats_text += f"Max |AlgoDeltaF|: {max_abs_df:.3f}kg @ {max_abs_df_time:.3f}s"
+    ax2.text(0.98, 0.02, stats_text, transform=ax2.transAxes, fontsize=8,
+             verticalalignment='bottom', horizontalalignment='right',
+             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+    
     ax2.set_ylabel('DeltaF (kg)', color='purple')
     ax2.tick_params(axis='y', labelcolor='purple')
-    
-    # 右Y轴：目标扭矩
     if 'TargetTorque(Nm)' in df.columns:
         ax2_twin = ax2.twinx()
-        ax2_twin.plot(df['Time_sec'], df['TargetTorque(Nm)'], label='Target Torque', 
-                     color='orange', linewidth=2, linestyle='-.')
+        ax2_twin.plot(plot_time, df['TargetTorque(Nm)'], label='Target Torque', color='orange', linewidth=2, linestyle='-.')
         ax2_twin.set_ylabel('Target Torque (Nm)', color='orange')
         ax2_twin.tick_params(axis='y', labelcolor='orange')
         ax2_twin.legend(loc='upper right')
-    
-    # 标记关键时间点
     if weight_add_time is not None:
         ax2.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
     if stable_time is not None:
         ax2.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
-    
-    ax2.set_title('DeltaF vs Target Torque (Red=AlgoDeltaF, Purple=DataDeltaF)')
+    ax2.set_title('DeltaF and Target Torque (with AlgoDeltaF Stats)')
     ax2.legend(loc='upper left')
     ax2.grid(True, alpha=0.3)
     
-    # 图2b: DeltaF与P值对比图（分析动态P效果）- 三条P曲线
+    # ---------- 图2b: DeltaF与P项动态增益 ----------
     ax2b = fig.add_subplot(gs[3, :])
-    
-    # 左Y轴：DeltaF（力）
-    ax2b.plot(df['Time_sec'], delta_f, label='DeltaF (Force)', color='purple', linewidth=2)
-    # 标出两级阈值（使用全局配置参数）
-    # 第一级阈值：|DeltaF| > 0.2kg 触发2倍增益
-    ax2b.axhline(y=DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2, 
-                 label=f'Threshold 1 (+{DELTAF_THRESHOLD_KG_1}kg, ×2)')
-    ax2b.axhline(y=-DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2, 
-                 label=f'Threshold 1 (-{DELTAF_THRESHOLD_KG_1}kg, ×2)')
-    # 第二级阈值：|DeltaF| > 0.3kg 触发4倍增益
-    ax2b.axhline(y=DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2, 
-                 label=f'Threshold 2 (+{DELTAF_THRESHOLD_KG_2}kg, ×4)')
-    ax2b.axhline(y=-DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2, 
-                 label=f'Threshold 2 (-{DELTAF_THRESHOLD_KG_2}kg, ×4)')
-    # 死区填充（0.2kg范围内）
-    ax2b.fill_between(df['Time_sec'], -DELTAF_THRESHOLD_KG_1, DELTAF_THRESHOLD_KG_1, 
-                     alpha=0.1, color='yellow', label=f'Deadband (±{DELTAF_THRESHOLD_KG_1}kg)')
+    ax2b.plot(plot_time, delta_f, label='DeltaF', color='purple', linewidth=2)
+    ax2b.axhline(y=DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2, label=f'Thr1 ±{DELTAF_THRESHOLD_KG_1}kg (×2)')
+    ax2b.axhline(y=-DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2)
+    ax2b.axhline(y=DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2, label=f'Thr2 ±{DELTAF_THRESHOLD_KG_2}kg (×4)')
+    ax2b.axhline(y=-DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2)
+    ax2b.fill_between(plot_time, -DELTAF_THRESHOLD_KG_1, DELTAF_THRESHOLD_KG_1, alpha=0.1, color='yellow')
     ax2b.set_ylabel('DeltaF (kg)', color='purple')
     ax2b.tick_params(axis='y', labelcolor='purple')
-    
-    # 右Y轴：P项（扭矩）- 三条曲线
     if 'PI_P(Nm)' in df.columns:
         ax2b_twin = ax2b.twinx()
-        # 三条P值曲线
-        # 1. 原始值（未滤波、未调整）
         if 'PI_P_Raw(Nm)' in df.columns:
-            ax2b_twin.plot(df['Time_sec'], df['PI_P_Raw(Nm)'], label='P Raw (No Filter, No Boost)', 
-                         color='red', linewidth=1.5, linestyle='--', alpha=0.8)
-        # 2. 滤波后值（已滤波、未调整）
+            ax2b_twin.plot(plot_time, df['PI_P_Raw(Nm)'], label='P Raw', color='red', linewidth=1.5, linestyle='--', alpha=0.8)
         if 'PI_P_Filtered(Nm)' in df.columns:
-            ax2b_twin.plot(df['Time_sec'], df['PI_P_Filtered(Nm)'], label='P Filtered (No Boost)', 
-                         color='orange', linewidth=1.5, linestyle='-.', alpha=0.9)
-        # 3. 最终值（滤波+动态调整后）
-        ax2b_twin.plot(df['Time_sec'], df['PI_P(Nm)'], label='P Final (Filtered + Boost)', 
-                     color='green', linewidth=2)
+            ax2b_twin.plot(plot_time, df['PI_P_Filtered(Nm)'], label='P Filtered', color='orange', linewidth=1.5, linestyle='-.', alpha=0.9)
+        ax2b_twin.plot(plot_time, df['PI_P(Nm)'], label='P Final (Boosted)', color='green', linewidth=2)
         ax2b_twin.set_ylabel('P Term (Nm)', color='green')
         ax2b_twin.tick_params(axis='y', labelcolor='green')
         ax2b_twin.legend(loc='upper right', fontsize=9)
-    
-    # 标记关键时间点
     if weight_add_time is not None:
         ax2b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
     if stable_time is not None:
         ax2b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    
-    ax2b.set_title('DeltaF vs P-Term (Dynamic P Gain Analysis)')
+    ax2b.set_title('DeltaF vs P-Term with Dynamic Gain')
     ax2b.legend(loc='upper left')
     ax2b.grid(True, alpha=0.3)
     
-    # 图3: 扭矩PID控制项分解 (Nm单位) - 包含三条P值曲线
+    # ---------- 图3: PID控制项（扭矩） ----------
     ax3 = fig.add_subplot(gs[4, 1])
-    
-    # 检查是否有扭矩PID数据
     if 'PI_P(Nm)' in df.columns and 'PI_I(Nm)' in df.columns:
-        torque_p_term = df['PI_P(Nm)']
-        torque_i_term = df['PI_I(Nm)']
-        
-        # 三条P值曲线
-        # 1. 原始值（未滤波、未调整）
+        torque_p = df['PI_P(Nm)']
+        torque_i = df['PI_I(Nm)']
         if 'PI_P_Raw(Nm)' in df.columns:
-            ax3.plot(df['Time_sec'], df['PI_P_Raw(Nm)'], label='P Raw', color='red', 
-                     linewidth=1.5, linestyle='--', alpha=0.8)
-        # 2. 滤波后值（已滤波、未调整）
+            ax3.plot(plot_time, df['PI_P_Raw(Nm)'], label='P Raw', color='red', linewidth=1.5, linestyle='--', alpha=0.8)
         if 'PI_P_Filtered(Nm)' in df.columns:
-            ax3.plot(df['Time_sec'], df['PI_P_Filtered(Nm)'], label='P Filtered', color='orange', 
-                     linewidth=1.5, linestyle='-.', alpha=0.9)
-        # 3. 最终值（滤波+动态调整后）
-        ax3.plot(df['Time_sec'], torque_p_term, label='P Final (w/ Boost)', color='green', linewidth=2)
-        
-        # I项
-        ax3.plot(df['Time_sec'], torque_i_term, label='I Term', color='cyan', linewidth=1.5)
-        
-        # D项
+            ax3.plot(plot_time, df['PI_P_Filtered(Nm)'], label='P Filtered', color='orange', linewidth=1.5, linestyle='-.', alpha=0.9)
+        ax3.plot(plot_time, torque_p, label='P Final', color='green', linewidth=2)
+        ax3.plot(plot_time, torque_i, label='I Term', color='cyan', linewidth=1.5)
         if 'PI_D(Nm)' in df.columns:
-            torque_d_term = df['PI_D(Nm)']
-            ax3.plot(df['Time_sec'], torque_d_term, label='D Term', color='magenta', linewidth=1.5)
-            torque_pi_output = torque_p_term + torque_i_term + torque_d_term
+            ax3.plot(plot_time, df['PI_D(Nm)'], label='D Term', color='magenta', linewidth=1.5)
+            pid_total = torque_p + torque_i + df['PI_D(Nm)']
         else:
-            torque_pi_output = torque_p_term + torque_i_term
-            
-        # PID总输出
-        ax3.plot(df['Time_sec'], torque_pi_output, label='PID Total', color='darkred', linewidth=2, linestyle='--')
+            pid_total = torque_p + torque_i
+        ax3.plot(plot_time, pid_total, label='PID Total', color='darkred', linewidth=2, linestyle='--')
     else:
-        # 回退到电流PID显示
-        if using_real_data:
-            ax3.plot(df['Time_sec'], p_term, label='P Term (Real Data)', color='orange', linewidth=1.5)
-            ax3.plot(df['Time_sec'], i_term, label='I Term (Real Data)', color='cyan', linewidth=1.5)
-        else:
-            ax3.plot(df['Time_sec'], p_term, label=f'P Term (Kp={KP})', color='orange', linewidth=1.5)
-            ax3.plot(df['Time_sec'], i_term, label=f'I Term (Ki={KI})', color='cyan', linewidth=1.5)
-        ax3.plot(df['Time_sec'], pi_output, label='PI Total Output', color='red', linewidth=2, linestyle='--')
-    
-    ax3.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-    
-    # 标记关键时间点
+        ax3.plot(plot_time, p_term, label='P Term', color='orange', linewidth=1.5)
+        ax3.plot(plot_time, i_term, label='I Term', color='cyan', linewidth=1.5)
+        ax3.plot(plot_time, pi_output, label='PI Output', color='red', linewidth=2, linestyle='--')
+    ax3.axhline(y=0, color='k', linewidth=0.5)
     if weight_add_time is not None:
         ax3.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
     if stable_time is not None:
         ax3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    
     ax3.set_ylabel('Torque (Nm)')
-    ax3.set_title('Torque PID Control (P: Filtered vs Raw)')
+    ax3.set_title('PID Control Terms (Torque)')
     ax3.legend(loc='upper right', fontsize=9)
     ax3.grid(True, alpha=0.3)
     
-    # 图4: 目标力矩和实际力矩对比
+    # ---------- 图4: 目标与实际扭矩 ----------
     ax4 = fig.add_subplot(gs[5, 0])
     if 'TargetTorque(Nm)' in df.columns and 'ActualTorque(Nm)' in df.columns:
-        ax4.plot(df['Time_sec'], df['TargetTorque(Nm)'], label='Target Torque', color='red', linewidth=2, linestyle='--')
-        ax4.plot(df['Time_sec'], df['ActualTorque(Nm)'], label='Actual Torque', color='blue', linewidth=1.5)
-        ax4.axhline(y=0, color='gray', linestyle=':', linewidth=1, alpha=0.5)
-        
-        # 标记关键时间点
+        ax4.plot(plot_time, df['TargetTorque(Nm)'], label='Target Torque', color='red', linewidth=2, linestyle='--')
+        ax4.plot(plot_time, df['ActualTorque(Nm)'], label='Actual Torque', color='blue', linewidth=1.5)
+        ax4.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
         if weight_add_time is not None:
             ax4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
         if stable_time is not None:
             ax4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-        
         ax4.set_ylabel('Torque (Nm)')
         ax4.set_title('Target vs Actual Torque')
         ax4.legend()
         ax4.grid(True, alpha=0.3)
     else:
-        # 回退到电流显示
-        ax4.plot(df['Time_sec'], current, label='Actual Current', color='orange', linewidth=1.5)
-        ax4.plot(df['Time_sec'], target_current, label='Target Current', color='red', linewidth=1.5, linestyle='--')
-        ax4.axhline(y=50, color='gray', linestyle=':', linewidth=1, alpha=0.5, label='Base Current (50mA)')
-        
-        # 标记关键时间点
+        ax4.plot(plot_time, current, label='Actual Current', color='orange', linewidth=1.5)
+        ax4.plot(plot_time, target_current, label='Target Current', color='red', linewidth=1.5, linestyle='--')
+        ax4.axhline(y=50, color='gray', linestyle=':', alpha=0.5, label='Base 50mA')
         if weight_add_time is not None:
             ax4.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
         if stable_time is not None:
             ax4.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-        
         ax4.set_ylabel('Current (mA)')
         ax4.set_title('Current Control')
         ax4.legend()
         ax4.grid(True, alpha=0.3)
     
-    # 图5: PI输出与实际扭矩关系
+    # ---------- 图5: PI输出 vs 实际扭矩 ----------
     ax5 = fig.add_subplot(gs[5, 1])
-    
-    # 检查是否有扭矩数据
     if 'ActualTorque(Nm)' in df.columns:
-        ax5.plot(df['Time_sec'], pi_output, label='PI Output (mA)', color='blue', linewidth=1.5)
+        ax5.plot(plot_time, pi_output, label='PI Output (mA)', color='blue', linewidth=1.5)
         ax5_twin = ax5.twinx()
-        ax5_twin.plot(df['Time_sec'], df['ActualTorque(Nm)'], label='Actual Torque (Nm)', color='red', linewidth=1.5, linestyle='--')
+        ax5_twin.plot(plot_time, df['ActualTorque(Nm)'], label='Actual Torque (Nm)', color='red', linewidth=1.5, linestyle='--')
         ax5_twin.set_ylabel('Actual Torque (Nm)', color='red')
         ax5_twin.tick_params(axis='y', labelcolor='red')
         ax5_twin.legend(loc='upper right')
         ax5.set_title('PI Output vs Actual Torque')
     else:
-        # 回退到电流显示
-        ax5.plot(df['Time_sec'], pi_output, label='PI Output', color='blue', linewidth=1.5)
+        ax5.plot(plot_time, pi_output, label='PI Output (mA)', color='blue', linewidth=1.5)
         ax5_twin = ax5.twinx()
-        ax5_twin.plot(df['Time_sec'], current - 50, label='Current - Base (50mA)', color='red', linewidth=1.5, linestyle='--')
-        ax5_twin.set_ylabel('Actual Current Adjustment (mA)', color='red')
+        ax5_twin.plot(plot_time, current-50, label='Current-50mA', color='red', linewidth=1.5, linestyle='--')
+        ax5_twin.set_ylabel('Current Adjustment (mA)', color='red')
         ax5_twin.tick_params(axis='y', labelcolor='red')
         ax5_twin.legend(loc='upper right')
-        ax5.set_title('PI Output vs Actual Current Adjustment')
-    
+        ax5.set_title('PI Output vs Current Adjustment')
     ax5.set_ylabel('PI Output (mA)', color='blue')
     ax5.tick_params(axis='y', labelcolor='blue')
     ax5.legend(loc='upper left')
     ax5.grid(True, alpha=0.3)
     
-    # 图6: 电机速度
+    # ---------- 图6: 电机速度 ----------
     ax6 = fig.add_subplot(gs[6, 0])
-    ax6.plot(df['Time_sec'], motor_speed, label='Motor Speed', color='green', linewidth=1.5)
-    
-    # 标记关键时间点
+    ax6.plot(plot_time, motor_speed, label='Motor Speed', color='green', linewidth=1.5)
     if weight_add_time is not None:
         ax6.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
     if stable_time is not None:
         ax6.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    
     ax6.set_ylabel('Speed (rpm)')
-    ax6.set_title('Motor Speed Response')
+    ax6.set_title('Motor Speed')
     ax6.legend()
     ax6.grid(True, alpha=0.3)
     
-    # 图7: 位置变化
+    # ---------- 图7: 绳长 ----------
     ax7 = fig.add_subplot(gs[6, 1])
-    ax7.plot(df['Time_sec'], position, label='Rope Length', color='brown', linewidth=1.5)
-    
-    # 标记关键时间点
+    ax7.plot(plot_time, position, label='Rope Length', color='brown', linewidth=2)
     if weight_add_time is not None:
         ax7.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
     if stable_time is not None:
         ax7.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    
-    ax7.set_ylabel('Length (mm)')
-    ax7.set_title('Rope Length (Position)')
+    ax7.set_ylabel('Rope Length (mm)')
+    ax7.set_xlabel('Time (s)')
+    ax7.set_title('Rope Length')
     ax7.legend()
     ax7.grid(True, alpha=0.3)
     
-    # 图8: 绳子速度
-    ax8 = fig.add_subplot(gs[7, 0])
-    ax8.plot(df['Time_sec'], df['RopeVelocityRaw(m/s)'], label='Raw', alpha=0.5, linewidth=0.8)
-    ax8.plot(df['Time_sec'], df['RopeVelocityFiltered(m/s)'], label='Filtered', linewidth=1.5)
+    # ---------- 图7b: 重量数据 ----------
+    ax7b = fig.add_subplot(gs[7, :])
+    if has_weight_data:
+        ax7b.plot(plot_time, weight_raw, label='Weight Raw', color='red', linewidth=1.5, linestyle='--', alpha=0.7)
+        ax7b.plot(plot_time, weight_filtered, label='Weight Filtered', color='blue', linewidth=2)
+        ax7b.axhline(y=f0, color='green', linestyle=':', linewidth=2, label=f'Target {f0:.2f}kg')
+        ax7b.fill_between(plot_time, f0-0.5, f0+0.5, alpha=0.1, color='green', label='±0.5kg')
+        if weight_add_time is not None:
+            ax7b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
+        if stable_time is not None:
+            ax7b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
+        ax7b.set_ylabel('Weight (kg)')
+        ax7b.set_xlabel('Time (s)')
+        ax7b.set_title('Weight Data (UART/TTL)')
+        ax7b.legend(loc='best')
+        ax7b.grid(True, alpha=0.3)
+    else:
+        ax7b.axis('off')
+        ax7b.text(0.5, 0.5, 'No Weight Data', transform=ax7b.transAxes, ha='center', va='center', fontsize=12)
     
-    # 标记关键时间点
+    # ---------- 图8: 绳子速度 ----------
+    ax8 = fig.add_subplot(gs[8, 0])
+    ax8.plot(plot_time, df['RopeVelocityRaw(m/s)'], label='Raw', alpha=0.5, linewidth=0.8)
+    ax8.plot(plot_time, df['RopeVelocityFiltered(m/s)'], label='Filtered', linewidth=1.5)
     if weight_add_time is not None:
         ax8.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
     if stable_time is not None:
         ax8.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    
     ax8.set_ylabel('Velocity (m/s)')
     ax8.set_xlabel('Time (s)')
     ax8.set_title('Rope Velocity')
     ax8.legend()
     ax8.grid(True, alpha=0.3)
     
-    # 图8b: 力传感器（压力）和实际扭矩的关系 - 扭矩变化段局部放大
-    ax8b = fig.add_subplot(gs[7, 1])
-    
-    # 检查是否有扭矩数据
+    # ---------- 图8b: 压力 vs 扭矩局部放大 ----------
+    ax8b = fig.add_subplot(gs[8, 1])
     if 'ActualTorque(Nm)' in df.columns:
         actual_torque = df['ActualTorque(Nm)']
-        # 找到扭矩快速变化的时间段
-        torque_change_threshold = (actual_torque.max() - actual_torque.min()) * 0.05  # 5%阈值
-        torque_change_mask = np.abs(actual_torque - actual_torque.min()) > torque_change_threshold
-        change_indices = np.where(torque_change_mask)[0]
-        
-        if len(change_indices) > 0:
-            # 找到扭矩变化最快的点
-            torque_diff = np.diff(actual_torque)
+        torque_diff = np.diff(actual_torque)
+        if len(torque_diff) > 0 and np.abs(torque_diff).max() > 1e-6:
             max_rise_idx = np.argmax(np.abs(torque_diff))
-            
-            zoom_center_idx = max_rise_idx
-            zoom_start_idx = max(0, zoom_center_idx - 15)
-            zoom_end_idx = min(len(df) - 1, zoom_center_idx + 25)
-            zoom_start_time = df['Time_sec'].iloc[zoom_start_idx]
-            zoom_end_time = df['Time_sec'].iloc[zoom_end_idx]
-            
-            zoom_mask = (df['Time_sec'] >= zoom_start_time) & (df['Time_sec'] <= zoom_end_time)
-            time_ms = (df['Time_sec'][zoom_mask] - zoom_start_time) * 1000
-            
-            ax8b.plot(time_ms, pressure[zoom_mask], label='Pressure (Force)', color='blue', linewidth=2.5, marker='o', markersize=4)
+            start = max(0, max_rise_idx - 15)
+            end = min(len(df)-1, max_rise_idx + 25)
+            zoom_df = df.iloc[start:end]
+            time_ms = (plot_time.iloc[start:end] - plot_time.iloc[start]) * 1000
+            ax8b.plot(time_ms, pressure.iloc[start:end], label='Pressure', color='blue', linewidth=2.5, marker='o', markersize=4)
             ax8b_twin = ax8b.twinx()
-            ax8b_twin.plot(time_ms, actual_torque[zoom_mask], label='Actual Torque', color='red', linewidth=2.5, linestyle='--', marker='s', markersize=4)
-            
-            duration_ms = (zoom_end_time - zoom_start_time) * 1000
-            ax8b.set_title(f'Pressure vs Torque (ZOOM: {duration_ms:.0f}ms window)', fontsize=10, fontweight='bold')
-            ax8b.set_xlabel('Time (ms)', fontsize=11)
-            
-            if weight_add_time is not None and zoom_start_time <= weight_add_time <= zoom_end_time:
-                weight_add_ms = (weight_add_time - zoom_start_time) * 1000
-                ax8b.axvline(x=weight_add_ms, color='orange', linestyle='--', linewidth=2, alpha=0.8, label='Weight Added')
-            
-            ax8b.grid(True, alpha=0.4, linestyle=':')
+            ax8b_twin.plot(time_ms, actual_torque.iloc[start:end], label='Actual Torque', color='red', linewidth=2.5, linestyle='--', marker='s', markersize=4)
+            ax8b.set_title(f'Pressure vs Torque (Zoom {time_ms.iloc[-1]-time_ms.iloc[0]:.0f}ms)')
+            ax8b.set_xlabel('Time (ms)')
+            ax8b.set_ylabel('Pressure (kg)', color='blue')
+            ax8b_twin.set_ylabel('Torque (Nm)', color='red')
+            ax8b.legend(loc='upper left')
+            ax8b_twin.legend(loc='upper right')
+            ax8b.grid(True, alpha=0.3)
             ax8b_twin.grid(False)
-            
             # 计算延迟
-            pressure_zoom = pressure[zoom_mask].values
-            torque_zoom = actual_torque[zoom_mask].values
-            time_zoom_ms = time_ms.values
-            
-            pressure_50 = pressure_zoom.min() + (pressure_zoom.max() - pressure_zoom.min()) * 0.5
-            torque_50 = torque_zoom.min() + (torque_zoom.max() - torque_zoom.min()) * 0.5
-            
-            pressure_50_idx = np.argmin(np.abs(pressure_zoom - pressure_50))
-            torque_50_idx = np.argmin(np.abs(torque_zoom - torque_50))
-            
-            delay_ms = time_zoom_ms[torque_50_idx] - time_zoom_ms[pressure_50_idx]
-            
-            ax8b.text(0.05, 0.95, f'Delay: {delay_ms:.1f}ms\n(Pressure→Torque 50% rise)', 
-                     transform=ax8b.transAxes, fontsize=9, verticalalignment='top',
-                     bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
-            
-            ax8b.axvline(x=time_zoom_ms[pressure_50_idx], color='blue', linestyle=':', linewidth=1.5, alpha=0.6)
-            ax8b_twin.axvline(x=time_zoom_ms[torque_50_idx], color='red', linestyle=':', linewidth=1.5, alpha=0.6)
+            p_vals = pressure.iloc[start:end].values
+            t_vals = actual_torque.iloc[start:end].values
+            if len(p_vals) > 10:
+                p50 = p_vals.min() + 0.5*(p_vals.max()-p_vals.min())
+                t50 = t_vals.min() + 0.5*(t_vals.max()-t_vals.min())
+                p_idx = np.argmin(np.abs(p_vals - p50))
+                t_idx = np.argmin(np.abs(t_vals - t50))
+                delay = time_ms.iloc[t_idx] - time_ms.iloc[p_idx]
+                ax8b.text(0.05, 0.9, f'Delay: {delay:.1f}ms', transform=ax8b.transAxes, fontsize=9,
+                          bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
         else:
-            ax8b.plot(df['Time_sec'], pressure, label='Pressure (Force)', color='blue', linewidth=2)
+            ax8b.plot(plot_time, pressure, label='Pressure', color='blue', linewidth=2)
             ax8b_twin = ax8b.twinx()
-            ax8b_twin.plot(df['Time_sec'], actual_torque, label='Actual Torque', color='red', linewidth=2, linestyle='--')
-            ax8b.set_title('Pressure vs Torque Relationship (Full View)')
+            ax8b_twin.plot(plot_time, actual_torque, label='Actual Torque', color='red', linewidth=2, linestyle='--')
+            ax8b.set_title('Pressure vs Torque (Full)')
             ax8b.set_xlabel('Time (s)')
-            if weight_add_time is not None:
-                ax8b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
-        
-        ax8b.set_ylabel('Pressure (kg)', color='blue')
-        ax8b_twin.set_ylabel('Torque (Nm)', color='red')
+            ax8b.set_ylabel('Pressure (kg)', color='blue')
+            ax8b_twin.set_ylabel('Torque (Nm)', color='red')
+            ax8b.legend(loc='upper left')
+            ax8b_twin.legend(loc='upper right')
+            ax8b.grid(True, alpha=0.3)
     else:
-        # 回退到电流显示
-        current_change_threshold = (current.max() - current.min()) * 0.05
-        current_change_mask = (current - current.min()) > current_change_threshold
-        change_indices = np.where(current_change_mask)[0]
-        
-        if len(change_indices) > 0:
-            current_diff = np.diff(current)
-            max_rise_idx = np.argmax(current_diff)
-            zoom_center_idx = max_rise_idx
-            zoom_start_idx = max(0, zoom_center_idx - 15)
-            zoom_end_idx = min(len(df) - 1, zoom_center_idx + 25)
-            zoom_start_time = df['Time_sec'].iloc[zoom_start_idx]
-            zoom_end_time = df['Time_sec'].iloc[zoom_end_idx]
-            zoom_mask = (df['Time_sec'] >= zoom_start_time) & (df['Time_sec'] <= zoom_end_time)
-            time_ms = (df['Time_sec'][zoom_mask] - zoom_start_time) * 1000
-            
-            ax8b.plot(time_ms, pressure[zoom_mask], label='Pressure (Force)', color='blue', linewidth=2.5, marker='o', markersize=4)
-            ax8b_twin = ax8b.twinx()
-            ax8b_twin.plot(time_ms, current[zoom_mask], label='Actual Current', color='red', linewidth=2.5, linestyle='--', marker='s', markersize=4)
-            
-            duration_ms = (zoom_end_time - zoom_start_time) * 1000
-            ax8b.set_title(f'Pressure vs Current (ZOOM: {duration_ms:.0f}ms window)', fontsize=10, fontweight='bold')
-            ax8b.set_xlabel('Time (ms)', fontsize=11)
-            
-            if weight_add_time is not None and zoom_start_time <= weight_add_time <= zoom_end_time:
-                weight_add_ms = (weight_add_time - zoom_start_time) * 1000
-                ax8b.axvline(x=weight_add_ms, color='orange', linestyle='--', linewidth=2, alpha=0.8, label='Weight Added')
-            
-            ax8b.grid(True, alpha=0.4, linestyle=':')
-            ax8b_twin.grid(False)
-        else:
-            ax8b.plot(df['Time_sec'], pressure, label='Pressure (Force)', color='blue', linewidth=2)
-            ax8b_twin = ax8b.twinx()
-            ax8b_twin.plot(df['Time_sec'], current, label='Actual Current', color='red', linewidth=2, linestyle='--')
-            ax8b.set_title('Pressure vs Current Relationship (Full View)')
-            ax8b.set_xlabel('Time (s)')
-            if weight_add_time is not None:
-                ax8b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
-        
+        # 回退到电流
+        ax8b.plot(plot_time, pressure, label='Pressure', color='blue', linewidth=2)
+        ax8b_twin = ax8b.twinx()
+        ax8b_twin.plot(plot_time, current, label='Current (mA)', color='red', linewidth=2, linestyle='--')
+        ax8b.set_title('Pressure vs Current')
+        ax8b.set_xlabel('Time (s)')
         ax8b.set_ylabel('Pressure (kg)', color='blue')
         ax8b_twin.set_ylabel('Current (mA)', color='red')
+        ax8b.legend(loc='upper left')
+        ax8b_twin.legend(loc='upper right')
+        ax8b.grid(True, alpha=0.3)
+        if weight_add_time is not None:
+            ax8b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
+        if stable_time is not None:
+            ax8b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
     
-    ax8b.legend(loc='upper left')
-    ax8b_twin.legend(loc='upper right')
-    ax8b.grid(True, alpha=0.3)
-    
-    # 图9: 压力误差分析
-    ax9 = fig.add_subplot(gs[8, 0])
+    # ---------- 图9: 压力误差 ----------
+    ax9 = fig.add_subplot(gs[9, 0])
     pressure_error = pressure - f0
-    ax9.plot(df['Time_sec'], pressure_error, label='Pressure Error', color='red', linewidth=1.5)
-    ax9.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+    ax9.plot(plot_time, pressure_error, label='Pressure Error', color='red', linewidth=1.5)
+    ax9.axhline(y=0, color='k', linewidth=0.5)
     ax9.axhline(y=0.5, color='g', linestyle='--', linewidth=1, alpha=0.5)
     ax9.axhline(y=-0.5, color='g', linestyle='--', linewidth=1, alpha=0.5)
-    ax9.fill_between(df['Time_sec'], -0.5, 0.5, alpha=0.1, color='green')
-    
-    # 标记关键时间点
+    ax9.fill_between(plot_time, -0.5, 0.5, alpha=0.1, color='green')
     if weight_add_time is not None:
         ax9.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
     if stable_time is not None:
         ax9.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    
     ax9.set_ylabel('Error (kg)')
     ax9.set_xlabel('Time (s)')
     ax9.set_title('Pressure Control Error')
     ax9.legend()
     ax9.grid(True, alpha=0.3)
     
-    # 图9b: 扭矩误差分析
-    ax9b = fig.add_subplot(gs[8, 1])
-    
-    # 检查是否有扭矩数据
+    # ---------- 图9b: 扭矩/电流误差 ----------
+    ax9b = fig.add_subplot(gs[9, 1])
     if 'TargetTorque(Nm)' in df.columns and 'ActualTorque(Nm)' in df.columns:
         torque_error = df['TargetTorque(Nm)'] - df['ActualTorque(Nm)']
-        ax9b.plot(df['Time_sec'], torque_error, label='Torque Error (Target-Actual)', color='purple', linewidth=1.5)
-        ax9b.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-        ax9b.axhline(y=torque_error.mean(), color='blue', linestyle='--', linewidth=1, alpha=0.7, label=f'Mean: {torque_error.mean():.3f}Nm')
-        ax9b.fill_between(df['Time_sec'], torque_error, alpha=0.3, color='purple')
+        ax9b.plot(plot_time, torque_error, label='Torque Error', color='purple', linewidth=1.5)
+        ax9b.axhline(y=0, color='k', linewidth=0.5)
+        ax9b.axhline(y=torque_error.mean(), color='blue', linestyle='--', alpha=0.7, label=f'Mean {torque_error.mean():.3f}Nm')
+        ax9b.fill_between(plot_time, torque_error, alpha=0.3, color='purple')
         ax9b.set_ylabel('Torque Error (Nm)')
         ax9b.set_title('Torque Tracking Error')
     else:
-        # 回退到电流误差显示
-        current_error = target_current - current
-        ax9b.plot(df['Time_sec'], current_error, label='Current Error (Target-Actual)', color='purple', linewidth=1.5)
-        ax9b.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
-        ax9b.axhline(y=current_error.mean(), color='blue', linestyle='--', linewidth=1, alpha=0.7, label=f'Mean: {current_error.mean():.1f}mA')
-        ax9b.fill_between(df['Time_sec'], current_error, alpha=0.3, color='purple')
+        current_error_abs = target_current - current
+        ax9b.plot(plot_time, current_error_abs, label='Current Error', color='purple', linewidth=1.5)
+        ax9b.axhline(y=0, color='k', linewidth=0.5)
+        ax9b.axhline(y=current_error_abs.mean(), color='blue', linestyle='--', alpha=0.7, label=f'Mean {current_error_abs.mean():.1f}mA')
+        ax9b.fill_between(plot_time, current_error_abs, alpha=0.3, color='purple')
         ax9b.set_ylabel('Current Error (mA)')
         ax9b.set_title('Current Tracking Error')
-    
     ax9b.set_xlabel('Time (s)')
     ax9b.legend()
     ax9b.grid(True, alpha=0.3)
-    
-    # 标记关键时间点
     if weight_add_time is not None:
         ax9b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
     if stable_time is not None:
         ax9b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
-
-    # 图10: 实际扭矩 - 放大纵坐标以显示细微变化
-    ax10 = fig.add_subplot(gs[9, :])
     
-    # 检查是否有扭矩数据
+    # ---------- 图10: 实际扭矩放大 ----------
+    ax10 = fig.add_subplot(gs[10, :])
     if 'ActualTorque(Nm)' in df.columns and 'TargetTorque(Nm)' in df.columns:
-        ax10.plot(df['Time_sec'], df['ActualTorque(Nm)'], label='Actual Torque', color='darkblue', linewidth=2)
-        ax10.plot(df['Time_sec'], df['TargetTorque(Nm)'], label='Target Torque', color='orange', linewidth=1.5, linestyle='--')
-        ax10.axhline(y=0, color='gray', linestyle=':', linewidth=1, alpha=0.7, label='Zero Torque')
-        
-        # 标记关键时间点
+        ax10.plot(plot_time, df['ActualTorque(Nm)'], label='Actual Torque', color='darkblue', linewidth=2)
+        ax10.plot(plot_time, df['TargetTorque(Nm)'], label='Target Torque', color='orange', linewidth=1.5, linestyle='--')
+        ax10.axhline(y=0, color='gray', linestyle=':', alpha=0.7)
         if weight_add_time is not None:
-            ax10.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added ({weight_add_time:.2f}s)')
+            ax10.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label='Weight added')
         if stable_time is not None:
-            ax10.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable ({stable_time:.2f}s)')
-        
+            ax10.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label='Stable')
         ax10.set_ylabel('Torque (Nm)')
         ax10.set_xlabel('Time (s)')
-        ax10.set_title('Actual Torque vs Target Torque (Zoomed)', fontsize=14, fontweight='bold')
-        # 自动调整Y轴范围以放大扭矩变化
-        torque_min = df['ActualTorque(Nm)'].min()
-        torque_max = df['ActualTorque(Nm)'].max()
-        torque_range = torque_max - torque_min
-        if torque_range < 0.1:  # 如果变化小于0.1Nm，添加padding
-            y_margin = max(0.02, torque_range * 0.2)
-        else:
-            y_margin = torque_range * 0.1
-        ax10.set_ylim([torque_min - y_margin, torque_max + y_margin])
+        ax10.set_title('Torque (Zoomed Y)')
+        tmin, tmax = df['ActualTorque(Nm)'].min(), df['ActualTorque(Nm)'].max()
+        margin = max(0.02, (tmax-tmin)*0.1)
+        ax10.set_ylim([tmin-margin, tmax+margin])
+        ax10.legend()
+        ax10.grid(True, alpha=0.3)
     else:
-        # 回退到电流显示
-        ax10.plot(df['Time_sec'], current, label='Actual Current', color='darkblue', linewidth=2)
-        ax10.axhline(y=50, color='gray', linestyle=':', linewidth=1, alpha=0.7, label='Base Current (50mA)')
-        
-        # 标记关键时间点
+        ax10.plot(plot_time, current, label='Actual Current', color='darkblue', linewidth=2)
+        ax10.axhline(y=50, color='gray', linestyle=':', alpha=0.7, label='Base 50mA')
         if weight_add_time is not None:
-            ax10.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label=f'Weight Added ({weight_add_time:.2f}s)')
+            ax10.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, label='Weight added')
         if stable_time is not None:
-            ax10.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label=f'Stable ({stable_time:.2f}s)')
-        
+            ax10.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, label='Stable')
         ax10.set_ylabel('Current (mA)')
         ax10.set_xlabel('Time (s)')
-        ax10.set_title('Actual Current Only (Zoomed)', fontsize=14, fontweight='bold')
-        # 自动调整Y轴范围以放大电流变化
-        current_min = current.min()
-        current_max = current.max()
-        current_range = current_max - current_min
-        if current_range < 10:  # 如果变化小于10mA，添加padding
-            y_margin = max(2.0, current_range * 0.2)
-        else:
-            y_margin = current_range * 0.1
-        ax10.set_ylim([current_min - y_margin, current_max + y_margin])
+        ax10.set_title('Current (Zoomed Y)')
+        cmin, cmax = current.min(), current.max()
+        margin = max(2.0, (cmax-cmin)*0.1)
+        ax10.set_ylim([cmin-margin, cmax+margin])
+        ax10.legend()
+        ax10.grid(True, alpha=0.3)
     
-    ax10.legend(loc='upper right')
-    ax10.grid(True, alpha=0.3)
+    # ==================== 图11（三轴修改） ====================
+    ax11 = fig.add_subplot(gs[11:13, :])  # 跨两行
     
-    # 图11: 压力与绳长关系（新增）
-    ax11 = fig.add_subplot(gs[10, :])
-    
-    # 左Y轴：压力
-    ax11.plot(df['Time_sec'], pressure, label='Pressure', 
-              color='purple', linewidth=2)
+    # 左轴：压力
+    ax11.plot(plot_time, pressure, label='Pressure', color='purple', linewidth=2)
     ax11.axhline(y=f0, color='r', linestyle='--', linewidth=1.5, alpha=0.7, label=f'Target F0={f0:.2f}kg')
+    range_half = max(1.0, (pressure.max() - pressure.min()) / 2 * 1.2)
+    ax11.set_ylim([f0 - range_half, f0 + range_half])
     ax11.set_ylabel('Pressure (kg)', color='purple', fontsize=12)
     ax11.tick_params(axis='y', labelcolor='purple')
     
-    # 右Y轴：绳长
-    ax11_twin = ax11.twinx()
-    ax11_twin.plot(df['Time_sec'], df['RopeLength(m)'] * 1000, label='Rope Length', 
-                   color='teal', linewidth=2, linestyle='--')
-    ax11_twin.set_ylabel('Rope Length (mm)', color='teal', fontsize=12)
-    ax11_twin.tick_params(axis='y', labelcolor='teal')
+    # 右轴1：绳长
+    ax11_right1 = ax11.twinx()
+    ax11_right1.plot(plot_time, position, label='Rope Length (mm)', color='teal', linewidth=2, linestyle='--')
+    ax11_right1.set_ylabel('Rope Length (mm)', color='teal', fontsize=12)
+    ax11_right1.tick_params(axis='y', labelcolor='teal')
+    
+    # 右轴2：重量（偏移）
+    ax11_right2 = ax11.twinx()
+    ax11_right2.spines['right'].set_position(('outward', 60))
+    if has_weight_data:
+        ax11_right2.plot(plot_time, weight_raw, label='Weight Raw', color='red', linewidth=1.5, linestyle='--', alpha=0.7)
+        ax11_right2.plot(plot_time, weight_filtered, label='Weight Filtered', color='blue', linewidth=2)
+    ax11_right2.set_ylabel('Weight (kg)', color='blue', fontsize=12)
+    ax11_right2.tick_params(axis='y', labelcolor='blue')
+    
+    # 标记关键时间
+    if weight_add_time is not None:
+        ax11.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7, label='Weight Added')
+    if stable_time is not None:
+        ax11.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7, label='Stable')
     
     # 合并图例
     lines1, labels1 = ax11.get_legend_handles_labels()
-    lines2, labels2 = ax11_twin.get_legend_handles_labels()
-    ax11.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
-    
-    # 标记关键时间点
-    if weight_add_time is not None:
-        ax11.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2, alpha=0.7)
-    if stable_time is not None:
-        ax11.axvline(x=stable_time, color='green', linestyle='--', linewidth=2, alpha=0.7)
+    lines2, labels2 = ax11_right1.get_legend_handles_labels()
+    lines3, labels3 = ax11_right2.get_legend_handles_labels()
+    ax11.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3, loc='upper right', fontsize=10)
     
     ax11.set_xlabel('Time (s)')
-    ax11.set_title('Pressure vs Rope Length Relationship', fontsize=13, fontweight='bold')
+    ax11.set_title('Pressure (Left), Rope Length (Right1), Weight (Right2)', fontsize=13, fontweight='bold')
     ax11.grid(True, alpha=0.3)
     
-    # 图12: 关键时间点总结（新增）- 使用英文避免乱码
-    ax12 = fig.add_subplot(gs[9, :])
-    ax12.axis('off')
-    
-    if weight_add_time is not None and stable_time is not None and settling_time is not None:
-        summary_text = f"""Key Timing Summary
-{'='*60}
-Weight Added Time:     {weight_add_time:.2f} s
-Stable Time (dF=0):    {stable_time:.2f} s
-Settling Time:         {settling_time:.2f} s
-Pressure Overshoot:    {pressure_overshoot:.2f}%
-Steady State Error:    {steady_error.mean():.3f} +/- {steady_error.std():.3f} kg
-{'='*60}"""
-    elif weight_add_time is not None:
-        summary_text = f"""Key Timing Summary
-{'='*60}
-Weight Added Time:     {weight_add_time:.2f} s
-Stable Time:           Not detected (dF did not return to zero)
-{'='*60}"""
-    else:
-        summary_text = """Key Timing Summary
-{'='*60}
-Weight added event not detected
-{'='*60}"""
-    
-    ax12.text(0.5, 0.5, summary_text, transform=ax12.transAxes, fontsize=11,
-              verticalalignment='center', horizontalalignment='center',
-              fontfamily='monospace', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-
     plt.tight_layout()
-    # 将输出文件保存到当前目录，避免权限问题
-    import os
     base_name = os.path.basename(csv_file).replace('.csv', '_performance_analysis.png')
     output_file = os.path.join(os.getcwd(), base_name)
     plt.savefig(output_file, dpi=150, bbox_inches='tight')
     print(f"\n总览图表已保存: {output_file}")
     plt.close()
     
-    # 注：第二张大图（PID详细图）已移除，PID控制项详情现在显示在第一张图的子图中
-
-    # 生成总结
+    # 总结输出
     print("\n" + "=" * 80)
     print("【算法性能总结】")
     print("=" * 80)
-    
-    # 准备关键时间点字符串
     weight_add_str = f"{weight_add_time:.2f}" if weight_add_time is not None else "N/A"
     stable_time_str = f"{stable_time:.2f}" if stable_time is not None else "N/A"
     settling_time_str = f"{settling_time:.2f}" if settling_time is not None else "N/A"
@@ -926,8 +781,7 @@ if __name__ == '__main__':
         sys.exit(1)
     
     csv_file = sys.argv[1]
-    sample_period_ms = 10  # 默认10ms = 100Hz
-    
+    sample_period_ms = 10
     if len(sys.argv) >= 3:
         sample_period_ms = int(sys.argv[2])
         print(f"使用指定采样周期: {sample_period_ms}ms ({int(1000/sample_period_ms)}Hz)")

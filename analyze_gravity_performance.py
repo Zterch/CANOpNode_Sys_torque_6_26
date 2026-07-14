@@ -17,16 +17,13 @@ DELTAF_THRESHOLD_KG_1 = 0.15
 DELTAF_THRESHOLD_KG_2 = 0.3
 # ====================================================
 
-def analyze_gravity_performance(csv_file, sample_period_ms=10):
+def analyze_gravity_performance(csv_file, sample_period_ms=None):
     # 读取CSV数据
     df = pd.read_csv(csv_file, skipinitialspace=True)
     df.columns = df.columns.str.strip()
     
-    sample_period_s = sample_period_ms / 1000.0
-    # 保留原时间序列（用于绘图，固定周期）
-    df['Time_sec'] = np.arange(len(df)) * sample_period_s
-    
-    # ------- 新增：解析真实时间戳 -------
+    # ------- 解析真实时间戳，自动检测采样周期 -------
+    using_real_time = False
     if 'Time' in df.columns:
         try:
             # 尝试解析时间格式，支持多种分隔符
@@ -34,13 +31,30 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
             start_time = df['Datetime'].iloc[0]
             df['Time_real'] = (df['Datetime'] - start_time).dt.total_seconds()
             using_real_time = True
+            
+            # 自动检测平均采样周期
+            if sample_period_ms is None:
+                avg_dt_ms = (df['Time_real'].diff().median() * 1000)
+                # 限制到合理的范围（5ms或10ms）
+                if avg_dt_ms < 7.5:
+                    sample_period_ms = 5
+                else:
+                    sample_period_ms = 10
+                print(f"[INFO] 自动检测到采样周期: {sample_period_ms} ms ({1000/sample_period_ms:.0f} Hz)")
         except:
             # 如果解析失败，使用固定周期
-            df['Time_real'] = df['Time_sec'].copy()
+            df['Time_real'] = df['Time_sec'].copy() if 'Time_sec' in df.columns else np.arange(len(df)) * 0.01
             using_real_time = False
-    else:
+    
+    if sample_period_ms is None:
+        sample_period_ms = 10
+    
+    sample_period_s = sample_period_ms / 1000.0
+    # 保留固定周期时间序列作为备用
+    df['Time_sec'] = np.arange(len(df)) * sample_period_s
+    
+    if not using_real_time:
         df['Time_real'] = df['Time_sec'].copy()
-        using_real_time = False
     
     print("=" * 80)
     print("重力卸载算法性能分析报告")
@@ -328,7 +342,8 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     # ==================== 绘图（使用固定时间轴） ====================
     print("\n正在生成分析图表...")
     # 使用固定周期时间绘制，保证图像一致性
-    plot_time = df['Time_sec']
+    # 绘图时间轴：优先使用真实时间戳
+    plot_time = df['Time_real']
     
     fig = plt.figure(figsize=(18, 26))
     gs = GridSpec(13, 2, figure=fig, hspace=0.35, wspace=0.3)
@@ -830,11 +845,12 @@ Tuning Suggestions:
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Usage: python3 analyze_gravity_performance.py <csv_file> [sample_period_ms]")
-        print("  sample_period_ms: 采样周期（毫秒），默认10ms（100Hz）")
+        print("  sample_period_ms: 采样周期（毫秒），默认自动检测")
+        print("  自动检测：根据CSV中Time列的真实时间戳计算采样率")
         sys.exit(1)
     
     csv_file = sys.argv[1]
-    sample_period_ms = 10
+    sample_period_ms = None
     if len(sys.argv) >= 3:
         sample_period_ms = int(sys.argv[2])
         print(f"使用指定采样周期: {sample_period_ms}ms ({int(1000/sample_period_ms)}Hz)")

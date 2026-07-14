@@ -46,28 +46,28 @@ extern "C" {
  * 控制算法参数
  ******************************************************************************/
 
-/* 控制周期 - 100Hz严格实时控制 */
-#define ALGO_CONTROL_PERIOD_MS          10          /* 控制周期 10ms = 100Hz */
-#define ALGO_CONTROL_PERIOD_S           0.01f       /* 控制周期 0.01s */
+/* 控制周期 - 200Hz严格实时控制 */
+#define ALGO_CONTROL_PERIOD_MS          5           /* 控制周期 5ms = 200Hz */
+#define ALGO_CONTROL_PERIOD_S           0.005f      /* 控制周期 0.005s */
 
 /* 速度计算滤波参数 */
 /* 编码器分辨率限制导致速度呈现0.0038m/s的阶梯状，需要更大的滤波窗口来平滑 */
-#define SPEED_FILTER_WINDOW_SIZE        10          /* 0.2s滑动平均 = 10个采样点（20ms周期） */
-/* 总延迟 = 20ms(测速) + 200ms(滤波) = 220ms，工业可接受 */
+#define SPEED_FILTER_WINDOW_SIZE        20          /* 0.1s滑动平均 = 20个采样点（5ms周期） */
+/* 总延迟 = 10ms(测速) + 100ms(滤波) = 110ms，工业可接受 */
 
 /* 低通滤波器参数 - 用于进一步平滑速度信号 */
 #define SPEED_LPF_ALPHA                 0.15f       /* 低通滤波系数 0-1，越小越平滑 */
-#define SPEED_FILTER_SAMPLE_TIME_MS     10          /* 采样时间 10ms */
+#define SPEED_FILTER_SAMPLE_TIME_MS     5           /* 采样时间 5ms */
 
 /* 基于摩擦力的电机速度控制参数 */
-#define PRESSURE_FILTER_WINDOW_SIZE     30          /* 压力传感器平均值滤波窗口大小 - 增大到30 (0.3s) 以减小波动 */
+#define PRESSURE_FILTER_WINDOW_SIZE     1          /* 压力传感器平均值滤波窗口大小 - 0.3s (5ms周期) */
 #define FRICTION_ANGLE_COS              0.861f      /* cos(30.5°) ≈ 0.861 */
 #define FRICTION_SPEED_OFFSET_C         15.0f       /* 速度偏移常量 C (rpm) - 减小值降低振荡幅度 */
 #define FRICTION_DEADZONE_KG            0.01f        /* 摩擦力死区 (kg) - 设置0.5kg死区，避免微小波动触发频繁换向 */
 #define PRESSURE_DEADZONE_KG            0.001f        /* 压力死区 (kg) - 减小到0.001kg，让微小的压力变化也能触发PID响应 */
 #define PRESSURE_F0_DEFAULT_KG          0.0f        /* 静止时压力默认值，运行时会自动校准 */
-#define PRESSURE_F0_CALIBRATION_SAMPLES 500         /* F0校准采样点数 (500点 = 5秒) - 增加校准时间提高稳定性 */
-#define PRESSURE_F0_STABILIZE_SAMPLES   300         /* F0校准前稳定延迟 (300点 = 3秒) - 算法启动后先稳定一段时间再校准 */
+#define PRESSURE_F0_CALIBRATION_SAMPLES 1000        /* F0校准采样点数 (1000点 = 5秒，5ms周期) */
+#define PRESSURE_F0_STABILIZE_SAMPLES   600         /* F0校准前稳定延迟 (600点 = 3秒，5ms周期) */
 #define MOTOR_SPEED_COMPENSATION_C      0.0f        /* 电机速度补偿系数 - 新算法中不再使用，保留兼容性 */
 
 /* 离合器电流PID控制参数 - 非增量式PID */
@@ -133,6 +133,17 @@ extern float g_deltaf_threshold_kg_2;  /* DeltaF第二级阈值 (kg)，默认0.3
 /* 编码器到距离的转换系数 (米/脉冲) */
 /* 距离 = 脉冲数 / 分辨率 * 2π * R2 */
 #define ENCODER_TO_DISTANCE_M           7.6699e-5f  /* 2π * 0.05 / 4096 */
+
+/* ADRC + 动态P融合参数
+ * ADRC控制律为 u0 = kp * (y_ref - z1)，仅在比例项上引入动态增益。
+ * 当 |DeltaF| 超过阈值且正在增大时自动放大 kp，以加快响应；
+ * |DeltaF| 减小时按两级下降，避免超调和振荡。
+ */
+#define ADRC_KP                         500.0f      /* ADRC比例增益（独立可调，不再等于wc） */
+#define ADRC_DYNAMIC_P_THRESHOLD_1      0.2f        /* 第一级DeltaF阈值 (kg) */
+#define ADRC_DYNAMIC_P_THRESHOLD_2      0.3f        /* 第二级DeltaF阈值 (kg) */
+#define ADRC_DYNAMIC_P_BOOST_1          2.0f        /* 第一级kp放大倍数 */
+#define ADRC_DYNAMIC_P_BOOST_2          4.0f        /* 第二级kp放大倍数 */
 
 /******************************************************************************
  * PID控制器参数 - 电机速度控制

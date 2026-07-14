@@ -27,6 +27,14 @@ static int s_encoder_consecutive_errors = 0;
 /* 压力传感器参数 */
 static int16_t s_pressure_zero_offset = 0;
 
+/* 编码器使能开关全局变量
+ * 0: 禁用编码器读取，压力传感器独占RS485总线，可运行200Hz
+ * 1: 启用编码器读取，编码器+压力传感器共享RS485总线，各运行100Hz
+ *
+ * 注意：当前算法未使用编码器数据，禁用编码器可提升压力传感器采样率
+ */
+int g_encoder_enabled = 0;  /* 默认禁用，压力传感器200Hz */
+
 /* 压力传感器11Hz陷波滤波器开关全局变量
  * 0: 关闭陷波滤波器（默认）
  * 1: 开启陷波滤波器
@@ -35,28 +43,28 @@ int g_pressure_notch_filter_enabled = 0;  /* 默认开启陷波滤波器 */
 
 /* 压力传感器陷波滤波器参数 - 中心频率11Hz，品质因数Q=1.70
  * 二阶IIR陷波滤波器，使用标准陷波滤波器公式设计
- * 采样频率: 100Hz，中心频率: 11Hz，品质因数Q=1.7
+ * 采样频率: 200Hz，中心频率: 11Hz，品质因数Q=1.7
  * 传递函数: H(z) = (b0 + b1*z^-1 + b2*z^-2) / (a0 + a1*z^-1 + a2*z^-2)
  * 设计公式:
- *   omega0 = 2 * pi * f0 / Fs = 2 * pi * 11 / 100 ≈ 0.6912
- *   alpha = sin(omega0) / (2 * Q) ≈ 0.1856
- *   b0 = b2 = 1 / (1 + alpha) ≈ 0.8434
- *   b1 = -2 * cos(omega0) / (1 + alpha) ≈ -1.307
+ *   omega0 = 2 * pi * f0 / Fs = 2 * pi * 11 / 200 ≈ 0.3456
+ *   alpha = sin(omega0) / (2 * Q) ≈ 0.0995
+ *   b0 = b2 = 1 / (1 + alpha) ≈ 0.9094
+ *   b1 = -2 * cos(omega0) / (1 + alpha) ≈ -1.7115
  *   a0 = 1
- *   a1 = -2 * cos(omega0) / (1 + alpha) ≈ -1.307
- *   a2 = (1 - alpha) / (1 + alpha) ≈ 0.6870
- * 性能（Q=1.7，Fs=100Hz）:
+ *   a1 = -2 * cos(omega0) / (1 + alpha) ≈ -1.7115
+ *   a2 = (1 - alpha) / (1 + alpha) ≈ 0.8190
+ * 性能（Q=1.7，Fs=200Hz）:
  *   - 10-12Hz衰减 > 85% (>8.5dB)
- *   - 5Hz相移 < 15°
+ *   - 5Hz相移 < 8°
  *   - 5Hz幅值变化 < 5%
  *   - 11Hz中心频率衰减 > 95%
  */
-#define PRESSURE_NOTCH_B0    0.8434f
-#define PRESSURE_NOTCH_B1    -1.307f
-#define PRESSURE_NOTCH_B2    0.8434f
+#define PRESSURE_NOTCH_B0    0.9094f
+#define PRESSURE_NOTCH_B1    -1.7115f
+#define PRESSURE_NOTCH_B2    0.9094f
 #define PRESSURE_NOTCH_A0    1.0000f
-#define PRESSURE_NOTCH_A1    -1.307f
-#define PRESSURE_NOTCH_A2    0.6870f
+#define PRESSURE_NOTCH_A1    -1.7115f
+#define PRESSURE_NOTCH_A2    0.8190f
 
 static float s_pressure_filtered = 0.0f;
 static float s_pressure_x1 = 0.0f;  /* x[n-1] */
@@ -66,10 +74,10 @@ static float s_pressure_y2 = 0.0f;  /* y[n-2] */
 static int s_pressure_notch_initialized = 0;
 
 /* 50点移动平均滤波器 - 用于进一步平滑压力数据
- * 采样频率100Hz，50点 = 500ms窗口
- * 等效截止频率约1Hz
+ * 采样频率200Hz，100点 = 500ms窗口
+ * 等效截止频率约0.5Hz
  */
-static float s_pressure_ma_buffer[50];
+static float s_pressure_ma_buffer[PRESSURE_MA_WINDOW_SIZE];
 static uint8_t s_pressure_ma_index = 0;
 static uint8_t s_pressure_ma_count = 0;
 static int s_pressure_ma_initialized = 0;
@@ -459,11 +467,11 @@ static ErrorCode_t read_pressure(SensorManager_t *manager, SensorData_t *data) {
     
     float pressure_kg = ((float)(raw_value - s_pressure_zero_offset)) / divisor;
 
-    /* 应用陷波滤波器 - 中心频率11Hz，针对性滤除10-12Hz干扰（采样频率100Hz）
+    /* 应用陷波滤波器 - 中心频率11Hz，针对性滤除10-12Hz干扰（采样频率200Hz）
      * 二阶IIR陷波滤波器，Q=1.7
      * 性能:
      *   - 10-12Hz衰减 > 85% (>8.5dB)
-     *   - 5Hz相移 < 15°
+     *   - 5Hz相移 < 8°
      *   - 5Hz幅值变化 < 5%
      *   - 11Hz中心频率衰减 > 95%
      * y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
@@ -542,10 +550,14 @@ static ErrorCode_t read_pressure(SensorManager_t *manager, SensorData_t *data) {
 
 /* 传感器采集线程 - 工业级严格固定周期版本
  * 
- * 采集策略：
- * - 编码器：每10ms采集一次（100Hz）
- * - 压力传感器：每10ms采集一次（100Hz）
- * - 总周期：10ms（两个传感器在同一周期内顺序采集）
+ * 采集策略（可配置）：
+ * - 编码器使能时 (g_encoder_enabled = 1)：
+ *   - 编码器：每10ms采集一次（100Hz）
+ *   - 压力传感器：每10ms采集一次（100Hz）
+ *   - 总周期：10ms（两个传感器在同一周期内顺序采集）
+ * - 编码器禁用时 (g_encoder_enabled = 0)：
+ *   - 编码器：不采集
+ *   - 压力传感器：独占RS485总线，每5ms采集一次（200Hz）
  * 
  * 使用绝对时间戳确保严格的周期控制
  */
@@ -559,8 +571,9 @@ static void* sensor_thread(void* arg) {
         printf("[SENSOR] Warning: Failed to set high priority for sensor thread\n");
     }
     
-    /* 定义严格的采集周期 - 10ms = 100Hz */
-    #define SENSOR_SAMPLE_PERIOD_US 10000  /* 10ms = 100Hz */
+    /* 根据编码器使能开关选择采集周期 */
+    const uint32_t SENSOR_SAMPLE_PERIOD_US = g_encoder_enabled ? 10000 : 5000;
+    const float sample_freq_hz = g_encoder_enabled ? 100.0f : 200.0f;
     
     /* 获取起始时间戳 */
     struct timespec next_time;
@@ -569,10 +582,18 @@ static void* sensor_thread(void* arg) {
     /* 转换为微秒 */
     uint64_t next_time_us = next_time.tv_sec * 1000000ULL + next_time.tv_nsec / 1000;
     
-    printf("[SENSOR] Thread started with strict 10ms cycle (100Hz for both sensors)\n");
+    if (g_encoder_enabled) {
+        printf("[SENSOR] Thread started with strict 10ms cycle (encoder+pressure 100Hz)\n");
+    } else {
+        printf("[SENSOR] Thread started with strict 5ms cycle (encoder disabled, pressure 200Hz)\n");
+    }
     
     /* 首次运行标志 - 用于时间戳初始化 */
     static int first_run = 1;
+    
+    /* 通信时间统计 */
+    uint64_t sample_total_us = 0;
+    uint32_t sample_count = 0;
     
     while (manager->running) {
         /* 记录本次采集开始时间 */
@@ -584,24 +605,40 @@ static void* sensor_thread(void* arg) {
             first_run = 0;
         }
         
-        /* 采集编码器（100Hz） */
-        ErrorCode_t ret = read_encoder(manager, &manager->datas[SENSOR_TYPE_ENCODER]);
-        if (ret != ERR_OK) {
-            manager->datas[SENSOR_TYPE_ENCODER].error_count++;
-        } else {
-            manager->datas[SENSOR_TYPE_ENCODER].read_count++;
+        /* 编码器使能时才读取编码器 */
+        if (g_encoder_enabled) {
+            ErrorCode_t ret = read_encoder(manager, &manager->datas[SENSOR_TYPE_ENCODER]);
+            if (ret != ERR_OK) {
+                manager->datas[SENSOR_TYPE_ENCODER].error_count++;
+            } else {
+                manager->datas[SENSOR_TYPE_ENCODER].read_count++;
+            }
         }
         
-        /* 采集压力传感器（100Hz） */
-        ret = read_pressure(manager, &manager->datas[SENSOR_TYPE_PRESSURE]);
+        /* 采集压力传感器（根据编码器状态运行在100Hz或200Hz） */
+        ErrorCode_t ret = read_pressure(manager, &manager->datas[SENSOR_TYPE_PRESSURE]);
         if (ret != ERR_OK) {
             manager->datas[SENSOR_TYPE_PRESSURE].error_count++;
         } else {
             manager->datas[SENSOR_TYPE_PRESSURE].read_count++;
         }
         
-        /* 完成一个10ms周期 */
+        /* 完成一个周期 */
         manager->cycle_count++;
+        
+        /* 统计通信时间 */
+        uint64_t sample_end_us = get_time_us();
+        uint64_t sample_us = sample_end_us - sample_start_us;
+        sample_total_us += sample_us;
+        sample_count++;
+        if (sample_count % 1000 == 0) {
+            printf("[SENSOR] Avg comm time per %.0fHz cycle: %.1f us (last=%llu us)\n",
+                   sample_freq_hz,
+                   (double)sample_total_us / sample_count,
+                   (unsigned long long)sample_us);
+            sample_total_us = 0;
+            sample_count = 0;
+        }
         
         /* 计算下一次采集的绝对时间点 */
         next_time_us += SENSOR_SAMPLE_PERIOD_US;
@@ -774,9 +811,11 @@ void sensor_mgr_deinit(SensorManager_t *manager) {
         return;
     }
     
-    /* 停止线程 */
-    manager->running = 0;
-    pthread_join(manager->manager_thread, NULL);
+    /* 停止线程（如果还在运行） */
+    if (manager->running) {
+        manager->running = 0;
+        pthread_join(manager->manager_thread, NULL);
+    }
     
     /* 保存当前位置 */
     SensorData_t *encoder_data = &manager->datas[SENSOR_TYPE_ENCODER];

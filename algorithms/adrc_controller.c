@@ -11,7 +11,7 @@
 #include <math.h>
 
 void adrc_init(ADRC_Controller_t *adrc,
-               float b0, float wc, float wo,
+               float b0, float wc, float wo, float kp,
                float u_min, float u_max,
                float dt) {
     if (adrc == NULL) return;
@@ -21,7 +21,7 @@ void adrc_init(ADRC_Controller_t *adrc,
     adrc->b0 = b0;
     adrc->wc = wc;
     adrc->wo = wo;
-    adrc->kp = wc;
+    adrc->kp = kp;              /* kp 独立可配，不再强制等于 wc */
     adrc->beta1 = 2.0f * wo;
     adrc->beta2 = wo * wo;
     adrc->u_min = u_min;
@@ -38,7 +38,7 @@ void adrc_reset(ADRC_Controller_t *adrc) {
     adrc->u_prev = 0.0f;
 }
 
-float adrc_update(ADRC_Controller_t *adrc, float y_ref, float y_meas) {
+float adrc_update(ADRC_Controller_t *adrc, float y_ref, float y_meas, float p_gain_multiplier) {
     if (adrc == NULL) return 0.0f;
     
     float e, u0, u;
@@ -70,28 +70,26 @@ float adrc_update(ADRC_Controller_t *adrc, float y_ref, float y_meas) {
     if (adrc->z2 > 10.0f)  adrc->z2 = 10.0f;
     if (adrc->z2 < -10.0f) adrc->z2 = -10.0f;
     
-    /* ---- 控制律 ---- */
-    /* 比例控制 + 扰动前馈补偿 */
-    //u0 = adrc->kp * (y_ref - adrc->z1);
-    //u  = (u0 - adrc->z2) / adrc->b0;
-    /* ---- 控制律 ---- */
-    float err = y_ref - adrc->z1;
-
     // 仅在零点小误差区间投入弱积分，大误差只保留P
     static float integral = 0.0f;
+    float err = y_ref - adrc->z1;
+    float effective_kp = adrc->kp * fmaxf(p_gain_multiplier, 0.0f);
+    if (effective_kp < 0.0f) effective_kp = 0.0f;
+
+    adrc->u0 = effective_kp * err; /* 保存 u0 */
+
     if(fabsf(err) < 0.05f)
     {
         integral += err * adrc->dt;
         integral = fminf(fmaxf(integral, -0.2f), 0.2f); // 积分限幅，防止饱和震荡
-        u0 = adrc->kp * err + 0.4f * integral;
+        u0 = adrc->u0 + 0.4f * integral;
     }
     else
     {
         integral = 0.0f; // 误差大时清零积分，避免累积
-        u0 = adrc->kp * err; // 大偏差下维持纯P，保证快速响应
+        u0 = adrc->u0; // 大偏差下维持纯P，保证快速响应
     }
 
-    // 【扰动前馈补偿依然完整保留，一点没丢】
     u  = (u0 - adrc->z2) / adrc->b0;
 
 
@@ -115,3 +113,9 @@ float adrc_get_z2(const ADRC_Controller_t *adrc) {
     if (adrc == NULL) return 0.0f;
     return adrc->z2;
 }
+
+float adrc_get_u0(const ADRC_Controller_t *adrc) {
+    if (adrc == NULL) return 0.0f;
+    return adrc->u0;
+}
+

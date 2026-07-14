@@ -38,7 +38,7 @@ extern "C" {
 /* CSV模式默认参数 */
 #define MOTOR_CSV_AMPLITUDE     5000        /* 正弦波幅度 */
 #define MOTOR_CSV_FREQUENCY     0.5         /* 正弦波频率 (Hz) */
-#define MOTOR_CSV_PERIOD_MS     10          /* 控制周期 (ms) */
+#define MOTOR_CSV_PERIOD_MS     5           /* 控制周期 (ms) */
 
 /******************************************************************************
  * 电源板配置 (UART - TTL)
@@ -71,7 +71,7 @@ extern "C" {
 #define ENCODER_RESOLUTION      4096        /* 编码器分辨率 */
 
 /* 编码器读取频率配置 */
-#define ENCODER_READ_PERIOD_MS      10      /* 编码器读取周期 100Hz */
+#define ENCODER_READ_PERIOD_MS      5       /* 编码器读取周期 200Hz */
 #define ENCODER_PRINT_PERIOD_MS     500     /* 编码器打印周期 2Hz */
 #define ENCODER_MODBUS_REG_ADDR     0x0000  /* 位置数据寄存器地址 */
 #define ENCODER_MODBUS_FUNC_CODE    0x03    /* 读取保持寄存器功能码 */
@@ -91,7 +91,7 @@ extern "C" {
 #define PRESSURE_UNIT           "kg"        /* 单位 */
 
 /* 压力计读取频率配置 */
-#define PRESSURE_READ_PERIOD_MS     10      /* 压力计读取周期 100Hz */
+#define PRESSURE_READ_PERIOD_MS     5       /* 压力计读取周期 200Hz */
 #define PRESSURE_PRINT_PERIOD_MS    1000    /* 压力计打印周期 1Hz */
 #define PRESSURE_MODBUS_REG_ADDR    0x0000  /* 压力值寄存器地址 */
 #define PRESSURE_MODBUS_FUNC_CODE   0x03    /* 读取保持寄存器功能码 */
@@ -108,19 +108,19 @@ extern "C" {
 #define WEIGHT_UART_PARITY      'N'         /* N=None, O=Odd, E=Even */
 
 /* 重量采集模块读取频率配置 */
-#define WEIGHT_READ_PERIOD_MS   10          /* 重量采集读取周期 100Hz */
+#define WEIGHT_READ_PERIOD_MS   5           /* 重量采集读取周期 200Hz */
 #define WEIGHT_PRINT_PERIOD_MS  1000        /* 重量采集打印周期 1Hz */
 
 /******************************************************************************
  * 系统运行参数
  ******************************************************************************/
-#define SYS_CONTROL_PERIOD_MS           10          /* 主控制周期 (ms) */
+#define SYS_CONTROL_PERIOD_MS           5           /* 主控制周期 (ms) */
 #define SYS_LOG_PERIOD_MS               100         /* 日志输出周期 (ms) */
-#define SYS_DATA_RECORD_PERIOD_MS       10          /* 数据记录周期 (ms) */
+#define SYS_DATA_RECORD_PERIOD_MS       5           /* 数据记录周期 (ms) */
 
 /* 共享内存通信参数 */
 #define SHM_DATA_OUTPUT_PERIOD_MS       50          /* 共享内存数据输出周期 (ms) - 20Hz */
-#define SHM_DATA_COLLECTION_PERIOD_MS   10          /* 数据采集周期 (ms) - 100Hz */
+#define SHM_DATA_COLLECTION_PERIOD_MS   5           /* 数据采集周期 (ms) - 200Hz */
 
 /* 速度滤波参数 */
 

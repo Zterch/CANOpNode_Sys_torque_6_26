@@ -477,15 +477,15 @@ ErrorCode_t weight_get_data(WeightDriver_t *weight, float *weight_kg, int is_fil
 static void* weight_collection_thread(void* arg) {
     WeightDriver_t *weight = (WeightDriver_t *)arg;
     
-    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread started (100Hz)");
+    LOG_INFO(LOG_MODULE_POWER, "Weight collection thread started (200Hz)");
     
     /* 使用普通调度策略，避免与实时线程竞争CPU */
     struct sched_param param;
     param.sched_priority = 0;
     pthread_setschedparam(pthread_self(), SCHED_OTHER, &param);
     
-    /* 100Hz采集周期 = 10ms */
-    #define WEIGHT_SAMPLE_PERIOD_US 10000  /* 10ms = 100Hz */
+    /* 200Hz采集周期 = 5ms */
+    #define WEIGHT_SAMPLE_PERIOD_US 5000  /* 5ms = 200Hz */
     
     /* 获取起始时间戳 */
     struct timespec next_time;
@@ -532,7 +532,7 @@ static void* weight_collection_thread(void* arg) {
 }
 
 /******************************************************************************
- * 启动后台采集线程（100Hz）
+ * 启动后台采集线程（200Hz）
  ******************************************************************************/
 ErrorCode_t weight_start_collection(WeightDriver_t *weight) {
     if (weight == NULL || !weight->initialized) {

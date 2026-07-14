@@ -1,4 +1,4 @@
-zterch@zterch-TM1701:~/VS_Project/Nimo_COp_Prj/CANOpNode_Sys_torque_6_15$ sudo ./bin/CANOpNode_Sys
+zterch@zterch-TM1701:~/VS_Project/Nimo_COp_Prj/CANOpNode_Sys_torque_6_26$ sudo ./bin/CANOpNode_Sys 
 Motor control enabled
 ========================================
 CANOpNode_Sys v4.0.0 (Gravity Unload)
@@ -7,46 +7,46 @@ Shared Memory Communication Enabled
 ========================================
 
 [INIT] Phase 1: Initializing hardware...
-[SENSOR] Loaded: length=7970.33mm, encoder=1871
-[2026-06-18 18:00:09]INFO [SYS] [rs485_bus.c:111] RS485 bus /dev/ttyUSB1 opened at 115200 baud
-[2026-06-18 18:00:09]INFO [SYS] [rs485_bus.c:197] RS485 bus initialized (device=/dev/ttyUSB1, baud=115200)
+[SENSOR] Loaded: length=-14.80mm, encoder=2147483123
+[2026-07-13 19:44:49]INFO [SYS] [rs485_bus.c:111] RS485 bus /dev/ttyUSB1 opened at 115200 baud
+[2026-07-13 19:44:49]INFO [SYS] [rs485_bus.c:197] RS485 bus initialized (device=/dev/ttyUSB1, baud=115200)
 [SENSOR] Initialized
   -> Sensor manager: OK
-[2026-06-18 18:00:09]INFO [POWER] [power_driver.c:131] Serial port /dev/ttyUSB0 opened at 115200 baud (V2 protocol)
-[2026-06-18 18:00:09]INFO [POWER] [power_driver.c:388] Power driver V2 initialized (device=/dev/ttyUSB0, baud=115200)
+[2026-07-13 19:44:49]INFO [POWER] [power_driver.c:131] Serial port /dev/ttyUSB0 opened at 115200 baud (V2 protocol)
+[2026-07-13 19:44:49]INFO [POWER] [power_driver.c:388] Power driver V2 initialized (device=/dev/ttyUSB0, baud=115200)
   -> Power driver: OK
-[2026-06-18 18:00:09]INFO [POWER] [power_driver.c:468] Current set to 880 mA (0.88 A)
+[2026-07-13 19:44:49]INFO [POWER] [power_driver.c:468] Current set to 880 mA (0.88 A)
   -> Power initial current: 880mA
-[2026-06-18 18:00:09]ERROR [POWER] [weight_driver.c:57] Failed to open /dev/ttyUSB2: No such file or directory
-[2026-06-18 18:00:09]ERROR [POWER] [weight_driver.c:245] Failed to open weight device: /dev/ttyUSB2
-  -> Weight driver: WARNING (weight disabled)
-[2026-06-18 18:00:09]INFO [MOTOR] [motor_driver.c:110] Initializing NiMotion SDK...
-[2026-06-18 18:00:09]INFO [MOTOR] [motor_driver.c:129] Changed to SDK lib directory: .
-"[2026-06-18 18:00:09.256] SDK init"
-"[2026-06-18 18:00:09.259] 0 : CANopen Master"
-"[2026-06-18 18:00:09.259] 1 : EtherCAT Master"
-"[2026-06-18 18:00:09.259] 2 : Modbus Master"
-[2026-06-18 18:00:09]INFO [MOTOR] [motor_driver.c:137] SDK initialized from lib directory
-"[2026-06-18 18:00:09.262] 1001 : NiMotion USB-CAN Device"
-"[2026-06-18 18:00:09.262] 1004 : NiMotion TCP-CAN Device"
-[2026-06-18 18:00:09]ERROR [MOTOR] [motor_driver.c:150] Nim_create_master returned null handle
-[2026-06-18 18:00:09]INFO [MOTOR] [motor_driver.c:156] SDK master created successfully, handle=0x00000000
-[2026-06-18 18:00:09]INFO [MOTOR] [motor_driver.c:168] Connection string: {"DevType": "1001", "DevIndex": 0, "Baudrate": 8, "PDOIntervalMS": 10, "SyncIntervalMS": 10}
-0483:0002 = 0x560c6647eef0
-[2026-06-18 18:00:09]INFO [MOTOR] [motor_driver.c:181] SDK master running successfully
-[2026-06-18 18:00:09]INFO [MOTOR] [motor_driver.c:196] Scanning nodes...
-[2026-06-18 18:00:12]INFO [MOTOR] [motor_driver.c:216] Motor node 1 is online
-[2026-06-18 18:00:12]WARN [MOTOR] [motor_driver.c:220] Nim_load_params with full path failed
-[2026-06-18 18:00:12]INFO [MOTOR] [motor_driver.c:245] Motor driver initialized (Node ID=1, SDK mode)
+[2026-07-13 19:44:49]DEBUG [POWER] [weight_driver.c:322] weight_get_weight: device not initialized yet
+[2026-07-13 19:44:49]INFO [POWER] [weight_driver.c:261] Weight device initialized: /dev/ttyUSB2, weight=5.210 kg
+  -> Weight driver: OK
+  -> Weight collection thread: OK
+[2026-07-13 19:44:49]INFO [MOTOR] [motor_driver.c:110] Initializing NiMotion SDK...
+[2026-07-13 19:44:49]INFO [POWER] [weight_driver.c:480] Weight collection thread started (200Hz)
+[2026-07-13 19:44:49]INFO [MOTOR] [motor_driver.c:129] Changed to SDK lib directory: .
+"[2026-07-13 19:44:49.180] SDK init"
+"[2026-07-13 19:44:49.183] 0 : CANopen Master"
+"[2026-07-13 19:44:49.183] 1 : EtherCAT Master"
+"[2026-07-13 19:44:49.183] 2 : Modbus Master"
+[2026-07-13 19:44:49]INFO [MOTOR] [motor_driver.c:137] SDK initialized from lib directory
+"[2026-07-13 19:44:49.185] 1001 : NiMotion USB-CAN Device"
+"[2026-07-13 19:44:49.185] 1004 : NiMotion TCP-CAN Device"
+[2026-07-13 19:44:49]ERROR [MOTOR] [motor_driver.c:150] Nim_create_master returned null handle
+[2026-07-13 19:44:49]INFO [MOTOR] [motor_driver.c:156] SDK master created successfully, handle=0x00000000
+[2026-07-13 19:44:49]INFO [MOTOR] [motor_driver.c:168] Connection string: {"DevType": "1001", "DevIndex": 0, "Baudrate": 8, "PDOIntervalMS": 5, "SyncIntervalMS": 5}
+0483:0002 = 0x5613a3f20d00
+[2026-07-13 19:44:49]INFO [MOTOR] [motor_driver.c:181] SDK master running successfully
+[2026-07-13 19:44:49]INFO [MOTOR] [motor_driver.c:196] Scanning nodes...
+[2026-07-13 19:44:52]INFO [MOTOR] [motor_driver.c:216] Motor node 1 is online
+[2026-07-13 19:44:52]WARN [MOTOR] [motor_driver.c:220] Nim_load_params with full path failed
+[MOTOR_INIT] SDO test read 0x6077 OK: torque=0 (0.001 rated)
+[2026-07-13 19:44:52]INFO [MOTOR] [motor_driver.c:254] Motor driver initialized (Node ID=1, SDK mode)
   -> Motor driver: OK
 [SENSOR] Started
   -> Sensor manager thread: OK
-[SENSOR] Thread started with strict 10ms cycle (100Hz for both sensors)
-[SENSOR] Initializing zero_offset: current=305, expected=4294863684 (base_length=7970.33mm)
+[SENSOR] Thread started with strict 5ms cycle (encoder disabled, pressure 200Hz)
 
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9981
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9999
-[SENSOR] Encoder zero calibrated: offset=305, base_length=15940.67mm
+[SENSOR] Encoder zero calibrated: offset=0
 [SENSOR] Pressure tared: offset=0
 
 [INIT] Phase 2: Initializing shared memory...
@@ -55,285 +55,15 @@ Shared Memory Communication Enabled
 
 [INIT] Phase 3: System health check...
 [CHECK] Checking sensors...
-[CHECK PASS] Sensors OK
+[CHECK FAIL] Encoder not available
 [CHECK PASS] Motor OK
 [CHECK PASS] Power board OK
 [CHECK PASS] Safety check OK
 
-[INIT] All system checks PASSED!
-
-[INIT] Phase 4: Starting communication threads...
-  -> Starting data collection thread (100Hz)... OK
-  -> Starting motor state update thread... [DATA] Data collection thread started - 100Hz independent mode
-OK
-  -> Starting PDO send thread (200Hz)... [MOTOR] Motor state update thread started (100Hz, independent)
-OK
-  -> Starting data output thread (20Hz)... [PDO] PDO send thread started (100Hz, synchronized with algorithm)
-OK
-  -> Starting command handler thread... [SHM] Data output thread started (20Hz)
-OK
-
-[INIT] Phase 5: System ready for remote monitoring
-Waiting for commands from GravShow...
-Or press Enter to start algorithm mode locally
-Press Ctrl+C to exit
-
-[SHM] Command handler thread started
-
-[INFO] Starting algorithm mode...
-
-  -> Setting motor to CST mode... [2026-06-18 18:00:15]INFO [MOTOR] [motor_driver.c:467] Motor mode set to CST
-OK
-  -> Enabling motor... [2026-06-18 18:00:15]INFO [MOTOR] [motor_driver.c:295] Starting motor enable sequence (SDK)...
-[2026-06-18 18:00:15]INFO [MOTOR] [motor_driver.c:319] Setting CST mode for torque control
-[2026-06-18 18:00:15]INFO [MOTOR] [motor_driver.c:343] CST mode set successfully
-[2026-06-18 18:00:15]INFO [MOTOR] [motor_driver.c:372] Status word after enable: 0x1637
-[2026-06-18 18:00:15]INFO [MOTOR] [motor_driver.c:378] SUCCESS: Motor enabled! Status word: 0x1637
-[2026-06-18 18:00:15]INFO [MOTOR] [motor_driver.c:386] Target torque cleared to 0 after enable
-OK (Mode: CST)
-  -> Resetting target torque to 0... OK
-[GRAVITY_UNLOAD] Controller initialized
-  Pulley R1: 0.100 m, R2: 0.050 m
-  Clutch current/torque: 176.08 mA/Nm
-  Control period: 10 ms
-[INIT] Motor ready in CST mode, starting algorithm...
-[GRAVITY_UNLOAD] Control thread started
-[GRAVITY_UNLOAD] Thread started - Industrial Grade Strict 10ms Cycle
-========================================
-System RUNNING
-Mode: ALGORITHM
-Press Ctrl+C to stop
-========================================
-
-[MONITOR] Monitor thread started (1Hz)
-
-========== Gravity Unload Status ==========
-State: 3, Error: 0
-Cycle count: 0
-Running time: 0.0 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 9999.00 to -9999.00 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: OK
-  Message: OK
-==========================================
-[GRAVITY_UNLOAD] Starting F0 calibration immediately...
-[DATA] P=15.460kg F0=0.000kg dF=0.000 Pos=-15.941m V_filt=0.000 I_clutch=880.0mA T_pulley=0.00Nm T_motor=0.010Nm Mode=2
-[TORQUE_DETAIL] T_pulley_req=0.00Nm T_motor_target=0.010Nm T_motor_cmd=7 I_clutch=880.0mA P=0.000Nm I=0.008Nm
-[PDO] Motor enabled, starting torque transmission
-[PDO] Torque sent: 7 (0.001 rated), change=7
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=10001
-[GRAVITY_UNLOAD] Safety violation detected!
-[GRAVITY_UNLOAD] Thread stopped
-
-[SHUTDOWN] Stopping system...
-[GRAVITY_UNLOAD] Control thread stopped
-[GRAVITY_UNLOAD] Controller deinitialized
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9998
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9999
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9994
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9991
-[SHM] Data written, sequence=100, pressure=15.480, motor=0
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9997
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9996
-[LOG] Started logging to: /home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys_torque_6_15/logdata/gravity_data_20260618_180022.csv
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=305, last=305, delta=0, acc_delta=0, time_us=9995
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=514, last=507, delta=7, acc_delta=7, time_us=10005
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=1621, last=1613, delta=8, acc_delta=8, time_us=9996
-[SHM] Data written, sequence=200, pressure=15.480, motor=11
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=1996, last=1996, delta=0, acc_delta=0, time_us=10001
-[LOG] Stopped logging, total records: 1
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=1996, last=1996, delta=0, acc_delta=0, time_us=9988
-
-========== Gravity Unload Status ==========
-State: 7, Error: 5
-Cycle count: 49
-Running time: 0.5 s
-Emergency stop: NO
-
-Statistics:
-  Pressure: 15.45 to 15.48 kg
-  Max velocity: 0.000 m/s
-
-Safety Status: EMERGENCY
-  Message: EMERGENCY STOP: Too many consecutive errors
-==========================================
-[MT DEBUG] current=1997, last=1997, delta=0, acc_delta=0, time_us=10004
-^C
-[INFO] Signal received, shutting down...
-[EMERGENCY STOP] Stopping motor and clutch immediately...
-[2026-06-18 18:00:28]INFO [MOTOR] [motor_driver.c:504] Set velocity: 0.00 rpm (internal: 0.00)
-[2026-06-18 18:00:28]INFO [MOTOR] [motor_driver.c:423] Motor disabled
-[EMERGENCY STOP] Motor stopped and disabled
-[2026-06-18 18:00:28]INFO [POWER] [power_driver.c:468] Current set to 50 mA (0.05 A)
-[SHM] Command handler thread stopped
-[2026-06-18 18:00:28]INFO [POWER] [power_driver.c:409] Power driver V2 deinitialized
-[EMERGENCY STOP] Clutch current set to 0
-[DATA] Data collection thread stopped
-[SENSOR] Saved: length=16070.44mm, encoder=1997
-[2026-06-18 18:00:28]INFO [SYS] [rs485_bus.c:214] RS485 bus deinitialized
-[SHM] Data output thread stopped
-[MONITOR] Monitor thread stopped
-[2026-06-18 18:00:28]INFO [POWER] [weight_driver.c:308] Weight driver deinitialized
-
-[System shutdown completed]
-libusb uninitialized"[2026-06-18 18:00:28.363] NiMotionCanDevice::close() failed on NiM_ResetCAN"
-libusb uninitialized"[2026-06-18 18:00:28.363] NiMotionCanDevice::close() failed on NiM_CloseDevice"
-QThread: Destroyed while thread is still running
+[ERROR] System check FAILED! Please check hardware connections.
+[SENSOR] Stopped
+[2026-07-13 19:44:55]INFO [POWER] [power_driver.c:409] Power driver V2 deinitialized
+[2026-07-13 19:44:55]INFO [POWER] [weight_driver.c:308] Weight driver deinitialized
+[2026-07-13 19:44:55]INFO [SYS] [rs485_bus.c:214] RS485 bus deinitialized
+destroy mutex faild*** buffer overflow detected ***: terminated
+已放弃

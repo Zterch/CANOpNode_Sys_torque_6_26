@@ -23,7 +23,7 @@
 /******************************************************************************
  * 宏定义
  ******************************************************************************/
-#define PRESSURE_MA_WINDOW_SIZE         1          /* 压力传感器移动平均滤波窗口大小 - 增大到30 (0.3s) 以减小波动 */
+#define PRESSURE_MA_WINDOW_SIZE         1         /* 压力传感器移动平均滤波窗口大小 - 200Hz采样，100点=500ms窗口 */
 /* 传感器设备类型 */
 typedef enum {
     SENSOR_TYPE_ENCODER = 0,    /* 编码器 */
@@ -190,13 +190,23 @@ void sensor_mgr_print_status(SensorManager_t *manager);
  * 0: 关闭陷波滤波器（默认）
  * 1: 开启陷波滤波器
  *
- * 陷波滤波器参数（采样频率100Hz）：
+ * 陷波滤波器参数（采样频率200Hz）：
  * - 中心频率: 11Hz
  * - 品质因数 Q = 1.7
  * - 10-12Hz衰减 > 85%
  * - 11Hz中心频率衰减 > 95%
- * - 5Hz相移 < 15°
+ * - 5Hz相移 < 8°
  */
 extern int g_pressure_notch_filter_enabled;
+
+/**
+ * @brief 编码器使能开关（用于将RS485带宽全部让给压力传感器）
+ * @details
+ * 0: 禁用编码器读取，压力传感器独占RS485总线，可运行200Hz
+ * 1: 启用编码器读取，编码器+压力传感器共享RS485总线，各运行100Hz
+ *
+ * 修改方式：直接在代码中修改此全局变量的值，或在 sensor_manager.c 初始化前设置
+ */
+extern int g_encoder_enabled;
 
 #endif /* SENSOR_MANAGER_H */

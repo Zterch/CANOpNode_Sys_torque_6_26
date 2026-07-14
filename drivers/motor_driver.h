@@ -97,6 +97,7 @@ typedef struct {
     /* 统计信息 */
     uint64_t pdo_tx_count;      /* PDO发送计数 */
     uint64_t pdo_rx_count;      /* PDO接收计数 */
+    uint64_t pdo_rx_fail_count; /* PDO接收失败计数 */
     uint64_t error_count;       /* 错误计数 */
 } MotorDriver_t;
 

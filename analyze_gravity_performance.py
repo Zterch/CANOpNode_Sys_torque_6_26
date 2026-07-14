@@ -103,19 +103,50 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     steady_error = steady_pressure - f0
     print(f"\n稳态压力偏差: 平均 {steady_error.mean():.3f} kg, 标准差 {steady_error.std():.3f} kg, 最大偏差 {steady_error.abs().max():.3f} kg")
     
-    # ---------- PID控制项处理 ----------
+    # ---------- 控制算法输出处理（ADRC优先，兼容旧PID） ----------
     has_d_term = False
     has_last_current = False
     d_term = None
     pi_last_current = None
     using_real_data = False
+    using_adrc_data = False
+    adrc_u0 = None
+    adrc_z1 = None
+    adrc_z2 = None
+    adrc_output = None
+    adrc_kp = None
+    adrc_p_gain = None
     
-    if 'PI_P(mA)' in df.columns and 'PI_I(mA)' in df.columns:
-        # 真实数据分支
-        p_term = df['PI_P(mA)']
-        i_term = df['PI_I(mA)']
-        if 'PI_D(mA)' in df.columns:
-            d_term = df['PI_D(mA)']
+    # 优先检测新 ADRC 列
+    if 'ADRC_U0(Nm)' in df.columns and 'ADRC_Z1(kg)' in df.columns:
+        adrc_u0 = df['ADRC_U0(Nm)']
+        adrc_z1 = df['ADRC_Z1(kg)']
+        adrc_z2 = df['ADRC_Z2(Nm)']
+        adrc_output = df['ADRC_LastTorque(Nm)']
+        adrc_kp = df['ADRC_KP'] if 'ADRC_KP' in df.columns else None
+        adrc_p_gain = df['ADRC_PGain'] if 'ADRC_PGain' in df.columns else None
+        using_adrc_data = True
+        using_real_data = True
+        pi_output = adrc_output
+        p_term = adrc_u0
+        i_term = adrc_z2
+        d_term = None
+        has_d_term = False
+        print(f"\n【ADRC控制分析 - 使用真实采集数据】")
+        if adrc_kp is not None:
+            print(f"  ADRC KP: {adrc_kp.iloc[0]:.2f}")
+        if adrc_p_gain is not None:
+            print(f"  ADRC 动态P增益范围: {adrc_p_gain.min():.2f} ~ {adrc_p_gain.max():.2f}")
+        print(f"  u0 范围: {adrc_u0.min():.3f} ~ {adrc_u0.max():.3f} Nm")
+        print(f"  z1 (估计DeltaF) 范围: {adrc_z1.min():.3f} ~ {adrc_z1.max():.3f} kg")
+        print(f"  z2 (估计扰动) 范围: {adrc_z2.min():.3f} ~ {adrc_z2.max():.3f} Nm")
+        print(f"  ADRC输出扭矩范围: {adrc_output.min():.3f} ~ {adrc_output.max():.3f} Nm")
+    elif 'PI_P(Nm)' in df.columns and 'PI_I(Nm)' in df.columns:
+        # 旧PID数据分支（兼容）
+        p_term = df['PI_P(Nm)']
+        i_term = df['PI_I(Nm)']
+        if 'PI_D(Nm)' in df.columns:
+            d_term = df['PI_D(Nm)']
             has_d_term = True
             pi_output = p_term + i_term + d_term
         else:
@@ -124,21 +155,21 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
             pi_output = p_term + i_term
         using_real_data = True
 
-        if 'PI_LastCurrent(mA)' in df.columns:
-            pi_last_current = df['PI_LastCurrent(mA)']
+        if 'PI_LastTorque(Nm)' in df.columns:
+            pi_last_current = df['PI_LastTorque(Nm)']
             has_last_current = True
         else:
             pi_last_current = None
             has_last_current = False
 
-        print(f"\n【PID控制分析 - 使用真实采集数据】")
-        print(f"P项范围: {p_term.min():.2f} ~ {p_term.max():.2f} mA")
-        print(f"I项范围: {i_term.min():.2f} ~ {i_term.max():.2f} mA")
+        print(f"\n【PID控制分析 - 使用真实采集数据（旧格式）】")
+        print(f"P项范围: {p_term.min():.2f} ~ {p_term.max():.2f} Nm")
+        print(f"I项范围: {i_term.min():.2f} ~ {i_term.max():.2f} Nm")
         if has_d_term:
-            print(f"D项范围: {d_term.min():.2f} ~ {d_term.max():.2f} mA")
-        print(f"PID输出范围: {pi_output.min():.2f} ~ {pi_output.max():.2f} mA")
+            print(f"D项范围: {d_term.min():.2f} ~ {d_term.max():.2f} Nm")
+        print(f"PID输出范围: {pi_output.min():.2f} ~ {pi_output.max():.2f} Nm")
         if has_last_current:
-            print(f"PID累积电流(LastCurrent)范围: {pi_last_current.min():.2f} ~ {pi_last_current.max():.2f} mA")
+            print(f"PID累积扭矩(LastTorque)范围: {pi_last_current.min():.2f} ~ {pi_last_current.max():.2f} Nm")
     else:
         # 计算分支（若无法读取配置则使用默认值）
         config_file = '/home/zterch/VS_Project/Nimo_COp_Prj/CANOpNode_Sys/algorithms/algorithm_config.h'
@@ -369,37 +400,55 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     ax2.legend(loc='upper left')
     ax2.grid(True, alpha=0.3)
     
-    # ---------- 图2b: DeltaF与P项动态增益 ----------
+    # ---------- 图2b: DeltaF与ADRC/PID控制项 ----------
     ax2b = fig.add_subplot(gs[3, :])
     ax2b.plot(plot_time, delta_f, label='DeltaF', color='purple', linewidth=2)
-    ax2b.axhline(y=DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2, label=f'Thr1 ±{DELTAF_THRESHOLD_KG_1}kg (×2)')
+    ax2b.axhline(y=DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2, label=f'Thr1 ±{DELTAF_THRESHOLD_KG_1}kg')
     ax2b.axhline(y=-DELTAF_THRESHOLD_KG_1, color='red', linestyle='--', linewidth=2)
-    ax2b.axhline(y=DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2, label=f'Thr2 ±{DELTAF_THRESHOLD_KG_2}kg (×4)')
+    ax2b.axhline(y=DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2, label=f'Thr2 ±{DELTAF_THRESHOLD_KG_2}kg')
     ax2b.axhline(y=-DELTAF_THRESHOLD_KG_2, color='orange', linestyle='-.', linewidth=2)
     ax2b.fill_between(plot_time, -DELTAF_THRESHOLD_KG_1, DELTAF_THRESHOLD_KG_1, alpha=0.1, color='yellow')
     ax2b.set_ylabel('DeltaF (kg)', color='purple')
     ax2b.tick_params(axis='y', labelcolor='purple')
-    if 'PI_P(Nm)' in df.columns:
-        ax2b_twin = ax2b.twinx()
+
+    ax2b_twin = ax2b.twinx()
+    if using_adrc_data:
+        # ADRC数据：绘制u0, z1, z2, 最终输出
+        ax2b_twin.plot(plot_time, adrc_u0, label='ADRC u0', color='red', linewidth=1.5, linestyle='--', alpha=0.8)
+        ax2b_twin.plot(plot_time, adrc_z2, label='ADRC z2', color='cyan', linewidth=1.5, linestyle=':', alpha=0.8)
+        ax2b_twin.plot(plot_time, adrc_output, label='ADRC Output Torque', color='green', linewidth=2)
+        if adrc_p_gain is not None:
+            ax2b_twin.plot(plot_time, adrc_p_gain, label='ADRC P Gain Mult', color='magenta', linewidth=1.5, linestyle='-.')
+        ax2b_twin.set_ylabel('ADRC Value (Nm)', color='green')
+    elif 'PI_P(Nm)' in df.columns:
         if 'PI_P_Raw(Nm)' in df.columns:
             ax2b_twin.plot(plot_time, df['PI_P_Raw(Nm)'], label='P Raw', color='red', linewidth=1.5, linestyle='--', alpha=0.8)
         if 'PI_P_Filtered(Nm)' in df.columns:
             ax2b_twin.plot(plot_time, df['PI_P_Filtered(Nm)'], label='P Filtered', color='orange', linewidth=1.5, linestyle='-.', alpha=0.9)
         ax2b_twin.plot(plot_time, df['PI_P(Nm)'], label='P Final (Boosted)', color='green', linewidth=2)
         ax2b_twin.set_ylabel('P Term (Nm)', color='green')
-        ax2b_twin.tick_params(axis='y', labelcolor='green')
-        ax2b_twin.legend(loc='upper right', fontsize=9)
+    else:
+        ax2b_twin.plot(plot_time, p_term, label='P Term', color='orange', linewidth=1.5)
+    ax2b_twin.tick_params(axis='y', labelcolor='green')
+    ax2b_twin.legend(loc='upper right', fontsize=9)
+
     if weight_add_time is not None:
         ax2b.axvline(x=weight_add_time, color='orange', linestyle='--', linewidth=2)
     if stable_time is not None:
         ax2b.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
-    ax2b.set_title('DeltaF vs P-Term with Dynamic Gain')
+    ax2b.set_title('DeltaF vs ADRC/PID Control Output')
     ax2b.legend(loc='upper left')
     ax2b.grid(True, alpha=0.3)
     
-    # ---------- 图3: PID控制项（扭矩） ----------
+    # ---------- 图3: ADRC/PID控制项（扭矩） ----------
     ax3 = fig.add_subplot(gs[4, 1])
-    if 'PI_P(Nm)' in df.columns and 'PI_I(Nm)' in df.columns:
+    if using_adrc_data:
+        ax3.plot(plot_time, adrc_u0, label='ADRC u0', color='red', linewidth=1.5, linestyle='--')
+        ax3.plot(plot_time, adrc_z2, label='ADRC z2 (Disturbance)', color='cyan', linewidth=1.5, linestyle=':')
+        ax3.plot(plot_time, adrc_output, label='ADRC Output', color='green', linewidth=2)
+        if adrc_p_gain is not None:
+            ax3.plot(plot_time, adrc_p_gain, label='ADRC P Gain Mult', color='magenta', linewidth=1.5, linestyle='-.')
+    elif 'PI_P(Nm)' in df.columns and 'PI_I(Nm)' in df.columns:
         torque_p = df['PI_P(Nm)']
         torque_i = df['PI_I(Nm)']
         if 'PI_P_Raw(Nm)' in df.columns:
@@ -424,7 +473,7 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     if stable_time is not None:
         ax3.axvline(x=stable_time, color='green', linestyle='--', linewidth=2)
     ax3.set_ylabel('Torque (Nm)')
-    ax3.set_title('PID Control Terms (Torque)')
+    ax3.set_title('ADRC/PID Control Terms (Torque)')
     ax3.legend(loc='upper right', fontsize=9)
     ax3.grid(True, alpha=0.3)
     
@@ -458,22 +507,26 @@ def analyze_gravity_performance(csv_file, sample_period_ms=10):
     # ---------- 图5: PI输出 vs 实际扭矩 ----------
     ax5 = fig.add_subplot(gs[5, 1])
     if 'ActualTorque(Nm)' in df.columns:
-        ax5.plot(plot_time, pi_output, label='PI Output (mA)', color='blue', linewidth=1.5)
+        if using_adrc_data:
+            ax5.plot(plot_time, adrc_output, label='ADRC Output (Nm)', color='blue', linewidth=1.5)
+            ax5.set_ylabel('ADRC Output (Nm)', color='blue')
+        else:
+            ax5.plot(plot_time, pi_output, label='PI Output (Nm)', color='blue', linewidth=1.5)
+            ax5.set_ylabel('PI Output (Nm)', color='blue')
         ax5_twin = ax5.twinx()
         ax5_twin.plot(plot_time, df['ActualTorque(Nm)'], label='Actual Torque (Nm)', color='red', linewidth=1.5, linestyle='--')
         ax5_twin.set_ylabel('Actual Torque (Nm)', color='red')
         ax5_twin.tick_params(axis='y', labelcolor='red')
         ax5_twin.legend(loc='upper right')
-        ax5.set_title('PI Output vs Actual Torque')
+        ax5.set_title('Control Output vs Actual Torque')
     else:
-        ax5.plot(plot_time, pi_output, label='PI Output (mA)', color='blue', linewidth=1.5)
+        ax5.plot(plot_time, pi_output, label='PI Output (Nm)', color='blue', linewidth=1.5)
         ax5_twin = ax5.twinx()
         ax5_twin.plot(plot_time, current-50, label='Current-50mA', color='red', linewidth=1.5, linestyle='--')
         ax5_twin.set_ylabel('Current Adjustment (mA)', color='red')
         ax5_twin.tick_params(axis='y', labelcolor='red')
         ax5_twin.legend(loc='upper right')
         ax5.set_title('PI Output vs Current Adjustment')
-    ax5.set_ylabel('PI Output (mA)', color='blue')
     ax5.tick_params(axis='y', labelcolor='blue')
     ax5.legend(loc='upper left')
     ax5.grid(True, alpha=0.3)

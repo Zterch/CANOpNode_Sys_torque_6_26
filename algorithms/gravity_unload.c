@@ -31,6 +31,7 @@ extern void update_feedforward_torque(float feedforward_torque_Nm);  /* 更新�
 extern void update_pi_last_current(float last_current_mA);
 extern void update_power_feedback(float current_a, float voltage_v, float target_a);  /* 更新电源反馈数据 */
 extern void update_motor_target_torque(float torque_cmd);  /* 更新电机目标扭矩 */
+extern void update_adrc_state(float kp, float p_gain_multiplier, float u0, float z1, float z2, float output_torque); /* 更新ADRC状态到共享内存 */
 
 /* 电源驱动外部声明 */
 extern PowerDriver_t g_power;  /* 电源驱动全局变量 */
@@ -40,7 +41,16 @@ extern PowerDriver_t g_power;  /* 电源驱动全局变量 */
  * 1: 只响应逆时针方向（deltaf > 0，摩擦力减小，重物变轻）
  * 2: 只响应顺时针方向（deltaf < 0，摩擦力增大，重物变重）
  */
-int g_friction_direction_mode = 2;  /* 默认只响应逆时针方向 */
+int g_friction_direction_mode = 1;  /* 默认只响应逆时针方向 */
+
+/* ADRC + 双阈值动态P融合控制参数
+ * 从6_15工程移植：当|DeltaF|增大并超过阈值时，自动放大P增益以提升响应；
+ * 当|DeltaF|减小时，按两级阶梯下降，避免超调和振荡。
+ */
+float g_deltaf_threshold_kg = ADRC_DYNAMIC_P_THRESHOLD_1;   /* 第一级阈值 */
+float g_deltaf_threshold_kg_2 = ADRC_DYNAMIC_P_THRESHOLD_2; /* 第二级阈值 */
+static float g_last_deltaf_for_pd_boost = 0.0f;             /* 用于检测DeltaF变化趋势 */
+static float g_current_pd_gain_multiplier = 1.0f;           /* 当前动态P增益倍数 */
 
 /* 内部辅助函数 - 获取微秒时间戳 */
 static uint64_t get_time_us(void) {
@@ -101,11 +111,13 @@ int gravity_unload_init(GravityUnloadController_t *ctrl) {
     diff_init(&ctrl->position_diff, 0.0f);  /* 位置微分不使用LPF，避免双重滤波 */
     
     /* 初始化ADRC控制器
-     * b0 = 5.27 (控制增益), wc = 30 (控制器带宽), wo = 40 (观测器带宽, 3~5倍wc)
+     * b0 = 5.27 (控制增益), wc = 30 (控制器带宽), wo = 120 (观测器带宽, 3~5倍wc)
+     * kp = ADRC_KP (独立可调比例增益)
      * 输出限幅: ±1.27Nm (电机额定扭矩)
+     * 对于b0做了修改-0.186
      */
-    adrc_init(&ctrl->adrc, 5.27f, 30.0f, 40.0f,
-              -1.27f, 1.27f, ALGO_CONTROL_PERIOD_S);
+    adrc_init(&ctrl->adrc, -0.186f, 60.0f, 80.0f, ADRC_KP,
+              -1.27f, 1.27f, ALGO_CONTROL_PERIOD_S);/**/
     
     /* 初始化安全监控 */
     safety_monitor_init(&ctrl->safety);
@@ -488,13 +500,42 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
         delta_f_kg = 0.0f;
     }
 
-    /* ========== ADRC控制计算 ========== */
-    float motor_rated_torque = 1.27f;
-    
-    /* ADRC自抗扰控制器：setpoint=0, 测量值=delta_f_kg
-     * ESO自动估计总扰动并补偿，仅需比例控制即可无静差
+    /* ========== ADRC + 动态P控制计算 ==========
+     * 动态P增益：根据|DeltaF|大小和变化趋势，自动放大/缩小kp
+     * 上升时：|DeltaF|>threshold_2 → boost_2；>threshold_1 → boost_1
+     * 下降时：按两级阶梯下降，避免超调
      */
-    float motor_final_torque_Nm = -adrc_update(&ctrl->adrc, 0.0f, delta_f_kg);
+    float motor_rated_torque = 1.27f;
+    float abs_deltaf = fabsf(delta_f_kg);
+    float abs_last_deltaf = fabsf(g_last_deltaf_for_pd_boost);
+    int is_increasing = (abs_deltaf > abs_last_deltaf + 0.0001f);
+    int is_decreasing = (abs_deltaf < abs_last_deltaf - 0.0001f);
+    float pd_gain_multiplier = g_current_pd_gain_multiplier;
+
+    if (is_increasing) {
+        if (abs_deltaf > g_deltaf_threshold_kg_2) {
+            pd_gain_multiplier = ADRC_DYNAMIC_P_BOOST_2;
+        } else if (abs_deltaf > g_deltaf_threshold_kg) {
+            pd_gain_multiplier = ADRC_DYNAMIC_P_BOOST_1;
+        } else {
+            pd_gain_multiplier = 1.0f;
+        }
+    } else if (is_decreasing) {
+        if (abs_deltaf > g_deltaf_threshold_kg_2) {
+            pd_gain_multiplier = ADRC_DYNAMIC_P_BOOST_1;
+        } else if (abs_deltaf > g_deltaf_threshold_kg) {
+            pd_gain_multiplier = 1.0f;
+        } else {
+            pd_gain_multiplier = 1.0f;
+        }
+    }
+    g_current_pd_gain_multiplier = pd_gain_multiplier;
+    g_last_deltaf_for_pd_boost = delta_f_kg;
+
+    /* ADRC自抗扰控制器：setpoint=0, 测量值=delta_f_kg, 动态P增益=p_d_gain_multiplier
+     * ESO自动估计总扰动并补偿，动态P提升大误差响应速度
+     */
+    float motor_final_torque_Nm = adrc_update(&ctrl->adrc, 0.0f, delta_f_kg, pd_gain_multiplier);
 
     /* F0校准后的保护期：前50个周期（0.5秒）内，限制扭矩输出 */
     if (ctrl->pressure_f0_calibrated && ctrl->f0_calibration_cycles < 50) {
@@ -518,8 +559,8 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     }
     
     /* 输出变化率限制（斜坡限制）- 防止扭矩突变导致振荡 */
-    /* 每周期最大变化量：0.01 Nm/10ms = 1 Nm/s */
-    const float max_torque_change_per_cycle = 0.01f;
+    /* 每周期最大变化量：0.005 Nm/5ms = 1 Nm/s */
+    const float max_torque_change_per_cycle = 0.005f;
     float torque_change = motor_final_torque_Nm - ctrl->last_output_Nm;
     if (torque_change > max_torque_change_per_cycle) {
         motor_final_torque_Nm = ctrl->last_output_Nm + max_torque_change_per_cycle;
@@ -552,8 +593,16 @@ static void calculate_control_output(GravityUnloadController_t *ctrl,
     output->motor_torque_nm = motor_final_torque_Nm;  /* 保存实际扭矩值用于显示 */
     output->control_mode = CONTROL_MODE_TORQUE;
 
-    /* 更新ADRC状态到共享内存（用于上位机显示） */
-    /* 传递ADRC的z1(估计DeltaF)和z2(估计扰动) */
+    /* 更新ADRC状态到共享内存（用于上位机显示和CSV记录）
+     * z1: ESO估计的DeltaF
+     * z2: ESO估计的总扰动
+     * u0: 比例控制律输出
+     * output_torque: 最终输出扭矩
+     */
+    update_adrc_state(ctrl->adrc.kp, pd_gain_multiplier, adrc_get_u0(&ctrl->adrc),
+                      adrc_get_z1(&ctrl->adrc), adrc_get_z2(&ctrl->adrc), motor_final_torque_Nm);
+
+    /* 保持旧update_pi_terms接口兼容，用于6_15模式/上位机旧版本显示 */
     update_pi_terms(adrc_get_z1(&ctrl->adrc), 0.0f, 0.0f, adrc_get_z2(&ctrl->adrc), 0.0f);
     /* 更新last_current为电机扭矩值（Nm），用于CSV记录 */
     update_pi_last_current(motor_final_torque_Nm);
@@ -657,7 +706,7 @@ AlgoError_t gravity_unload_control_cycle(GravityUnloadController_t *ctrl,
 static void* gravity_unload_thread(void *arg) {
     GravityUnloadController_t *ctrl = (GravityUnloadController_t *)arg;
 
-    printf("[GRAVITY_UNLOAD] Thread started - Industrial Grade Strict 10ms Cycle\n");
+    printf("[GRAVITY_UNLOAD] Thread started - Industrial Grade Strict 5ms Cycle (200Hz)\n");
 
     SensorDataRaw_t raw_data;
     SensorDataFiltered_t filtered_data;

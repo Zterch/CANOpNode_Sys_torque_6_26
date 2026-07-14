@@ -41,11 +41,14 @@ typedef struct {
     float beta2;
     
     /* 控制增益 */
-    float kp;       /* 比例增益 (= wc) */
+    float kp;       /* 比例增益 (独立可调，不再强制等于wc) */
     float b0;       /* 控制增益 */
     
     /* 上一时刻控制量 (用于ESO模型) */
     float u_prev;
+    
+    /* 上一时刻控制律输出 u0 (用于数据记录) */
+    float u0;
     
     /* 输出限幅 */
     float u_max;
@@ -69,12 +72,13 @@ typedef struct {
  * @param b0   控制增益 (kg/Nm)
  * @param wc   控制器带宽 (rad/s), 建议10~50
  * @param wo   观测器带宽 (rad/s), 建议3~5*wc
+ * @param kp   比例增益 (独立可调)
  * @param u_min 输出下限
  * @param u_max 输出上限
  * @param dt   采样周期 (s)
  */
 void adrc_init(ADRC_Controller_t *adrc,
-               float b0, float wc, float wo,
+               float b0, float wc, float wo, float kp,
                float u_min, float u_max,
                float dt);
 
@@ -85,13 +89,14 @@ void adrc_init(ADRC_Controller_t *adrc,
 void adrc_reset(ADRC_Controller_t *adrc);
 
 /**
- * @brief 更新ADRC控制器
+ * @brief 更新ADRC控制器（支持动态P增益）
  * @param adrc  控制器实例
  * @param y_ref 参考输入 (目标值, 通常为0)
  * @param y_meas 测量值 (DeltaF)
+ * @param p_gain_multiplier P增益动态乘数（1.0为正常，大于1为加强）
  * @return 控制输出 u (扭矩, Nm)
  */
-float adrc_update(ADRC_Controller_t *adrc, float y_ref, float y_meas);
+float adrc_update(ADRC_Controller_t *adrc, float y_ref, float y_meas, float p_gain_multiplier);
 
 /**
  * @brief 获取ESO估计的DeltaF
@@ -106,6 +111,13 @@ float adrc_get_z1(const ADRC_Controller_t *adrc);
  * @return z2
  */
 float adrc_get_z2(const ADRC_Controller_t *adrc);
+
+/**
+ * @brief 获取控制律输出 u0
+ * @param adrc 控制器实例
+ * @return u0
+ */
+float adrc_get_u0(const ADRC_Controller_t *adrc);
 
 #ifdef __cplusplus
 }

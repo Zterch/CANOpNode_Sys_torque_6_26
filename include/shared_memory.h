@@ -57,6 +57,14 @@ typedef struct {
     float actual_torque_nm;     // 电机实际力矩 (Nm)
     int32_t control_mode;       // 控制模式: 0=速度模式, 1=力矩模式
     
+    // ADRC自抗扰中间变量（用于数据记录与上位机显示）
+    float adrc_kp;              // ADRC比例增益
+    float adrc_p_gain_multiplier; // 动态P增益倍数
+    float adrc_u0;              // 比例控制律输出 u0
+    float adrc_z1;              // ESO估计的 DeltaF (kg)
+    float adrc_z2;              // ESO估计的总扰动 (Nm)
+    float adrc_output_torque;   // ADRC最终输出扭矩 (Nm)
+    
     // 保留字段（扩展用）
     float reserved[1];
     

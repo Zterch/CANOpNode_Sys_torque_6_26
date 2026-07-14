@@ -94,12 +94,74 @@ static volatile uint32_t g_algo_data_cycle_count = 0;
 static volatile int g_algo_data_cycle_updated = 0;  /* 标志：表示新周期数据已更新 */
 static pthread_mutex_t g_data_sync_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_data_sync_cond = PTHREAD_COND_INITIALIZER;
+
+/* PDO通信耗时统计（微秒）- 用于1Hz输出通信时间 */
+typedef struct {
+    pthread_mutex_t mutex;
+    uint64_t state_read_us;      /* 最近一次电机状态读取耗时 */
+    uint64_t torque_send_us;     /* 最近一次扭矩发送耗时 */
+    uint64_t state_read_max_us;  /* 1秒内电机状态读取最大耗时 */
+    uint64_t torque_send_max_us; /* 1秒内扭矩发送最大耗时 */
+    uint64_t state_read_total_us; /* 1秒内电机状态读取总耗时 */
+    uint64_t torque_send_total_us; /* 1秒内扭矩发送总耗时 */
+    uint32_t state_read_count;   /* 1秒内电机状态读取次数 */
+    uint32_t torque_send_count;  /* 1秒内扭矩发送次数 */
+} PdoTimingStats_t;
+static PdoTimingStats_t g_pdo_timing = { PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, 0, 0, 0, 0, 0 };
+
 /* 注意：actuator_control_thread 和 power_state_update_thread 已被删除 */
 
 /* 函数前置声明 */
 void start_logging(void);
 void stop_logging(void);
 void update_pi_terms(float p_term_mA, float p_term_filtered_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA);
+void update_adrc_state(float kp, float p_gain_multiplier, float u0, float z1, float z2, float output_torque);
+static uint64_t get_time_us(void);  /* 时间戳函数前置声明 */
+
+/* PDO通信耗时统计辅助函数 */
+static void pdo_timing_update_state_read(uint64_t us) {
+    pthread_mutex_lock(&g_pdo_timing.mutex);
+    g_pdo_timing.state_read_us = us;
+    g_pdo_timing.state_read_total_us += us;
+    if (us > g_pdo_timing.state_read_max_us) g_pdo_timing.state_read_max_us = us;
+    g_pdo_timing.state_read_count++;
+    pthread_mutex_unlock(&g_pdo_timing.mutex);
+}
+
+static void pdo_timing_update_torque_send(uint64_t us) {
+    pthread_mutex_lock(&g_pdo_timing.mutex);
+    g_pdo_timing.torque_send_us = us;
+    g_pdo_timing.torque_send_total_us += us;
+    if (us > g_pdo_timing.torque_send_max_us) g_pdo_timing.torque_send_max_us = us;
+    g_pdo_timing.torque_send_count++;
+    pthread_mutex_unlock(&g_pdo_timing.mutex);
+}
+
+static void pdo_timing_print_and_reset(void) {
+    pthread_mutex_lock(&g_pdo_timing.mutex);
+    uint64_t state_total = g_pdo_timing.state_read_total_us;
+    uint64_t torque_total = g_pdo_timing.torque_send_total_us;
+    uint64_t state_max = g_pdo_timing.state_read_max_us;
+    uint64_t torque_max = g_pdo_timing.torque_send_max_us;
+    uint64_t state_last = g_pdo_timing.state_read_us;
+    uint64_t torque_last = g_pdo_timing.torque_send_us;
+    uint32_t state_cnt = g_pdo_timing.state_read_count;
+    uint32_t torque_cnt = g_pdo_timing.torque_send_count;
+    g_pdo_timing.state_read_total_us = 0;
+    g_pdo_timing.torque_send_total_us = 0;
+    g_pdo_timing.state_read_max_us = 0;
+    g_pdo_timing.torque_send_max_us = 0;
+    g_pdo_timing.state_read_count = 0;
+    g_pdo_timing.torque_send_count = 0;
+    pthread_mutex_unlock(&g_pdo_timing.mutex);
+
+    uint64_t state_avg = (state_cnt > 0) ? (state_total / state_cnt) : 0;
+    uint64_t torque_avg = (torque_cnt > 0) ? (torque_total / torque_cnt) : 0;
+    printf("[PDO_TIMING] StateRead: last=%lluus avg=%lluus max=%lluus count=%u | "
+           "TorqueSend: last=%lluus avg=%lluus max=%lluus count=%u\n",
+           (unsigned long long)state_last, (unsigned long long)state_avg, (unsigned long long)state_max, state_cnt,
+           (unsigned long long)torque_last, (unsigned long long)torque_avg, (unsigned long long)torque_max, torque_cnt);
+}
 
 /******************************************************************************
  * 共享状态缓冲区 - 用于线程间数据共享
@@ -147,6 +209,13 @@ typedef struct {
     float algo_pressure_kg;
     /* PI累积电流 */
     float pi_last_current_mA;
+    /* ADRC自抗扰状态（用于数据记录） */
+    float adrc_kp;
+    float adrc_p_gain_multiplier;
+    float adrc_u0;
+    float adrc_z1;
+    float adrc_z2;
+    float adrc_output_torque;
 } SharedStateBuffer_t;
 
 static SharedStateBuffer_t g_shared_state;
@@ -214,22 +283,24 @@ static void update_motor_to_buffer(void) {
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
-/* 电机状态更新线程 - 独立运行 (100Hz) */
+/* 电机状态更新线程 - 独立运行 (100Hz，与传感器同步) */
 static void* motor_state_update_thread(void* arg) {
     (void)arg;
     struct sched_param param;
     param.sched_priority = 80;
     pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
-    printf("[MOTOR] Motor state update thread started (100Hz, independent)\n");
+    printf("[MOTOR] Motor state update thread started (200Hz, cached read only)\n");
 
     /* 使用绝对时间戳进行精确周期控制 */
     struct timespec next_time;
     clock_gettime(CLOCK_MONOTONIC, &next_time);
-    const int period_us = 10000;  /* 10ms = 100Hz */
+    const int period_us = 5000;  /* 5ms = 200Hz */
 
     while (g_running) {
         if (g_motor.initialized) {
+            uint64_t t_start = get_time_us();
             motor_update_state(&g_motor);
+            pdo_timing_update_state_read(get_time_us() - t_start);
             /* 更新到共享状态 */
             update_motor_to_buffer();
         }
@@ -269,13 +340,13 @@ void notify_data_collection_cycle(uint64_t timestamp_us, uint32_t cycle_count) {
     pthread_mutex_unlock(&g_data_sync_mutex);
 }
 
-/* PDO发送线程 - 与算法线程同步 (100Hz) */
+/* PDO发送线程 - 与算法线程同步 (200Hz) */
 static void* pdo_send_thread(void* arg) {
     (void)arg;
     struct sched_param param;
     param.sched_priority = 95;  /* 最高优先级，确保实时性 */
     pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
-    printf("[PDO] PDO send thread started (100Hz, synchronized with algorithm)\n");
+    printf("[PDO] PDO send thread started (200Hz, synchronized with algorithm)\n");
 
     static int motor_enabled_printed = 0;
     static int last_sent_torque = 0;
@@ -316,8 +387,12 @@ static void* pdo_send_thread(void* arg) {
             int torque_diff = abs(target_torque - last_sent_torque);
 
             if (torque_diff >= MIN_TORQUE_CHANGE_THRESHOLD || consecutive_errors > 0) {
-                /* 发送目标扭矩到电机 - 使用1ms超时快速模式 */
-                int ret = Nim_set_targetTorque(g_motor.sdk_master, g_motor.node_id, target_torque, 1);
+                /* 发送目标扭矩到电机 - 使用 PDO 模式实现 200Hz 实时写入
+                 * 用户已在上位机启用 RPDO4，目标扭矩 0x6071 映射到 RPDO4
+                 */
+                uint64_t t_start = get_time_us();
+                int ret = Nim_set_targetTorque(g_motor.sdk_master, g_motor.node_id, target_torque, 0);
+                pdo_timing_update_torque_send(get_time_us() - t_start);
                 if (ret != 0) {
                     consecutive_errors++;
                     total_error_count++;
@@ -373,11 +448,26 @@ void update_pressure_f0_deltaf(float f0_kg, float deltaf) {
 
 void update_pi_terms(float p_term_mA, float p_term_filtered_mA, float p_term_raw_mA, float i_term_mA, float d_term_mA) {
     pthread_mutex_lock(&g_shared_state.mutex);
-    g_shared_state.pi_p_term_mA = p_term_mA;              /* 最终值：滤波+动态调整 */
-    g_shared_state.pi_p_term_filtered_mA = p_term_filtered_mA;  /* 滤波后值：未动态调整 */
-    g_shared_state.pi_p_term_raw_mA = p_term_raw_mA;      /* 原始值：未滤波、未调整 */
+    /* 旧PID字段保留，兼容6_15模式/旧上位机：用z1/z2填充 */
+    g_shared_state.pi_p_term_mA = p_term_mA;
+    g_shared_state.pi_p_term_filtered_mA = p_term_filtered_mA;
+    g_shared_state.pi_p_term_raw_mA = p_term_raw_mA;
     g_shared_state.pi_i_term_mA = i_term_mA;
     g_shared_state.pi_d_term_mA = d_term_mA;
+    /* ADRC相关字段 */
+    g_shared_state.adrc_z1 = p_term_mA;   /* 传入的是z1 (ESO估计DeltaF) */
+    g_shared_state.adrc_z2 = i_term_mA;   /* 传入的是z2 (ESO估计扰动) */
+    pthread_mutex_unlock(&g_shared_state.mutex);
+}
+
+void update_adrc_state(float kp, float p_gain_multiplier, float u0, float z1, float z2, float output_torque) {
+    pthread_mutex_lock(&g_shared_state.mutex);
+    g_shared_state.adrc_kp = kp;
+    g_shared_state.adrc_p_gain_multiplier = p_gain_multiplier;
+    g_shared_state.adrc_u0 = u0;
+    g_shared_state.adrc_z1 = z1;
+    g_shared_state.adrc_z2 = z2;
+    g_shared_state.adrc_output_torque = output_torque;
     pthread_mutex_unlock(&g_shared_state.mutex);
 }
 
@@ -504,9 +594,13 @@ static int check_sensors_impl(void) {
     SensorData_t encoder, pressure;
     printf("[CHECK] Checking sensors...\n");
     fflush(stdout);
-    if (sensor_mgr_get_data(&g_sensor_mgr, SENSOR_TYPE_ENCODER, &encoder) != ERR_OK || !encoder.data_valid) {
-        printf("[CHECK FAIL] Encoder not available\n");
-        return -1;
+    if (g_encoder_enabled) {
+        if (sensor_mgr_get_data(&g_sensor_mgr, SENSOR_TYPE_ENCODER, &encoder) != ERR_OK || !encoder.data_valid) {
+            printf("[CHECK FAIL] Encoder not available\n");
+            return -1;
+        }
+    } else {
+        printf("[CHECK] Encoder disabled by g_encoder_enabled=0, skip check\n");
     }
     if (sensor_mgr_get_data(&g_sensor_mgr, SENSOR_TYPE_PRESSURE, &pressure) != ERR_OK || !pressure.data_valid) {
         printf("[CHECK FAIL] Pressure sensor not available\n");
@@ -758,6 +852,8 @@ static void* monitor_thread(void* arg) {
     printf("[MONITOR] Monitor thread started (1Hz)\n");
     while (g_running) {
         if (g_algorithm_enabled) gravity_unload_print_status(&g_gravity_ctrl);
+        /* 1Hz输出PDO收发耗时统计 */
+        pdo_timing_print_and_reset();
         for (int i = 0; i < 10 && g_running; i++) usleep(100000);
     }
     printf("[MONITOR] Monitor thread stopped\n");
@@ -783,8 +879,8 @@ void start_logging(void) {
     if (g_log_file) {
         fprintf(g_log_file, "%-20s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-15s,%-12s,%-12s,%-12s,%-12s,%-12s,%-12s,%-14s,%-14s,%-16s,%-14s,%-20s,%-20s,%-16s,%-18s,%-22s,%-14s,%-14s,%-14s,%-14s,%-14s,%-14s\n",
                 "Time","Current(A)","TargetCurrent(A)","Voltage(V)","PressureRaw(kg)","PressureFiltered(kg)","F0(kg)","DeltaF",
-                "PI_P(Nm)","PI_P_Filtered(Nm)","PI_P_Raw(Nm)","PI_I(Nm)","PI_D(Nm)","PI_LastTorque(Nm)","Feedforward(mA)","FeedforwardTorque(Nm)","AlgoDeltaF(kg)","AlgoPressure(kg)",
-                "RopeLength(m)","EncoderValue","EncoderAngle(deg)","MotorSpeed(rpm)",
+                "ADRC_KP","ADRC_PGain","ADRC_U0(Nm)","ADRC_Z1(kg)","ADRC_Z2(Nm)","ADRC_LastTorque(Nm)","Feedforward(mA)","FeedforwardTorque(Nm)","AlgoDeltaF(kg)","AlgoPressure(kg)",
+                "EncoderValue","RopeLength(m)","EncoderAngle(deg)","MotorSpeed(rpm)",
                 "MotorLinearVel(m/s)","MotorTheoryVel(m/s)","MotorPosition(m)",
                 "RopeVelocityRaw(m/s)","RopeVelocityFiltered(m/s)","WeightRaw(kg)","WeightFiltered(kg)","TargetTorque(Nm)","ActualTorque(Nm)");
         printf("[LOG] Started logging to: %s\n", g_log_filename);
@@ -809,12 +905,12 @@ static void* data_collection_thread(void* arg) {
     struct sched_param param;
     param.sched_priority = 87;
     pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
-    printf("[DATA] Data collection thread started - 100Hz independent mode\n");
+    printf("[DATA] Data collection thread started - 200Hz independent mode\n");
 
     /* 使用绝对时间戳进行精确周期控制 */
     struct timespec next_time;
     clock_gettime(CLOCK_MONOTONIC, &next_time);
-    const int period_us = 10000;  /* 10ms = 100Hz */
+    const int period_us = 5000;  /* 5ms = 200Hz */
 
     uint32_t last_recorded_cycle = 0;
     int first_run = 1;
@@ -832,10 +928,10 @@ static void* data_collection_thread(void* arg) {
             pthread_mutex_lock(&g_data_sync_mutex);
             int wait_result = 0;
             while (g_algo_data_cycle_count == last_recorded_cycle && g_running) {
-                /* 等待条件变量，最多等待15ms */
+                /* 等待条件变量，最多等待10ms */
                 struct timespec timeout;
                 clock_gettime(CLOCK_REALTIME, &timeout);
-                timeout.tv_nsec += 15 * 1000 * 1000;  /* 15ms */
+                timeout.tv_nsec += 10 * 1000 * 1000;  /* 10ms */
                 if (timeout.tv_nsec >= 1000000000) {
                     timeout.tv_sec += 1;
                     timeout.tv_nsec -= 1000000000;
@@ -907,7 +1003,7 @@ static void* data_collection_thread(void* arg) {
         float current_a = 0.0f, voltage_v = 0.0f, motor_speed_rpm = 0.0f, motor_pos_m = 0.0f, motor_linear_vel = 0.0f;
         float motor_theory_vel = 0.0f, rope_vel_raw = 0.0f, rope_vel_filtered = 0.0f;
         float pressure_f0_kg = 0.0f, pressure_deltaf = 0.0f;
-        float pi_p_term_mA = 0.0f, pi_p_term_filtered_mA = 0.0f, pi_p_term_raw_mA = 0.0f, pi_i_term_mA = 0.0f, pi_d_term_mA = 0.0f, pi_last_current_mA = 0.0f;
+        float adrc_kp = 0.0f, adrc_p_gain = 0.0f, adrc_u0 = 0.0f, adrc_z1 = 0.0f, adrc_z2 = 0.0f, adrc_output_torque = 0.0f;
         float target_current_a = 0.0f, feedforward_current_mA = 0.0f, feedforward_torque_Nm = 0.0f, algo_deltaf_kg = 0.0f, algo_pressure_kg = 0.0f;
         pthread_mutex_lock(&g_shared_state.mutex);
         current_a = g_shared_state.current_a;
@@ -919,22 +1015,22 @@ static void* data_collection_thread(void* arg) {
         rope_vel_raw = g_shared_state.rope_velocity_raw_m_s;
         rope_vel_filtered = g_shared_state.rope_velocity_filtered_m_s;
         pressure_f0_kg = g_shared_state.pressure_f0_kg;
-        pi_p_term_mA = g_shared_state.pi_p_term_mA;
-        pi_p_term_filtered_mA = g_shared_state.pi_p_term_filtered_mA;
-        pi_p_term_raw_mA = g_shared_state.pi_p_term_raw_mA;
-        pi_i_term_mA = g_shared_state.pi_i_term_mA;
-        pi_d_term_mA = g_shared_state.pi_d_term_mA;
-        pi_last_current_mA = g_shared_state.pi_last_current_mA;
+        adrc_kp = g_shared_state.adrc_kp;
+        adrc_p_gain = g_shared_state.adrc_p_gain_multiplier;
+        adrc_u0 = g_shared_state.adrc_u0;
+        adrc_z1 = g_shared_state.adrc_z1;
+        adrc_z2 = g_shared_state.adrc_z2;
+        adrc_output_torque = g_shared_state.adrc_output_torque;
         target_current_a = g_shared_state.target_current_a;
         feedforward_current_mA = g_shared_state.feedforward_current_mA;
         feedforward_torque_Nm = g_shared_state.feedforward_torque_Nm;
         algo_deltaf_kg = g_shared_state.algo_deltaf_kg;
         algo_pressure_kg = g_shared_state.algo_pressure_kg;
         pthread_mutex_unlock(&g_shared_state.mutex);
-        /* 正弦测试信号生成 - 100Hz */
+        /* 正弦测试信号生成 - 200Hz */
         float sine_target_torque = 0.0f;
         if (g_sine_test_enabled) {
-            g_sine_start_time += 0.01;  // 100Hz, 每周期10ms
+            g_sine_start_time += 0.005;  // 200Hz, 每周期5ms
             double omega = 2.0 * M_PI * g_sine_frequency;
             sine_target_torque = g_sine_offset + g_sine_amplitude * sin(omega * g_sine_start_time);
             
@@ -997,8 +1093,8 @@ static void* data_collection_thread(void* arg) {
             float actual_torque_nm = (actual_torque_cmd / 1000.0f) * 1.27f;  // 转换为Nm
             fprintf(g_log_file, "%-20s,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-15.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-12.3f,%-14.5f,%-14u,%-16.3f,%-14.3f,%-20.3f,%-20.3f,%-16.3f,%-18.5f,%-22.5f,%-14.3f,%-14.3f,%-14.3f,%-14.3f,%-14.3f\n",
                     time_str, current_a, target_current_a, voltage_v, pressure_raw_kg, pressure_kg, log_f0_kg, pressure_deltaf,
-                    pi_p_term_mA, pi_p_term_filtered_mA, pi_p_term_raw_mA, pi_i_term_mA, pi_d_term_mA, pi_last_current_mA, feedforward_current_mA, feedforward_torque_Nm, algo_deltaf_kg, algo_pressure_kg,
-                    rope_length_m, encoder_value, encoder_angle, motor_speed_rpm,
+                    adrc_kp, adrc_p_gain, adrc_u0, adrc_z1, adrc_z2, adrc_output_torque, feedforward_current_mA, feedforward_torque_Nm, algo_deltaf_kg, algo_pressure_kg,
+                    encoder_value, rope_length_m, encoder_angle, motor_speed_rpm,
                     motor_linear_vel, motor_theory_vel, motor_pos_m,
                     rope_vel_raw, rope_vel_filtered, log_weight_raw, log_weight_filtered, target_torque_nm, actual_torque_nm);
             g_log_count++;
@@ -1008,7 +1104,7 @@ static void* data_collection_thread(void* arg) {
             last_recorded_cycle = current_algo_cycle;
         }
 
-        /* 精确周期控制 - 100Hz */
+        /* 精确周期控制 - 200Hz */
         next_time.tv_nsec += period_us * 1000;
         if (next_time.tv_nsec >= 1000000000) {
             next_time.tv_sec += 1;

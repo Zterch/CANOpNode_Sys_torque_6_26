@@ -156,15 +156,15 @@ ErrorCode_t motor_init(MotorDriver_t *motor, uint8_t node_id, const char *can_if
     LOG_INFO(LOG_MODULE_MOTOR, "SDK master created successfully, handle=0x%08X", motor->sdk_master);
     
     /* 构建连接字符串 - 使用NiMotion USB-CAN设备
-     * PDOIntervalMS: 10ms - 与算法周期100Hz匹配
-     * SyncIntervalMS: 10ms - 与PDO周期同步
+     * PDOIntervalMS: 5ms - 与算法周期200Hz匹配
+     * SyncIntervalMS: 5ms - 与PDO周期同步
      * Baudrate: 8 (1Mbps) - 确保高速通信
      */
     char conn_str[256];
     snprintf(conn_str, sizeof(conn_str),
              "{\"DevType\": \"1001\", \"DevIndex\": 0, \"Baudrate\": 8,"
-             " \"PDOIntervalMS\": 10, \"SyncIntervalMS\": 10}");
-    
+             " \"PDOIntervalMS\": 5, \"SyncIntervalMS\": 5}");
+
     LOG_INFO(LOG_MODULE_MOTOR, "Connection string: %s", conn_str);
     
     /* 启动主站 - 必须在SDK目录下进行，因为需要访问设备驱动文件 */
@@ -241,6 +241,15 @@ ErrorCode_t motor_init(MotorDriver_t *motor, uint8_t node_id, const char *can_if
     motor->sdk_initialized = 1;
     motor->initialized = 1;
     motor->state = MOTOR_STATE_READY;
+    
+    /* 启动后测试SDO读取实际转矩，确认对象字典0x6077是否存在 */
+    int test_torque;
+    int ret_test = Nim_get_currentTorque(motor->sdk_master, motor->node_id, &test_torque, 1);
+    if (ret_test == 0) {
+        printf("[MOTOR_INIT] SDO test read 0x6077 OK: torque=%d (0.001 rated)\n", test_torque);
+    } else {
+        printf("[MOTOR_INIT] SDO test read 0x6077 FAILED: ret=%d\n", ret_test);
+    }
     
     LOG_INFO(LOG_MODULE_MOTOR, "Motor driver initialized (Node ID=%d, SDK mode)", node_id);
     return ERR_OK;
@@ -562,14 +571,13 @@ ErrorCode_t motor_get_position(MotorDriver_t *motor, int32_t *position) {
         return ERR_INVALID_PARAM;
     }
     
-    /* 使用PDO方式读取当前位置 */
-    double pos;
-    int ret = Nim_get_currentPosition(motor->sdk_master, motor->node_id, &pos, 0);
-    if (ret != 0) {
-        return ERR_COMM_FAIL;
-    }
+    /* 从缓存读取当前位置，避免每次SDO同步通信
+     * 缓存值由 motor_update_state 在独立线程中周期性更新
+     */
+    pthread_mutex_lock(&motor->data_mutex);
+    *position = (int32_t)motor->actual_position;
+    pthread_mutex_unlock(&motor->data_mutex);
     
-    *position = (int32_t)pos;
     return ERR_OK;
 }
 
@@ -578,14 +586,12 @@ float motor_get_position_m(MotorDriver_t *motor) {
         return 0.0f;
     }
     
-    double pos;
-    if (Nim_get_currentPosition(motor->sdk_master, motor->node_id, &pos, 0) == 0) {
-        /* 注意：NiMotion SDK的Nim_get_currentPosition返回的已经是用户单位（米） */
-        /* unit_factor已经在SDK内部处理，不需要额外转换 */
-        return (float)pos;
-    }
+    /* 从缓存读取位置，避免SDO阻塞 */
+    pthread_mutex_lock(&motor->data_mutex);
+    float pos = (float)motor->actual_position;
+    pthread_mutex_unlock(&motor->data_mutex);
     
-    return 0.0f;
+    return pos;
 }
 
 int32_t motor_get_velocity_rpm(MotorDriver_t *motor) {
@@ -593,12 +599,12 @@ int32_t motor_get_velocity_rpm(MotorDriver_t *motor) {
         return 0;
     }
 
-    int speed_rpm;
-    if (Nim_get_currentMotorSpeed(motor->sdk_master, motor->node_id, &speed_rpm, 0) == 0) {
-        return (int32_t)speed_rpm;
-    }
+    /* 从缓存读取速度，避免SDO阻塞 */
+    pthread_mutex_lock(&motor->data_mutex);
+    int32_t speed = motor->actual_speed_rpm;
+    pthread_mutex_unlock(&motor->data_mutex);
 
-    return 0;
+    return speed;
 }
 
 ErrorCode_t motor_get_velocity_cached(MotorDriver_t *motor, int32_t *velocity) {
@@ -651,26 +657,27 @@ ErrorCode_t motor_update_state(MotorDriver_t *motor) {
         return ERR_NOT_INITIALIZED;
     }
 
-    /* 工业级优化：使用1ms超时非阻塞读取
-     * 避免阻塞算法线程，同时确保能读取到数据
-     * 1M波特率CANopen通信1ms足够完成一个SDO请求
+    /* 使用 PDO 模式读取（bSDO=0），如果 PDO 失败则回退到 SDO（bSDO=1）
+     * 高频状态更新应尽量使用 PDO，避免 SDO 阻塞
      */
-    const int TIMEOUT_MS = 1;  /* 1ms超时，快速模式 */
+    const int USE_PDO = 0;
+    const int USE_SDO = 1;
 
     pthread_mutex_lock(&motor->data_mutex);
 
-    /* 降低SDO读取频率：每10个周期读取一次状态字（100Hz -> 10Hz）
-     * 这样可以减少CAN总线负载，同时保持实时性
-     */
+    /* 状态字读取频率：每 10 个周期一次（100Hz -> 10Hz） */
     motor_update_counter++;
     if (motor_update_counter % 10 == 0) {
-        /* 读取状态字 - 非阻塞 */
         unsigned short status_word;
-        int ret = Nim_get_statusWord(motor->sdk_master, motor->node_id, &status_word, TIMEOUT_MS);
+        /* 先用 PDO 读，失败再用 SDO 兜底 */
+        int ret = Nim_get_statusWord(motor->sdk_master, motor->node_id, &status_word, USE_PDO);
+        if (ret != 0) {
+            motor->pdo_rx_fail_count++;
+            ret = Nim_get_statusWord(motor->sdk_master, motor->node_id, &status_word, USE_SDO);
+        }
         if (ret == 0) {
             motor->status_word = status_word;
 
-            /* 更新状态机 */
             uint16_t state_bits = status_word & 0x000F;
             switch (state_bits) {
                 case 0x0000: motor->state = MOTOR_STATE_NOT_READY; break;
@@ -686,28 +693,57 @@ ErrorCode_t motor_update_state(MotorDriver_t *motor) {
         }
     }
 
-    /* 读取实际位置 - 非阻塞 */
-    double pos;
-    if (Nim_get_currentPosition(motor->sdk_master, motor->node_id, &pos, TIMEOUT_MS) == 0) {
+    /* 读取实际位置 - 先 PDO 后 SDO 兜底，必须正确保存结果 */
+    double pos = motor->actual_position;
+    if (Nim_get_currentPosition(motor->sdk_master, motor->node_id, &pos, USE_PDO) == 0) {
         motor->actual_position = pos;
+    } else {
+        motor->pdo_rx_fail_count++;
+        if (Nim_get_currentPosition(motor->sdk_master, motor->node_id, &pos, USE_SDO) == 0) {
+            motor->actual_position = pos;
+        }
     }
 
-    /* 读取实际速度 - 非阻塞 */
-    double vel;
-    if (Nim_get_currentVelocity(motor->sdk_master, motor->node_id, &vel, TIMEOUT_MS) == 0) {
+    /* 读取实际速度 - 先 PDO 后 SDO 兜底 */
+    double vel = motor->actual_velocity;
+    if (Nim_get_currentVelocity(motor->sdk_master, motor->node_id, &vel, USE_PDO) == 0) {
         motor->actual_velocity = vel;
+    } else {
+        motor->pdo_rx_fail_count++;
+        if (Nim_get_currentVelocity(motor->sdk_master, motor->node_id, &vel, USE_SDO) == 0) {
+            motor->actual_velocity = vel;
+        }
     }
 
-    /* 读取实际转速 - 非阻塞 */
-    int speed_rpm;
-    if (Nim_get_currentMotorSpeed(motor->sdk_master, motor->node_id, &speed_rpm, TIMEOUT_MS) == 0) {
+    /* 读取实际转速 - 先 PDO 后 SDO 兜底 */
+    int speed_rpm = motor->actual_speed_rpm;
+    if (Nim_get_currentMotorSpeed(motor->sdk_master, motor->node_id, &speed_rpm, USE_PDO) == 0) {
         motor->actual_speed_rpm = speed_rpm;
+    } else {
+        motor->pdo_rx_fail_count++;
+        if (Nim_get_currentMotorSpeed(motor->sdk_master, motor->node_id, &speed_rpm, USE_SDO) == 0) {
+            motor->actual_speed_rpm = speed_rpm;
+        }
     }
 
-    /* 读取实际转矩 - 非阻塞 */
-    int torque;
-    if (Nim_get_currentTorque(motor->sdk_master, motor->node_id, &torque, TIMEOUT_MS) == 0) {
+    /* 读取实际转矩 - 使用 PDO 模式，实现 200Hz 实时读取
+     * 用户已在上位机启用 TPDO4，实际转矩 0x6077 映射到 TPDO4
+     * 如果 PDO 失败，SDO 兜底用于保证基本显示
+     */
+    int torque = motor->actual_torque;
+    int ret_pdo = Nim_get_currentTorque(motor->sdk_master, motor->node_id, &torque, USE_PDO);
+    if (ret_pdo == 0) {
         motor->actual_torque = torque;
+    } else {
+        motor->pdo_rx_fail_count++;
+        int ret_sdo = Nim_get_currentTorque(motor->sdk_master, motor->node_id, &torque, USE_SDO);
+        if (ret_sdo == 0) {
+            motor->actual_torque = torque;
+            printf("[MOTOR_TORQUE] Fallback SDO read OK: torque=%d (0.001 rated)\n", torque);
+        } else {
+            printf("[MOTOR_TORQUE] ERROR: PDO ret=%d, SDO ret=%d, torque remains %d\n",
+                   ret_pdo, ret_sdo, motor->actual_torque);
+        }
     }
 
     motor->pdo_rx_count++;
@@ -919,12 +955,14 @@ ErrorCode_t motor_set_torque(MotorDriver_t *motor, int torque) {
     if (torque > 1000) torque = 1000;
     if (torque < -1000) torque = -1000;
 
-    /* 使用PDO方式发送目标转矩 (100Hz实时) */
-    const int TIMEOUT_MS = 5;  /* 5ms超时 */
+    /* 使用 PDO 方式发送目标转矩，实现 200Hz 实时控制
+     * 用户已在上位机启用 RPDO4，目标转矩 0x6071 映射到 RPDO4
+     */
+    const int USE_PDO = 0;  /* 0=PDO, 1=SDO */
 
     pthread_mutex_lock(&motor->mutex);
 
-    int ret = Nim_set_targetTorque(motor->sdk_master, motor->node_id, torque, TIMEOUT_MS);
+    int ret = Nim_set_targetTorque(motor->sdk_master, motor->node_id, torque, USE_PDO);
     if (ret != 0) {
         LOG_WARN(LOG_MODULE_MOTOR, "Nim_set_targetTorque failed: %s", sdk_error_string(ret));
         motor->error_count++;
@@ -955,20 +993,9 @@ ErrorCode_t motor_get_torque(MotorDriver_t *motor, int *torque) {
         return ERR_INVALID_PARAM;
     }
 
-    const int TIMEOUT_MS = 5;
-
+    /* 从缓存读取实际转矩，避免SDO阻塞 */
     pthread_mutex_lock(&motor->data_mutex);
-
-    int t;
-    int ret = Nim_get_currentTorque(motor->sdk_master, motor->node_id, &t, TIMEOUT_MS);
-    if (ret != 0) {
-        pthread_mutex_unlock(&motor->data_mutex);
-        return ERR_COMM_FAIL;
-    }
-
-    motor->actual_torque = t;
-    *torque = t;
-
+    *torque = motor->actual_torque;
     pthread_mutex_unlock(&motor->data_mutex);
 
     return ERR_OK;
